@@ -17,6 +17,7 @@ run() {
   docker run --rm --platform linux/amd64 \
     ${ENTRENOUS_RELAY:+-e ENTRENOUS_RELAY="$ENTRENOUS_RELAY"} -e APPIMAGE_EXTRACT_AND_RUN=1 \
     -v "$ROOT:/repo" -v entrenous-cargo:/root/.cargo/registry -v entrenous-xwin:/root/.cache/cargo-xwin \
+    -v entrenous-tauri:/root/.cache/tauri \
     -v entrenous-desktop-target:/repo/desktop/src-tauri/target -w /repo/desktop/src-tauri "$IMAGE" sh -c "$1"
 }
 
@@ -27,7 +28,11 @@ mkdir -p downloads
 for t in $TARGETS; do
   case $t in
     linux)
-      run 'cargo tauri build --bundles deb,appimage \
+      # The AppImage tools (linuxdeploy) are AppImages themselves: under emulation (Docker on a
+      # Mac with Apple chip) they fail with "Exec format error" because of their magic bytes
+      # (offset 8, "AI\2"); blanking them is harmless. Tauri downloads them at the first try.
+      run 'fix() { for f in /root/.cache/tauri/*.AppImage; do [ -f "$f" ] && printf "\0\0\0" | dd of="$f" bs=1 seek=8 count=3 conv=notrunc 2>/dev/null; done; true; }
+        fix; { cargo tauri build --bundles deb,appimage || { fix && cargo tauri build --bundles appimage; }; } \
         && cp target/release/bundle/deb/*.deb /repo/downloads/Entre-Nous-linux.deb \
         && cp target/release/bundle/appimage/*.AppImage /repo/downloads/Entre-Nous-linux.AppImage'
       echo "Built: downloads/Entre-Nous-linux.deb, downloads/Entre-Nous-linux.AppImage" ;;
