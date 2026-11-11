@@ -143,6 +143,9 @@ interface Runtime {
   /** Live note typed here and not yet acknowledged by the relay. */
   noteDraft?: string;
   noteSending: boolean;
+  /** Relay events are handled one after the other, in their order of arrival: a handler that
+   *  waits (refresh, state) must not let a later event (a note) land on items it then replaces. */
+  events: Promise<void>;
   bundles: Map<string, PrekeyBundle>;
   online: Set<string>;
   maxTtl: number;
@@ -357,6 +360,7 @@ export class Engine {
       persist: false,
       ready: false,
       noteSending: false,
+      events: Promise.resolve(),
       outbox: new Map(),
       cancelled: new Set(),
       conn: null as unknown as RelayConnection,
@@ -372,10 +376,14 @@ export class Engine {
     rt.conn = new RelayConnection(
       g.relay,
       (c) => this.onOpen(rt, c),
-      (e) =>
-        this.onEvent(rt, e).catch((err) => {
-          if (err.message !== 'disconnected') this.emit({ type: 'error', message: String(err.message ?? err) });
-        }),
+      (e) => {
+        rt.events = rt.events
+          // a runtime replaced meanwhile (rotation, group left) handles nothing more
+          .then(() => (this.runtimes.get(rt.g.id) === rt ? this.onEvent(rt, e) : undefined))
+          .catch((err) => {
+            if (err.message !== 'disconnected') this.emit({ type: 'error', message: String(err.message ?? err) });
+          });
+      },
       () => this.changed(),
     );
     this.runtimes.set(g.id, rt);
