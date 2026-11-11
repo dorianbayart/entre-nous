@@ -2,13 +2,14 @@
 // static files of public/.
 import * as esbuild from 'esbuild';
 import { cp, mkdir, rm } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 const watch = process.argv.includes('--watch');
-const outdir = new URL('./dist/', import.meta.url).pathname;
+const outdir = fileURLToPath(new URL('./dist/', import.meta.url)); // a real path on Windows too
 
 await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
-await cp(new URL('./public/', import.meta.url).pathname, outdir, { recursive: true });
+await cp(fileURLToPath(new URL('./public/', import.meta.url)), outdir, { recursive: true });
 
 const options = {
   entryPoints: [
