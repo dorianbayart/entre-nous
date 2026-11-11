@@ -37,8 +37,31 @@ interface Prefs {
   autoShare: boolean;
   paused: boolean;
   confirmDelete: boolean;
-  notify: boolean; // Mac: notification on reception
+  notify: boolean; // desktop apps: notification on reception
   groupId: string | null;
+  relay?: string; // native apps: server of new groups, when not the default one
+}
+
+/** Can a relay be reached? A WebSocket is not subject to CORS, unlike fetch from the apps. */
+function reachable(relay: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    let ws: WebSocket;
+    const done = (ok: boolean) => {
+      clearTimeout(timer);
+      try {
+        ws.close();
+      } catch {}
+      resolve(ok);
+    };
+    const timer = setTimeout(() => done(false), 8000);
+    try {
+      ws = new WebSocket(relay.replace(/^http/, 'ws') + '/ws');
+      ws.onopen = () => done(true);
+      ws.onerror = () => done(false);
+    } catch {
+      done(false);
+    }
+  });
 }
 
 const NOTE_MAX = 60_000; // characters
@@ -134,18 +157,21 @@ Alpine.data('app', () => ({
   now: Date.now(),
   ttlChoices: TTL_CHOICES,
   dragging: false,
+  relayInput: platform.defaultRelay,
 
   async init() {
     await platform.init?.();
+    this.prefs = { ...this.prefs, ...((await platform.kv.get<Prefs>('prefs')) ?? {}) };
+    // the web app always uses the server that serves it (its policy allows no other)
+    if (platform.native && this.prefs.relay) this.relayInput = this.prefs.relay;
     engine = await Engine.load({
       kv: platform.kv,
       platform: platform.kind,
       defaultName: platform.defaultName,
-      defaultRelay: platform.defaultRelay,
+      defaultRelay: (platform.native && this.prefs.relay) || platform.defaultRelay,
       // direct transfers on the same network, when WebRTC is there
       links: webrtcAvailable() ? webrtcLinks() : undefined,
     });
-    this.prefs = { ...this.prefs, ...((await platform.kv.get<Prefs>('prefs')) ?? {}) };
     engine.on((e) => {
       if (e.type === 'change') this.refresh();
       else if (e.type === 'incoming') {
@@ -815,6 +841,46 @@ Alpine.data('app', () => ({
     const id = await engine.createGroup(name);
     this.selectGroup(id);
     this.view = 'main';
+  },
+
+  /**
+   * Native apps: server of the groups created from now on. The groups of this device alone
+   * move there (created again, the old one deleted); a group shared with other devices stays
+   * on its server, which the devices invited later join through the invitation link.
+   */
+  async saveRelay() {
+    let url = this.relayInput.trim() || platform.defaultRelay;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    let relay: string;
+    try {
+      relay = new URL(url).origin;
+    } catch {
+      this.toast('Adresse invalide');
+      return;
+    }
+    this.busy = true;
+    try {
+      if (!(await reachable(relay))) {
+        this.toast('Serveur injoignable : ' + relay);
+        return;
+      }
+      this.prefs.relay = relay === platform.defaultRelay ? undefined : relay;
+      this.savePrefs();
+      engine.setDefaultRelay(relay);
+      this.relayInput = relay;
+      const me = engine.device.id;
+      for (const g of engine.groups) {
+        if (g.relay === relay || g.members.length !== 1) continue;
+        const id = await engine.createGroup(g.name, relay);
+        if (this.groupId === g.id) this.selectGroup(id);
+        await engine.removeMember(g.id, me);
+      }
+      this.toast('Serveur enregistré');
+    } catch (err: any) {
+      this.toast('Erreur : ' + (err.message ?? err));
+    } finally {
+      this.busy = false;
+    }
   },
 
   async removeMember(member: { id: string; name: string; me: boolean }) {

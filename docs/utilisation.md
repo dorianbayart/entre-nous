@@ -77,7 +77,12 @@ l'autre sans internet, automatiquement (« · en direct vers Pixel » s'affiche)
 uniquement**, un élément n'est disponible que tant que son expéditeur est connecté sur le même
 réseau ; une fois le réglage désactivé, **Envoyer au serveur** permet de le confier au relais, à la main.
 
-## 6. Perdre ou retirer un appareil
+## 6. Utiliser ton propre serveur
+
+Dans les applis : **Réglages → Serveur → Adresse du serveur**, puis **Changer de serveur**.
+Voir [deploiement.md](deploiement.md) pour héberger un serveur relais.
+
+## 7. Perdre ou retirer un appareil
 
 **Réglages → Appareils → Retirer**, depuis n'importe quel autre appareil du groupe. Les clés de
 chiffrement sont renouvelées : l'appareil retiré perd l'accès à tout ce que tu partages, historique

@@ -261,6 +261,15 @@
     <p class="muted small" x-show="storageText" x-text="'Espace : ' + storageText"></p>
     <p class="muted small" x-text="group ? group.relay : ''"></p>
     <p class="muted small" x-text="group && group.persist ? 'L’historique survit aux redémarrages du serveur.' : 'Le serveur ne garde rien sur disque : s’il redémarre, l’historique est perdu.'"></p>
+    <template x-if="native">
+      <div>
+        <label class="field">Adresse du serveur
+          <input type="url" x-model="relayInput" placeholder="https://" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="secondary wide" @click="saveRelay" :disabled="busy">Changer de serveur</button>
+        <p class="muted small">Pour utiliser ton propre serveur. Un groupe partagé avec d’autres appareils reste sur son serveur.</p>
+      </div>
+    </template>
 
     <button class="ghost danger wide" @click="resetAll"
             x-text="isConfirming('reset') ? 'Confirmer : tout effacer sur cet appareil' : 'Tout effacer sur cet appareil'"></button>

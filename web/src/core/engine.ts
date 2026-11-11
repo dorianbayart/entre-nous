@@ -477,6 +477,11 @@ export class Engine {
 
   // ------------------------------------------------------------ groups
 
+  /** Server of the groups created from now on (a group stays on the server it was made on). */
+  setDefaultRelay(relay: string) {
+    this.host.defaultRelay = relay;
+  }
+
   async createGroup(name: string, relay = this.host.defaultRelay): Promise<string> {
     const g = newGroup(this.device, name, relay);
     maintainPrekeys(g);

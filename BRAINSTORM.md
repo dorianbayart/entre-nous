@@ -196,6 +196,14 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
 - Compilées dans Docker (`desktop/build.sh`) : Linux natif, Windows croisé avec cargo-xwin et NSIS.
   Compilées et non testées sur une vraie machine au 2026-11-11.
 
+## 8 quater. Serveur de son choix
+
+- Applis natives : **Réglages → Serveur → Adresse du serveur** (préférence de l'appareil). Vérifié
+  par une connexion WebSocket (pas de CORS, contrairement à `fetch` depuis les applis), puis serveur
+  des nouveaux groupes ; un groupe où l'appareil est seul est recréé dessus (l'ancien est dissous) ;
+  un groupe partagé reste sur son serveur (le lien d'invitation porte le serveur du groupe).
+- Appli web : toujours le relais qui la sert (sa CSP n'autorise pas d'autre serveur).
+
 ## 9. Relais
 
 - Un conteneur `node:lts-alpine` : Node (HTTP + WebSocket, fichiers statiques) et Redis
@@ -228,7 +236,5 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
 - Transport natif pour le mode local entre applis natives (TCP/QUIC + découverte Bonjour/mDNS,
   à la LocalSend) : débit proche du Wi-Fi, mais seulement entre applis natives ; WebRTC reste
   le seul moyen pour l'appli web.
-- Relais auto-hébergé à la maison : réglage « Serveur » dans les applis (aujourd'hui `defaults
-  write` sur Mac, adresse figée dans l'APK ; un appareil qui rejoint prend le serveur du lien).
 - Reprise des envois après redémarrage de l'appli (aujourd'hui, la reprise suppose que
   l'appli soit restée ouverte : le fichier n'est gardé qu'en mémoire).

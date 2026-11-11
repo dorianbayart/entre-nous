@@ -127,17 +127,28 @@ Variables d'environnement du conteneur (dans `docker-compose.yml`) :
 Un groupe appartient à un relais : c'est celui de l'appareil qui l'a créé, et il est inscrit dans
 le lien d'invitation. **Un appareil qui rejoint par un QR code de ton relais utilise donc ton relais
 pour ce groupe**, quelle que soit sa configuration. Il suffit que le premier appareil crée le groupe
-sur ton relais :
+sur ton relais.
 
-| Appli | Comment choisir le relais |
+**Dans les applis Mac, Android, Linux et Windows** : **Réglages → Serveur → Adresse du serveur**,
+puis **Changer de serveur**. L'appli vérifie que le serveur répond, puis :
+
+- les groupes créés ensuite le sont sur ce serveur ;
+- un groupe où l'appareil est seul (le groupe « Mes appareils » créé au premier lancement) y passe
+  aussitôt ;
+- un groupe déjà partagé avec d'autres appareils reste sur son serveur.
+
+Un champ vide ramène au serveur par défaut. **L'appli web**, elle, utilise toujours le relais qui la
+sert (`https://entrenous.example.org/app/`).
+
+Le serveur par défaut peut aussi être choisi à la compilation ou sans ouvrir l'appli :
+
+| Appli | Serveur par défaut |
 |---|---|
-| Appli web | rien à faire : c'est le relais qui la sert (`https://entrenous.example.org/app/`) |
-| Mac | `defaults write dev.0xdba.entrenous relay https://entrenous.example.org`, puis relancer ; ou `RELAY=https://… macos/build-app.sh` |
-| Linux, Windows | variable `ENTRENOUS_RELAY`, ou un fichier `relay` contenant l'adresse dans `~/.config/dev.xdba.entrenous/` (Linux), `%APPDATA%\dev.xdba.entrenous\` (Windows) ; ou `ENTRENOUS_RELAY=https://… desktop/build.sh` |
-| Android | adresse inscrite dans l'APK (`web/src/platform/android.ts`), à changer avant `android/build.sh` ; sinon, rejoindre un groupe par QR code suffit |
+| Mac | `RELAY=https://… macos/build-app.sh`, ou `defaults write dev.0xdba.entrenous relay https://…` |
+| Linux, Windows | `ENTRENOUS_RELAY=https://… desktop/build.sh` ; ou, au lancement, la variable `ENTRENOUS_RELAY` ou un fichier `relay` dans `~/.config/dev.xdba.entrenous/` (Linux), `%APPDATA%\dev.xdba.entrenous\` (Windows) |
+| Android | `web/src/platform/android.ts`, avant `android/build.sh` |
 
-Le plus simple : ouvre `https://entrenous.example.org/app/` dans un navigateur, il crée le groupe
-sur ton relais, puis associe tes autres appareils en scannant son QR code.
+Les applis exigent un relais en HTTPS (sauf `http://127.0.0.1` pour le développement).
 
 ## Proposer les applis au téléchargement
 
