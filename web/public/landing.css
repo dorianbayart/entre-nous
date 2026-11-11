@@ -1,0 +1,119 @@
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --text: #1b1b1a;
+  --muted: #74726c;
+  --line: #e4e2dc;
+  --accent: #2f5d50;
+  --accent-text: #ffffff;
+  --accent-soft: #e3ece8;
+  --radius: 16px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151515;
+    --surface: #1f1f1e;
+    --text: #ecebe7;
+    --muted: #9a988f;
+    --line: #2e2e2c;
+    --accent: #7fb8a3;
+    --accent-text: #10201b;
+    --accent-soft: #233630;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); }
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 48px) 20px calc(env(safe-area-inset-bottom) + 40px);
+}
+
+.hero { text-align: center; }
+.logo { width: 64px; height: 64px; border-radius: 18px; }
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 14px 0 6px; }
+.lead { font-size: 21px; font-weight: 600; line-height: 1.35; margin: 0 0 12px; }
+.lead, .sub { text-wrap: balance; }
+.sub { color: var(--muted); max-width: 470px; margin: 0 auto; }
+
+.cta { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 28px 0 8px; }
+.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 20px; border-radius: 12px; font-weight: 600; text-decoration: none;
+  transition: opacity .15s;
+}
+.button:active { opacity: .7; }
+.button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.primary { background: var(--accent); color: var(--accent-text); }
+.secondary { background: var(--accent-soft); color: var(--text); }
+.button.disabled { opacity: .45; pointer-events: none; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+
+/* the visitor's own device first, the others hidden when useless there */
+.cta #web { order: 1; }
+.cta #android { order: 2; }
+.cta #mac { order: 3; }
+#ios-note { display: none; }
+.platforms { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; margin: 14px 0 0; }
+
+html[data-platform="android"] #android { order: 0; background: var(--accent); color: var(--accent-text); }
+html[data-platform="android"] #web { background: var(--accent-soft); color: var(--text); }
+html[data-platform="mac"] #mac { order: 0; background: var(--accent); color: var(--accent-text); }
+html[data-platform="mac"] #web { background: var(--accent-soft); color: var(--text); }
+html[data-platform="ios"] #ios-note { display: block; }
+html[data-platform="ios"] #android, html[data-platform="ios"] #android-note,
+html[data-platform="ios"] #mac, html[data-platform="ios"] #mac-note,
+html[data-platform="android"] #mac, html[data-platform="android"] #mac-note,
+html[data-platform="mac"] #android, html[data-platform="mac"] #android-note { display: none; }
+
+.qr-card {
+  display: flex; align-items: center; gap: 20px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 20px; margin: 40px 0 0;
+}
+.qr-card img { flex: none; border-radius: 10px; background: #fff; image-rendering: pixelated; }
+.qr-card h2 { margin-top: 0; }
+.qr-card p { margin: 0; color: var(--muted); font-size: 15px; }
+html[data-platform="ios"] .desktop-only, html[data-platform="android"] .desktop-only { display: none; }
+
+h2 {
+  font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin: 44px 0 12px;
+}
+
+.steps { padding-left: 22px; margin: 0; }
+.steps li { margin: 10px 0; padding-left: 4px; }
+
+details {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 0 16px; margin: 8px 0;
+}
+summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+details p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
+details p strong { color: var(--text); }
+
+.facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.facts li { color: var(--muted); font-size: 15px; }
+.facts strong { color: var(--text); }
+
+footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 480px) {
+  .page { padding-top: calc(env(safe-area-inset-top) + 32px); }
+  h1 { font-size: 30px; }
+  .lead { font-size: 19px; }
+  .cta .button { flex: 1 1 100%; }
+}

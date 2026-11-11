@@ -1,0 +1,30 @@
+{
+  "name": "entrenous-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "@alpinejs/csp": "^3.17.5",
+    "@capacitor/core": "8.6.0",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
+    "@noble/post-quantum": "^0.7.1",
+    "alpinejs": "^3.17.5",
+    "jsqr": "^1.4.0",
+    "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/cli": "8.6.0",
+    "@types/alpinejs": "^3.17.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

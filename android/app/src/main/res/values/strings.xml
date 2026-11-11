@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Entre Nous</string>
+    <string name="title_activity_main">Entre Nous</string>
+    <string name="package_name">dev.xdba.entrenous</string>
+    <string name="custom_url_scheme">dev.xdba.entrenous</string>
+</resources>

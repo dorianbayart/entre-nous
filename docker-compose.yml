@@ -1,0 +1,23 @@
+# Entre Nous relay. Everything lives in RAM by default: removing the container leaves nothing.
+services:
+  entrenous:
+    build: .
+    image: entrenous-relay
+    container_name: entrenous
+    restart: unless-stopped
+    environment:
+      MAX_STORAGE: "0"     # total size of the contents; 0 = unlimited (bounded by mem_limit)
+      MAX_TTL: "7d"        # longest retention a group can ask for
+      PERSIST: "false"     # "true" + the volume below: history survives restarts (RDB snapshots)
+    mem_limit: 4g          # Redis takes 80 % of it and refuses new uploads beyond
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    ports:
+      - "127.0.0.1:8080:8080"   # behind the reverse proxy (TLS)
+    # volumes:
+    #   - entrenous-data:/data
+
+# volumes:
+#   entrenous-data:

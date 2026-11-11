@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Entre Nous",
+  "mainBinaryName": "entre-nous",
+  "version": "0.1.0",
+  "identifier": "dev.xdba.entrenous",
+  "build": {
+    "frontendDist": "../../web/dist/app"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' ipc: http://ipc.localhost wss: ws: https: http://127.0.0.1:*; object-src 'none'; base-uri 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "nsis"],
+    "category": "Utility",
+    "shortDescription": "Presse-papier partagé et chiffré entre tes appareils",
+    "longDescription": "Copie sur un appareil, colle sur un autre. Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
+    "linux": {
+      "deb": { "depends": ["libayatana-appindicator3-1"] }
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "nsis": { "installMode": "currentUser", "languages": ["French"] }
+    }
+  }
+}

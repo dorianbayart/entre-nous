@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Entre Nous">
+  <meta name="description" content="Un presse-papier commun à tous tes appareils, chiffré de bout en bout.">
+  <title>Entre Nous</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="app" x-data="app" x-cloak
+     @dragover.prevent="onDragOver" @dragleave="onDragLeave" @drop.prevent="onDrop($event)">
+
+  <!-- Loading -->
+  <div class="center" x-show="view === 'loading'">
+    <div class="logo"></div>
+  </div>
+
+  <!-- iOS: install first (a home screen web app does not share Safari's storage) -->
+  <section class="center page" x-show="view === 'install'">
+    <div class="logo"></div>
+    <h1>Installe Entre Nous</h1>
+    <ol class="steps">
+      <li>Touche <strong>Partager</strong> <span class="glyph">⎋</span> en bas de Safari.</li>
+      <li>Choisis <strong>Sur l’écran d’accueil</strong>.</li>
+      <li>Ouvre l’appli depuis l’écran d’accueil et <strong>scanne à nouveau le QR code</strong>.</li>
+    </ol>
+    <p class="muted">Sur iPhone, l’appli installée ne voit pas les données de Safari : l’association se fait donc depuis l’appli.</p>
+  </section>
+
+  <!-- First launch on a phone -->
+  <section class="center page" x-show="view === 'welcome'">
+    <div class="logo"></div>
+    <h1>Entre Nous</h1>
+    <p class="muted">Un presse-papier commun à tous tes appareils.<br>Chiffré de bout en bout : le serveur ne peut rien lire.</p>
+    <button class="primary wide" @click="startScan" :disabled="busy">Scanner un QR code</button>
+    <p class="muted small">Sur un appareil déjà associé, ouvre Réglages → Inviter un appareil pour afficher le QR code.</p>
+    <button class="ghost" @click="createGroup">Ou créer un nouveau groupe</button>
+    <button class="ghost" x-show="canInstall" @click="install">Installer l’appli</button>
+  </section>
+
+  <!-- Main -->
+  <section class="main" x-show="view === 'main'">
+    <header class="bar">
+      <div class="title">
+        <span class="dot" :class="group && group.status === 'online' ? 'on' : 'off'"></span>
+        <template x-if="groups.length > 1">
+          <select class="group-select" :value="groupId" @change="selectGroup($event.target.value)">
+            <template x-for="g in groups" :key="g.id">
+              <option :value="g.id" x-text="g.name"></option>
+            </template>
+          </select>
+        </template>
+        <template x-if="groups.length <= 1">
+          <strong x-text="group ? group.name : ''"></strong>
+        </template>
+      </div>
+      <div class="bar-actions">
+      <button class="icon" x-show="desktop" @click="togglePause" :class="prefs.paused ? 'paused' : ''"
+              :aria-label="prefs.paused ? 'Reprendre le partage' : 'Mettre en pause'"
+              :title="prefs.paused ? 'Reprendre le partage' : 'Mettre en pause'">
+        <svg viewBox="0 0 24 24" x-show="!prefs.paused"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        <svg viewBox="0 0 24 24" x-show="prefs.paused"><path d="M7 4.5v15l12-7.5z"/></svg>
+      </button>
+      <button class="icon" @click="openSettings" aria-label="Réglages">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      </div>
+    </header>
+    <p class="status" x-text="statusText"></p>
+
+    <div class="actions">
+      <button class="primary" x-show="!desktop" @click="sendClipboard">
+        <svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11v6M9 14l3-3 3 3"/></svg>
+        Envoyer le presse-papier
+      </button>
+      <button class="secondary" @click="pickFiles">
+        <svg viewBox="0 0 24 24"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+        Fichier
+      </button>
+      <input type="file" multiple hidden x-ref="file" @change="onFiles($event)">
+    </div>
+    <p class="hint" x-show="desktop && shareHint" :class="prefs.paused ? 'paused' : ''" x-text="shareHint"></p>
+
+    <div class="note">
+      <textarea x-ref="note" rows="1" spellcheck="false" :maxlength="noteMax"
+                placeholder="Écris une note à partager." @input="onNoteInput($event)"></textarea>
+      <div class="note-bar" x-show="!noteEmpty">
+        <span x-text="noteInfo"></span>
+        <button class="small ghost" @click="sendNote">Envoyer</button>
+        <button class="small ghost" @click="copyNote">Copier</button>
+        <button class="small ghost danger" @click="clearNote">Effacer</button>
+      </div>
+    </div>
+
+    <p class="alert" x-show="storageLow" x-text="'Serveur presque plein : ' + storageText"></p>
+
+    <template x-for="t in transfers" :key="t.id">
+      <div class="transfer" :class="t.error ? 'error' : ''">
+        <span class="transfer-name" x-text="transferLabel(t)"></span>
+        <span class="transfer-state">
+          <svg class="ring" viewBox="0 0 36 36" x-show="!t.error" aria-hidden="true">
+            <circle class="ring-track" cx="18" cy="18" r="15.9155"/>
+            <circle class="ring-bar" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="ringOffset(t)"/>
+          </svg>
+          <span x-text="t.error ? t.error : progress(t)"></span>
+        </span>
+      </div>
+    </template>
+
+    <div class="history-bar" x-show="items.length > 1">
+      <button class="ghost danger small" @click="clearAll"
+              x-text="isConfirming('clear') ? 'Confirmer : tout supprimer pour tous les appareils' : 'Tout supprimer'"></button>
+    </div>
+    <ul class="history">
+      <template x-for="item in items" :key="item.id">
+        <li class="item" :class="item.error ? 'broken' : ''">
+          <template x-if="item.thumb">
+            <img class="thumb" :src="item.thumb" alt="">
+          </template>
+          <div class="body">
+            <p class="content" :class="item.kind === 'text' ? 'text' : 'file'" x-text="label(item)"></p>
+            <p class="meta">
+              <span x-text="item.mine ? 'Moi' : item.fromName"></span> ·
+              <span x-text="ago(item)"></span> ·
+              <span x-show="sizeOf(item)" x-text="sizeOf(item) + ' ·'"></span>
+              <span x-text="left(item)"></span>
+            </p>
+          </div>
+          <div class="item-actions">
+            <span class="transfer-state pending" x-show="item.pending">
+              <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
+                <circle class="ring-track" cx="18" cy="18" r="15.9155"/>
+                <circle class="ring-bar" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="itemRingOffset(item)"/>
+              </svg>
+              <span x-text="itemProgress(item)"></span>
+            </span>
+            <button class="small primary" x-show="canCopy(item)" @click="copy(item)">Copier</button>
+            <button class="small secondary" x-show="item.canPublish" @click="publish(item)">Envoyer au serveur</button>
+            <button class="small secondary" x-show="canSave(item)" @click="save(item)">Enregistrer</button>
+            <button class="small ghost danger" @click="remove(item)" x-text="isConfirming(itemKey(item)) ? 'Confirmer' : 'Supprimer'"></button>
+          </div>
+        </li>
+      </template>
+    </ul>
+    <p class="empty" x-show="items.length === 0">
+      Aucun élément pour le moment.
+    </p>
+    <div class="drop" x-show="dragging">Dépose pour envoyer</div>
+  </section>
+
+  <!-- Settings -->
+  <section class="page settings" x-show="view === 'settings'">
+    <header class="bar">
+      <button class="icon" @click="back" aria-label="Retour">
+        <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <strong>Réglages</strong>
+      <span></span>
+    </header>
+
+    <h2>Cet appareil</h2>
+    <label class="field">Nom
+      <input type="text" :value="device.name" @change="renameDevice($event)" maxlength="40">
+    </label>
+    <label class="switch" x-show="desktop">
+      <input type="checkbox" :checked="prefs.autoShare" @change="toggleAutoShare">
+      Envoyer automatiquement le presse-papier
+    </label>
+    <label class="switch" x-show="desktop">
+      <input type="checkbox" :checked="prefs.notify" @change="toggleNotify">
+      Notification à la réception
+    </label>
+    <label class="switch">
+      <input type="checkbox" :checked="prefs.confirmDelete" @change="toggleConfirmDelete">
+      Demander confirmation avant de supprimer
+    </label>
+
+    <template x-if="group">
+      <div>
+        <h2>Groupe</h2>
+        <label class="field">Nom du groupe
+          <input type="text" :value="group.name" @change="renameGroup($event)" maxlength="40">
+        </label>
+        <label class="field">Durée de conservation sur le serveur
+          <select @change="setTtl($event)">
+            <template x-for="c in ttlOptions" :key="c.value">
+              <option :value="c.value" x-text="c.label" :selected="c.value === group.ttl"></option>
+            </template>
+          </select>
+        </label>
+        <label class="field">Taille de l’historique
+          <select @change="setMaxItems($event)">
+            <template x-for="c in maxItemsChoices" :key="c.value">
+              <option :value="c.value" x-text="c.label" :selected="c.value === group.maxItems"></option>
+            </template>
+          </select>
+        </label>
+        <label class="field">Partage automatique jusqu’à
+          <select @change="setAutoMax($event)">
+            <template x-for="c in autoMaxChoices" :key="c.value">
+              <option :value="c.value" x-text="c.label" :selected="c.value === group.autoMax"></option>
+            </template>
+          </select>
+        </label>
+        <p class="muted small" x-show="mac">Au-delà, envoie le fichier avec le bouton « Fichier » ou en le glissant sur l’icône de la barre des menus.</p>
+        <p class="muted small" x-show="!mac">Au-delà, envoie le fichier avec le bouton « Fichier ».</p>
+        <label class="switch">
+          <input type="checkbox" :checked="group.localOnly" @change="toggleLocalOnly">
+          Réseau local uniquement
+        </label>
+        <p class="muted small">Le contenu passe directement d’un appareil à l’autre, jamais par le serveur relais.</p>
+
+        <h3>Appareils</h3>
+        <ul class="members">
+          <template x-for="m in group.members" :key="m.id">
+            <li>
+              <span class="dot" :class="m.online ? 'on' : 'off'"></span>
+              <span class="name" x-text="m.name + (m.me ? ' (cet appareil)' : '')"></span>
+              <span class="muted small" x-text="platformLabel(m.platform)"></span>
+              <button class="small ghost danger" @click="removeMember(m)"
+                      x-text="isConfirming(memberKey(m)) ? 'Confirmer' : (m.me ? 'Quitter' : 'Retirer')"></button>
+            </li>
+          </template>
+        </ul>
+        <p class="muted small">Retirer un appareil renouvelle les clés de chiffrement du groupe : il perd l’accès à l’historique.</p>
+        <button class="primary wide" @click="showInvite">Inviter un appareil</button>
+      </div>
+    </template>
+
+    <h2>Groupes</h2>
+    <ul class="groups">
+      <template x-for="g in groups" :key="g.id">
+        <li :class="g.id === groupId ? 'current' : ''" @click="selectGroup(g.id)">
+          <span x-text="g.name"></span>
+          <span class="muted small" x-text="deviceCount(g)"></span>
+        </li>
+      </template>
+    </ul>
+    <div class="inline">
+      <input type="text" placeholder="Nom du nouveau groupe" x-model="newGroupName" maxlength="40">
+      <button class="secondary" @click="createGroup">Créer</button>
+    </div>
+    <div class="inline">
+      <input type="url" placeholder="Lien d’invitation" x-model="joinLink">
+      <button class="secondary" @click="joinFromLink">Rejoindre</button>
+    </div>
+    <button class="secondary wide" x-show="!desktop" @click="startScan">Scanner un QR code</button>
+    <button class="ghost wide" x-show="canInstall" @click="install">Installer l’appli</button>
+
+    <h2>Serveur</h2>
+    <p class="muted small" x-show="storageText" x-text="'Espace : ' + storageText"></p>
+    <p class="muted small" x-text="group ? group.relay : ''"></p>
+    <p class="muted small" x-text="group && group.persist ? 'L’historique survit aux redémarrages du serveur.' : 'Le serveur ne garde rien sur disque : s’il redémarre, l’historique est perdu.'"></p>
+
+    <button class="ghost danger wide" @click="resetAll"
+            x-text="isConfirming('reset') ? 'Confirmer : tout effacer sur cet appareil' : 'Tout effacer sur cet appareil'"></button>
+  </section>
+
+  <!-- Invitation -->
+  <section class="center page" x-show="view === 'invite'">
+    <h1>Inviter un appareil</h1>
+    <p class="muted">Scanne ce QR code avec l’appareil photo du téléphone.</p>
+    <img class="qr" :src="inviteQr" alt="QR code d’invitation" x-show="inviteQr">
+    <p class="muted small" x-text="'Valable ' + inviteLeft + ', pour un seul appareil.'"></p>
+    <input class="link" type="text" readonly :value="inviteUrl" @focus="$event.target.select()">
+    <button class="ghost" @click="back">Annuler</button>
+  </section>
+
+  <!-- QR scanner -->
+  <section class="scan" x-show="view === 'scan'">
+    <video x-ref="video" playsinline muted></video>
+    <div class="frame"></div>
+    <p class="scan-error" x-show="scanError" x-text="scanError"></p>
+    <button class="secondary" @click="stopScan">Annuler</button>
+  </section>
+
+  <div class="toast" x-show="toastText" x-text="toastText"></div>
+</div>
+</body>
+</html>

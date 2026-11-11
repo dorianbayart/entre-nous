@@ -1,0 +1,4 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": { "namespace": "android_app", "package_name": "dev.xdba.entrenous", "sha256_cert_fingerprints": ["C1:83:98:49:77:31:C3:A5:6B:BC:B3:AD:69:D9:A6:4E:A8:BB:E7:A8:5E:09:DF:17:36:B1:89:1C:82:DF:68:CF"] }
+}]

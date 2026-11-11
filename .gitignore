@@ -1,0 +1,15 @@
+node_modules/
+web/dist/
+macos/.build/
+macos/build/
+*.rdb
+.DS_Store
+web/test/.out/
+downloads/*.zip
+downloads/*.apk
+downloads/*.deb
+downloads/*.AppImage
+downloads/*.exe
+desktop/src-tauri/target/
+CLAUDE.local.md
+/deploy/

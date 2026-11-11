@@ -1,0 +1,11 @@
+{
+  "appId": "dev.xdba.entrenous",
+  "appName": "Entre Nous",
+  "webDir": "dist/app",
+  "android": {
+    "path": "../android"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

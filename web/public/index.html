@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Copie sur un appareil, colle sur un autre. Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.">
+  <title>Entre Nous · Presse-papier partagé et chiffré entre tous tes appareils</title>
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/app/icon-192.png">
+  <link rel="stylesheet" href="/landing.css">
+  <script type="module" src="/landing.js"></script>
+</head>
+<body>
+<main class="page">
+
+  <header class="hero">
+    <img class="logo" src="/app/icon.svg" alt="" width="64" height="64">
+    <h1>Entre&nbsp;Nous</h1>
+    <p class="lead">Copie sur un appareil, colle sur un autre.</p>
+    <p class="sub">Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.</p>
+
+    <div class="cta">
+      <a class="button primary" id="web" href="/app/">Ouvrir l’appli web</a>
+      <a class="button secondary" id="android" href="/download/Entre-Nous-android.apk" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Télécharger pour Android
+      </a>
+      <a class="button secondary" id="mac" href="/download/Entre-Nous-mac.zip" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Télécharger pour Mac
+      </a>
+    </div>
+    <p class="note" id="android-note">Android 7 ou plus récent</p>
+    <p class="note" id="mac-note">macOS 14 ou plus récent</p>
+    <p class="note" id="ios-note">Sur iPhone, ajoute l’appli web à ton écran d’accueil.</p>
+    <p class="platforms">Mac · Android · iPhone · Windows · Linux</p>
+  </header>
+
+  <section class="qr-card desktop-only" aria-label="Sur ton téléphone">
+    <img id="qr" alt="QR&nbsp;code vers cette page" width="148" height="148">
+    <div>
+      <h2>Sur ton téléphone</h2>
+      <p>Scanne ce code pour ouvrir cette page sur ton téléphone.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Comment ça marche</h2>
+    <ol class="steps">
+      <li><strong>Installe Entre&nbsp;Nous</strong> sur un premier appareil ou lance l’application web.</li>
+      <li><strong>Ajoute tes autres appareils</strong> en scannant un QR&nbsp;code. Aucun compte à créer.</li>
+      <li><strong>Copie, colle.</strong> Textes, photos, fichiers&nbsp;: tout passe
+        d’un appareil à l’autre en un instant.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Entre nous, et personne d’autre</h2>
+    <ul class="facts">
+      <li><strong>Confidentiel.</strong> Ce que tu transfères est chiffré sur ton appareil, et voyage
+        sur une connexion elle-même chiffrée.</li>
+      <li><strong>Éphémère.</strong> Tout s’efface automatiquement. Choisis la taille de l’historique
+        et le temps de rétention du presse-papier.</li>
+      <li><strong>Sans compte.</strong> Pas d’inscription, pas d’e-mail, pas de mot de passe.</li>
+      <li><strong>Sans pistage.</strong> Pas de publicité, pas de traceur, pas de log.</li>
+      <li><strong>Open source.</strong> Le code est public&nbsp;: chacun peut vérifier ce qu’il fait.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Installer</h2>
+    <details data-platform="android">
+      <summary>Android</summary>
+      <p>Télécharge <a href="/download/Entre-Nous-android.apk">l’appli</a> et ouvre le fichier.
+        Android te demandera d’autoriser l’installation&nbsp;: Entre&nbsp;Nous ne passe pas par
+        le Play Store.</p>
+      <p>Entre&nbsp;Nous apparaît ensuite dans le menu <strong>Partager</strong> de toutes tes applis.</p>
+      <p>Sans rien installer, <a href="/app/">l’appli web</a> fonctionne aussi dans Chrome.</p>
+    </details>
+    <details data-platform="ios">
+      <summary>iPhone et iPad</summary>
+      <p>Ouvre <a href="/app/">l’appli web</a> dans Safari, puis
+        <strong>Partager → Sur l’écran d’accueil</strong>.</p>
+      <p>Lance Entre&nbsp;Nous depuis cette icône pour ajouter ton iPhone, et non depuis Safari.</p>
+    </details>
+    <details data-platform="mac">
+      <summary>Mac</summary>
+      <p>Décompresse le fichier et glisse <strong>Entre&nbsp;Nous</strong> dans Applications.
+        L’appli se loge dans la barre des menus, en haut de l’écran.
+        Pour envoyer un fichier, glisse-le sur son icône.</p>
+      <p>Au premier lancement, macOS la bloque car elle n’est pas encore validée par Apple&nbsp;:
+        va dans <strong>Réglages Système → Confidentialité et sécurité</strong>, puis clique
+        sur <strong>Ouvrir quand même</strong>.</p>
+      <p>Si ton Mac demande l’accès au trousseau, choisis <strong>Toujours autoriser</strong>.</p>
+    </details>
+    <details data-platform="other">
+      <summary>Windows, Linux et autres</summary>
+      <p>Rien à installer&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur
+        récent. Colle (Ctrl+V) ou glisse un fichier pour l’envoyer.</p>
+    </details>
+  </section>
+
+  <section>
+    <h2>Questions fréquentes</h2>
+    <details>
+      <summary>Qui peut lire ce que je partage&nbsp;?</summary>
+      <p>Tes appareils, et personne d’autre. Pas même nous. Le code est open source&nbsp;:
+        chacun peut le vérifier.</p>
+    </details>
+    <details>
+      <summary>Combien de temps mes données sont-elles gardées&nbsp;?</summary>
+      <p>24&nbsp;heures par défaut. Tu peux choisir 10&nbsp;minutes, 1&nbsp;heure, 24&nbsp;heures ou 7&nbsp;jours.
+        Passé ce délai, tout s’efface.</p>
+    </details>
+    <details>
+      <summary>Et si je perds un appareil&nbsp;?</summary>
+      <p>Retire-le depuis un autre de tes appareils&nbsp;: il perd aussitôt l’accès à tout ce que tu partages.</p>
+    </details>
+    <details>
+      <summary>Faut-il installer quelque chose&nbsp;?</summary>
+      <p>Pas forcément&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur récent.
+        Les applis Android et Mac vont plus loin&nbsp;: partage depuis n’importe quelle appli,
+        et copie automatique sur Mac.</p>
+    </details>
+  </section>
+
+  <footer>Entre&nbsp;Nous · <a href="/app/">Ouvrir l’appli web</a></footer>
+</main>
+</body>
+</html>
