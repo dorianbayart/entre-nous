@@ -70,6 +70,12 @@ flowchart LR
 - Un envoi interrompu reprend tant que l'appli reste ouverte, pas après son redémarrage.
 - Un appareil resté éteint pendant le retrait d'un autre doit être associé de nouveau.
 
+## Licence
+
+[GNU AGPL v3](LICENSE) ou ultérieure. Tu peux utiliser, modifier et redistribuer Entre Nous ;
+si tu fais tourner une version modifiée (un relais, par exemple) pour d'autres personnes, tu dois
+leur en donner le code source.
+
 ## Contribuer
 
 Les issues et les pull requests sont bienvenues. Pour une faille de sécurité, voir

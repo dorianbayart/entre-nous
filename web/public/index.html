@@ -24,17 +24,27 @@
 
     <div class="cta">
       <a class="button primary" id="web" href="/app/">Ouvrir l’appli web</a>
-      <a class="button secondary" id="android" href="/download/Entre-Nous-android.apk" download>
+      <a class="button secondary download" id="android" href="/download/Entre-Nous-android.apk" download>
         <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
         Télécharger pour Android
       </a>
-      <a class="button secondary" id="mac" href="/download/Entre-Nous-mac.zip" download>
+      <a class="button secondary download" id="mac" href="/download/Entre-Nous-mac.zip" download>
         <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
         Télécharger pour Mac
       </a>
+      <a class="button secondary download" id="windows" href="/download/Entre-Nous-windows.exe" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Télécharger pour Windows
+      </a>
+      <a class="button secondary download" id="linux" href="/download/Entre-Nous-linux.deb" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Télécharger pour Linux
+      </a>
     </div>
-    <p class="note" id="android-note">Android 7 ou plus récent</p>
-    <p class="note" id="mac-note">macOS 14 ou plus récent</p>
+    <p class="note download-note" id="android-note">Android 7 ou plus récent</p>
+    <p class="note download-note" id="mac-note">macOS 14 ou plus récent</p>
+    <p class="note download-note" id="windows-note">Windows 10 ou 11 · version bêta</p>
+    <p class="note download-note" id="linux-note">Debian, Ubuntu et dérivées<span class="size"></span> · <a href="/download/Entre-Nous-linux.AppImage" download>AppImage</a> pour les autres distributions · version bêta</p>
     <p class="note" id="ios-note">Sur iPhone, ajoute l’appli web à ton écran d’accueil.</p>
     <p class="platforms">Mac · Android · iPhone · Windows · Linux</p>
   </header>
@@ -66,7 +76,8 @@
         et le temps de rétention du presse-papier.</li>
       <li><strong>Sans compte.</strong> Pas d’inscription, pas d’e-mail, pas de mot de passe.</li>
       <li><strong>Sans pistage.</strong> Pas de publicité, pas de traceur, pas de log.</li>
-      <li><strong>Open source.</strong> Le code est public&nbsp;: chacun peut vérifier ce qu’il fait.</li>
+      <li><strong>Open source.</strong> Le code est public, sous licence AGPL&nbsp;: chacun peut vérifier
+        ce qu’il fait. <a href="https://github.com/dorianbayart/entre-nous">Voir le code sur GitHub</a></li>
     </ul>
   </section>
 
@@ -96,8 +107,25 @@
         sur <strong>Ouvrir quand même</strong>.</p>
       <p>Si ton Mac demande l’accès au trousseau, choisis <strong>Toujours autoriser</strong>.</p>
     </details>
+    <details data-platform="windows">
+      <summary>Windows</summary>
+      <p>Télécharge <a href="/download/Entre-Nous-windows.exe">l’installeur</a> et lance-le.
+        Si Windows affiche «&nbsp;Windows a protégé votre ordinateur&nbsp;», clique sur
+        <strong>Informations complémentaires</strong>, puis <strong>Exécuter quand même</strong>&nbsp;:
+        Entre&nbsp;Nous n’est pas encore signé par un éditeur reconnu.</p>
+      <p>L’appli se loge dans la zone de notification, en bas à droite de l’écran.
+        Pour envoyer un fichier, glisse-le dans sa fenêtre.</p>
+    </details>
+    <details data-platform="linux">
+      <summary>Linux</summary>
+      <p>Sur Debian, Ubuntu et leurs dérivées, installe <a href="/download/Entre-Nous-linux.deb">le paquet .deb</a>.
+        Ailleurs, télécharge <a href="/download/Entre-Nous-linux.AppImage">l’AppImage</a>,
+        rends-la exécutable et lance-la.</p>
+      <p>L’appli se loge dans la zone de notification. Sous GNOME, il faut l’extension
+        AppIndicator pour voir son icône. Pour envoyer un fichier, glisse-le dans sa fenêtre.</p>
+    </details>
     <details data-platform="other">
-      <summary>Windows, Linux et autres</summary>
+      <summary>Autres appareils</summary>
       <p>Rien à installer&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur
         récent. Colle (Ctrl+V) ou glisse un fichier pour l’envoyer.</p>
     </details>
@@ -107,8 +135,8 @@
     <h2>Questions fréquentes</h2>
     <details>
       <summary>Qui peut lire ce que je partage&nbsp;?</summary>
-      <p>Tes appareils, et personne d’autre. Pas même nous. Le code est open source&nbsp;:
-        chacun peut le vérifier.</p>
+      <p>Tes appareils, et personne d’autre. Pas même nous. Le code est
+        <a href="https://github.com/dorianbayart/entre-nous">open source</a>&nbsp;: chacun peut le vérifier.</p>
     </details>
     <details>
       <summary>Combien de temps mes données sont-elles gardées&nbsp;?</summary>
@@ -122,12 +150,13 @@
     <details>
       <summary>Faut-il installer quelque chose&nbsp;?</summary>
       <p>Pas forcément&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur récent.
-        Les applis Android et Mac vont plus loin&nbsp;: partage depuis n’importe quelle appli,
-        et copie automatique sur Mac.</p>
+        Les applis vont plus loin&nbsp;: partage depuis n’importe quelle appli sur Android,
+        et copie automatique sur Mac, Windows et Linux.</p>
     </details>
   </section>
 
-  <footer>Entre&nbsp;Nous · <a href="/app/">Ouvrir l’appli web</a></footer>
+  <footer>Entre&nbsp;Nous · <a href="/app/">Ouvrir l’appli web</a> ·
+    <a href="https://github.com/dorianbayart/entre-nous">Code source</a> · Licence AGPL</footer>
 </main>
 </body>
 </html>

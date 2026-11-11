@@ -62,22 +62,22 @@ h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 14px 0 
 .button.disabled { opacity: .45; pointer-events: none; }
 .note { color: var(--muted); font-size: 13px; margin: 0; }
 
-/* the visitor's own device first, the others hidden when useless there */
+/* the visitor's own device first, the others hidden when useless there (landing.js marks
+   the visitor's download "mine"; an unknown device sees them all) */
 .cta #web { order: 1; }
 .cta #android { order: 2; }
 .cta #mac { order: 3; }
+.cta #windows { order: 4; }
+.cta #linux { order: 5; }
 #ios-note { display: none; }
 .platforms { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; margin: 14px 0 0; }
+.note a { color: inherit; }
 
-html[data-platform="android"] #android { order: 0; background: var(--accent); color: var(--accent-text); }
-html[data-platform="android"] #web { background: var(--accent-soft); color: var(--text); }
-html[data-platform="mac"] #mac { order: 0; background: var(--accent); color: var(--accent-text); }
-html[data-platform="mac"] #web { background: var(--accent-soft); color: var(--text); }
+.download.mine { order: 0; background: var(--accent); color: var(--accent-text); }
+html.has-app #web { background: var(--accent-soft); color: var(--text); }
 html[data-platform="ios"] #ios-note { display: block; }
-html[data-platform="ios"] #android, html[data-platform="ios"] #android-note,
-html[data-platform="ios"] #mac, html[data-platform="ios"] #mac-note,
-html[data-platform="android"] #mac, html[data-platform="android"] #mac-note,
-html[data-platform="mac"] #android, html[data-platform="mac"] #android-note { display: none; }
+html:not([data-platform="other"]) .download:not(.mine),
+html:not([data-platform="other"]) .download-note:not(.mine) { display: none; }
 
 .qr-card {
   display: flex; align-items: center; gap: 20px;

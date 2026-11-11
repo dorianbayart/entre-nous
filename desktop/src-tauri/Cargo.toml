@@ -3,6 +3,8 @@ name = "entre-nous"
 version = "0.1.0"
 description = "Entre Nous : presse-papier partagé et chiffré entre tes appareils"
 edition = "2021"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/dorianbayart/entre-nous"
 publish = false
 
 [build-dependencies]
