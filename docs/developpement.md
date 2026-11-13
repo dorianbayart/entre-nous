@@ -83,8 +83,10 @@ ENTRENOUS_RELAY=https://… desktop/build.sh
   de l'icône. `--hidden` la lance directement dans la zone de notification.
 - Linux : presse-papier X11 (sous Wayland, via XWayland). Sous GNOME, l'icône demande l'extension
   AppIndicator ; sans elle, relancer l'appli ramène sa fenêtre.
-- La CI GitHub (`.github/workflows/desktop.yml`) compile aussi les deux applis sur de vraies machines
-  Linux et Windows.
+- La CI GitHub (`.github/workflows/apps.yml`) compile les quatre applis (Linux, Windows, Android,
+  Mac) à chaque push sur `master`, sauf quand seule la documentation change. Les paquets restent
+  un jour en pièce jointe du build. Sans les secrets `ANDROID_KEYSTORE` (le `.jks` en base64) et
+  `ANDROID_KEYSTORE_PASSWORD`, l'APK de la CI n'est pas signé.
 
 ## Appli Android
 

@@ -1,0 +1,127 @@
+# Builds every app (Linux, Windows, Android, Mac) on each push to master, on a version tag or by
+# hand. The packages are attached to the run for one day only (storage quota); a newer push
+# cancels the build still running. Pushes that only touch the documentation build nothing.
+name: Applis
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+  workflow_dispatch:
+
+concurrency:
+  group: apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-22.04
+            bundles: deb,appimage
+            artifact: Entre-Nous-linux
+            path: |
+              desktop/src-tauri/target/release/bundle/deb/*.deb
+              desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+          - name: Windows
+            os: windows-latest
+            bundles: nsis
+            artifact: Entre-Nous-windows
+            path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Interface web
+        working-directory: web
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: Dépendances Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev libdbus-1-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - name: Compilation
+        working-directory: desktop/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --bundles ${{ matrix.bundles }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 1
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - name: Interface web
+        working-directory: web
+        run: npm ci --no-audit --no-fund && npm run build && npx cap sync android
+      # Signed with the release key when the repository holds it (secrets ANDROID_KEYSTORE,
+      # base64 of the .jks, and ANDROID_KEYSTORE_PASSWORD); otherwise an unsigned APK.
+      - name: Clé de signature
+        if: env.KEYSTORE != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/signing"
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/signing/android-release.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=entrenous\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/signing/android-release.jks" "$PASSWORD" "$PASSWORD" \
+            > "$RUNNER_TEMP/signing/android-signing.properties"
+          echo "ENTRENOUS_SIGNING=$RUNNER_TEMP/signing/android-signing.properties" >> "$GITHUB_ENV"
+      - name: Compilation
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Entre-Nous-android
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  mac:
+    name: Mac
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Compilation (Apple silicon + Intel, signature ad hoc)
+        run: UNIVERSAL=1 macos/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Entre-Nous-mac
+          path: downloads/Entre-Nous-mac.zip
+          if-no-files-found: error
+          retention-days: 1
