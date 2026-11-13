@@ -153,6 +153,8 @@ Alpine.data('app', () => ({
   groupId: null as string | null,
   transfers: [] as any[],
   version: __VERSION__,
+  canAutostart: !!platform.autostart,
+  autostart: false,
   latest: null as string | null,
   prefs: {
     autoShare: true,
@@ -204,6 +206,7 @@ Alpine.data('app', () => ({
       else if (e.type === 'removed') this.toast(`Cet appareil a été retiré de « ${e.groupName} »`);
       else if (e.type === 'error') this.toast(e.message);
     });
+    platform.autostart?.get().then((on) => (this.autostart = on), () => {});
     platform.onLocalCopy?.((o) => this.onLocalCopy(o));
     platform.onDrop?.((o) => this.send(o));
     platform.setPaused?.(this.prefs.paused);
@@ -847,6 +850,16 @@ Alpine.data('app', () => ({
   toggleNotify() {
     this.prefs.notify = !this.prefs.notify;
     this.savePrefs();
+  },
+
+  async toggleAutostart() {
+    const want = !this.autostart;
+    try {
+      this.autostart = await platform.autostart!.set(want);
+      if (want && !this.autostart) this.toast('Autorise Entre Nous dans les réglages du système qui viennent de s’ouvrir');
+    } catch (err: any) {
+      this.toast('Réglage non appliqué : ' + (err?.message ?? err));
+    }
   },
 
   async setMaxItems(e: Event) {

@@ -53,6 +53,8 @@ export interface PlatformApi {
   /** Android app: back button; `background()` sends the app to the background. */
   onBack?(cb: () => void): void;
   background?(): void;
+  /** Desktop apps: open at login (the system keeps the setting); `set` returns the new state. */
+  autostart?: { get(): Promise<boolean>; set(on: boolean): Promise<boolean> };
   /** Desktop apps: pauses the clipboard watching (menu bar or tray icon and menu). */
   setPaused?(paused: boolean): void;
   /** Desktop apps: pause toggled from the menu bar or tray icon's menu. */

@@ -60,6 +60,10 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
   lancer le téléchargement avant la fin, il suit l'envoi.
 - **Notifications** (ordinateurs) : quand la fenêtre est fermée, « Texte reçu de Pixel », jamais
   le contenu. Réglage **Notification à la réception**.
+- **Ouvrir à l'ouverture de session** (ordinateurs) : l'appli démarre avec la session, directement
+  dans la barre des menus ou la zone de notification.
+- **Nouvelle version** : les applis installées l'annoncent (« Nouvelle version disponible ») avec
+  un lien de téléchargement ; l'appli web, elle, se met à jour toute seule.
 
 ## 5. Réglages du groupe
 

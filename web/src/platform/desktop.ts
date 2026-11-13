@@ -99,6 +99,11 @@ export function desktopPlatform(): PlatformApi {
     defaultRelay: config.relay,
     autoWrite: true,
 
+    autostart: {
+      get: async () => !!(await call('autostartGet')),
+      set: async (on) => !!(await call('autostartSet', { on })),
+    },
+
     setPaused(paused) {
       call('setPaused', { paused }).catch(() => {});
     },

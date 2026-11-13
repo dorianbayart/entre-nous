@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 import UniformTypeIdentifiers
 import UserNotifications
 import WebKit
@@ -164,6 +165,18 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         case "fileSaveAs":
             files.saveAs(a["token"] as! String, name: a["name"] as? String ?? "fichier")
             return true
+
+        // Open at login: the system keeps the setting (Réglages Système → Ouverture)
+        case "autostartGet":
+            return SMAppService.mainApp.status == .enabled
+        case "autostartSet":
+            if a["on"] as? Bool ?? false {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            if SMAppService.mainApp.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+            return SMAppService.mainApp.status == .enabled
         default:
             throw BridgeError("unknown command \(cmd)")
         }

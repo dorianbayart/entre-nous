@@ -19,6 +19,7 @@ use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent, Wry};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
@@ -208,6 +209,17 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
             });
             Ok(json!(true))
         }
+        // open at login, with --hidden: straight to the tray
+        "autostartGet" => Ok(json!(app.autolaunch().is_enabled().unwrap_or(false))),
+        "autostartSet" => {
+            let al = app.autolaunch();
+            if a.get("on").and_then(Value::as_bool).unwrap_or(false) {
+                al.enable().map_err(|e| e.to_string())?;
+            } else {
+                al.disable().map_err(|e| e.to_string())?;
+            }
+            Ok(json!(al.is_enabled().unwrap_or(false)))
+        }
         other => Err(format!("unknown command {other}")),
     }
 }
@@ -253,6 +265,7 @@ fn main() {
     tauri::Builder::default()
         // launched again (menu, shortcut): the window of the running app comes forward
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show(app)))
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())

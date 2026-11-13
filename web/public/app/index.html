@@ -185,6 +185,10 @@
       <input type="checkbox" :checked="prefs.notify" @change="toggleNotify">
       Notification à la réception
     </label>
+    <label class="switch" x-show="canAutostart">
+      <input type="checkbox" :checked="autostart" @change="toggleAutostart">
+      Ouvrir à l’ouverture de session
+    </label>
     <label class="switch">
       <input type="checkbox" :checked="prefs.confirmDelete" @change="toggleConfirmDelete">
       Demander confirmation avant de supprimer

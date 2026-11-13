@@ -3,6 +3,7 @@
 # "Entre Nous" identity (./signing-identity.sh) or ad hoc.
 #   ./build-app.sh            release build for this Mac
 #   UNIVERSAL=1 ./build-app.sh   Apple silicon + Intel (for the download), and a .zip in downloads/
+#   INSTALL=1 ./build-app.sh     and installs it in /Applications, then (re)starts it
 #   RELAY=http://127.0.0.1:8080 ./build-app.sh && open "build/Entre Nous.app"   (local relay)
 set -eu
 cd "$(dirname "$0")"
@@ -73,4 +74,12 @@ if [ -n "${UNIVERSAL:-}" ]; then
   rm -f ../downloads/Entre-Nous-mac.zip
   ditto -c -k --sequesterRsrc --keepParent "$APP" ../downloads/Entre-Nous-mac.zip
   echo "Zipped: downloads/Entre-Nous-mac.zip"
+fi
+if [ -n "${INSTALL:-}" ]; then
+  osascript -e 'quit app "Entre Nous"' 2>/dev/null || true
+  sleep 1
+  rm -rf "/Applications/Entre Nous.app"
+  ditto "$APP" "/Applications/Entre Nous.app"
+  open "/Applications/Entre Nous.app"
+  echo "Installed: /Applications/Entre Nous.app"
 fi

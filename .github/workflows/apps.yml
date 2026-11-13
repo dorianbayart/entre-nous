@@ -53,7 +53,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       APP_VERSION: ${{ needs.version.outputs.version }}
-      TAURI_CONFIG: '{"version":"${{ needs.version.outputs.version }}"}'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -75,7 +74,8 @@ jobs:
           workspaces: desktop/src-tauri
       - name: Compilation
         working-directory: desktop/src-tauri
-        run: npx --yes @tauri-apps/cli@2 build --bundles ${{ matrix.bundles }}
+        shell: bash
+        run: npx --yes @tauri-apps/cli@2 build --bundles ${{ matrix.bundles }} --config "{\"version\":\"$APP_VERSION\"}"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
