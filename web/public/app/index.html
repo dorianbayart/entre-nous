@@ -77,6 +77,11 @@
       </div>
     </header>
     <p class="status" x-text="statusText"></p>
+    <div class="update" x-show="update">
+      <span x-text="'Nouvelle version disponible : ' + update"></span>
+      <a class="button small secondary" :href="updateUrl">Télécharger</a>
+      <button class="small ghost" @click="dismissUpdate">Plus tard</button>
+    </div>
 
     <div class="actions">
       <button class="primary" x-show="!desktop" @click="sendClipboard">
@@ -270,6 +275,8 @@
         <p class="muted small">Pour utiliser ton propre serveur. Un groupe partagé avec d’autres appareils reste sur son serveur.</p>
       </div>
     </template>
+
+    <p class="muted small" x-text="'Version ' + version"></p>
 
     <button class="ghost danger wide" @click="resetAll"
             x-text="isConfirming('reset') ? 'Confirmer : tout effacer sur cet appareil' : 'Tout effacer sur cet appareil'"></button>

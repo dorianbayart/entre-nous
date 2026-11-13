@@ -40,6 +40,26 @@ interface Prefs {
   notify: boolean; // desktop apps: notification on reception
   groupId: string | null;
   relay?: string; // native apps: server of new groups, when not the default one
+  updateSeen?: string; // new version whose banner was closed
+  updateNotified?: string; // new version already announced by a system notification
+}
+
+/** The apps are published on GitHub: the latest release, and each platform's file in it. */
+const RELEASE = 'https://github.com/dorianbayart/entre-nous/releases/latest';
+const RELEASE_FILE: Partial<Record<string, string>> = {
+  mac: 'Entre-Nous-mac.zip',
+  android: 'Entre-Nous-android.apk',
+  windows: 'Entre-Nous-windows.exe',
+};
+
+/** Is version `a` (0.1.42) newer than `b`? */
+function newer(a: string, b: string) {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  }
+  return false;
 }
 
 /** Can a relay be reached? A WebSocket is not subject to CORS, unlike fetch from the apps. */
@@ -132,6 +152,8 @@ Alpine.data('app', () => ({
   groups: [] as ReturnType<Engine['groupView']>[],
   groupId: null as string | null,
   transfers: [] as any[],
+  version: __VERSION__,
+  latest: null as string | null,
   prefs: {
     autoShare: true,
     paused: false,
@@ -258,7 +280,36 @@ Alpine.data('app', () => ({
     }
     if (this.group) platform.setAutoLimit?.(this.group.autoMax);
     if (this.view === 'main' && !this.groups.length) this.view = 'welcome';
+    this.latest = engine.latest;
+    this.announceUpdate();
     this.showNote();
+  },
+
+  // ---------------------------------------------------------------- new version
+
+  /** A newer version of this app, not dismissed yet (the web app updates itself). */
+  get update() {
+    const v = this.latest;
+    return platform.native && v && newer(v, __VERSION__) && v !== this.prefs.updateSeen ? v : null;
+  },
+
+  get updateUrl() {
+    const file = RELEASE_FILE[platform.kind];
+    return file ? `${RELEASE}/download/${file}` : RELEASE; // Linux: .deb or AppImage, on the page
+  },
+
+  /** Desktop apps: one system notification per new version, seen even with the window closed. */
+  announceUpdate() {
+    const v = this.update;
+    if (!v || !platform.notify || this.prefs.updateNotified === v) return;
+    this.prefs.updateNotified = v;
+    this.savePrefs();
+    platform.notify('Entre Nous', `Nouvelle version disponible (${v})`);
+  },
+
+  dismissUpdate() {
+    this.prefs.updateSeen = this.latest ?? undefined;
+    this.savePrefs();
   },
 
   // ---------------------------------------------------------------- live note

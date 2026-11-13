@@ -1,8 +1,20 @@
 // Builds dist/: the landing page (/, landing.js) and the PWA (/app/, app/app.js), plus the
 // static files of public/.
 import * as esbuild from 'esbuild';
+import { execSync } from 'node:child_process';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+
+// The version of this build: 0.1.<number of commits>, the same for every app built from a
+// commit (APP_VERSION overrides it). The apps compare it with the latest release.
+function version() {
+  if (process.env.APP_VERSION) return process.env.APP_VERSION;
+  try {
+    return '0.1.' + execSync('git rev-list --count HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return '0.0.0'; // no git (Docker build of the relay): the web app does not compare
+  }
+}
 
 const watch = process.argv.includes('--watch');
 const outdir = fileURLToPath(new URL('./dist/', import.meta.url)); // a real path on Windows too
@@ -23,6 +35,7 @@ const options = {
   minify: !watch,
   sourcemap: watch ? 'inline' : false,
   legalComments: 'none',
+  define: { __VERSION__: JSON.stringify(version()) },
   logLevel: 'info',
 };
 

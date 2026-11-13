@@ -149,6 +149,9 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
 .ring circle { fill: none; stroke-width: 4; }
 .ring-track { stroke: color-mix(in srgb, var(--accent) 20%, transparent); }
 .ring-bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .25s; }
+.update { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; padding: 8px 8px 8px 12px; border-radius: 10px; font-size: 13px; background: var(--accent-soft); }
+.update span { flex: 1; min-width: 12em; }
+.update a.button { display: inline-flex; text-decoration: none; background: var(--accent); color: var(--accent-text); font-weight: 600; }
 .alert { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .history-bar { display: flex; justify-content: flex-end; margin: 14px 0 -10px; }
 .transfer.error { color: var(--danger); }

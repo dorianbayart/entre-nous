@@ -283,6 +283,17 @@ export class Store {
     await this.redis.set(this.k(room, 'gone'), 1, 'EX', ROOM_IDLE_TTL);
   }
 
+  /** Is any content (item, live note) still held, in any group? */
+  async hasItems() {
+    let cursor = '0';
+    do {
+      const [next, keys] = await this.redis.scan(cursor, 'MATCH', 'r:*:i:*', 'COUNT', 1000);
+      if (keys.length) return true;
+      cursor = next;
+    } while (cursor !== '0');
+    return false;
+  }
+
   /** Bytes used by Redis, cached for one second (quota checks happen on every chunk). */
   async usedMemory() {
     const now = Date.now();

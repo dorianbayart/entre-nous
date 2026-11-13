@@ -9,8 +9,12 @@ cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 SIGNING=${SIGNING:-$HOME/.config/entrenous}
 IMAGE=entrenous-android-build
+# Version: 0.1.<number of commits>, the same as the other apps built from this commit
+APP_BUILD=$(git rev-list --count HEAD)
+export APP_VERSION=${APP_VERSION:-0.1.$APP_BUILD}
 run() {
-  docker run --rm --platform linux/amd64 -v "$ROOT:/repo" -v "$SIGNING:/signing" \
+  docker run --rm --platform linux/amd64 -e APP_BUILD="$APP_BUILD" -e APP_VERSION="$APP_VERSION" \
+    -v "$ROOT:/repo" -v "$SIGNING:/signing" \
     -v entrenous-gradle:/root/.gradle -w /repo/android "$IMAGE" "$@"
 }
 

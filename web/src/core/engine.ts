@@ -196,6 +196,8 @@ export class Engine {
   device!: Device;
   private runtimes = new Map<string, Runtime>();
   transfers = new Map<string, Transfer>();
+  /** Latest version of the apps, as published on GitHub and reported by a relay (or null). */
+  latest: string | null = null;
   private uploadSeq = 0;
   private servedTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private listeners = new Set<(e: EngineEvent) => void>();
@@ -702,6 +704,10 @@ export class Engine {
     rt.persist = res.persist;
     rt.storage = res.storage;
     rt.online = new Set(res.online ?? []);
+    if (typeof res.latest === 'string' && res.latest !== this.latest) {
+      this.latest = res.latest;
+      this.changed();
+    }
     if (res.gone) {
       await this.wipeGroup(rt, true);
       throw new Error('group dissolved');

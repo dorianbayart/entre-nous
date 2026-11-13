@@ -12,10 +12,13 @@ cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 IMAGE=entrenous-desktop-build
 TARGETS=${TARGETS:-linux windows}
+# Version: 0.1.<number of commits>, the same as the other apps built from this commit
+export APP_VERSION=${APP_VERSION:-0.1.$(git rev-list --count HEAD)}
 
 run() {
   docker run --rm --platform linux/amd64 \
     ${ENTRENOUS_RELAY:+-e ENTRENOUS_RELAY="$ENTRENOUS_RELAY"} -e APPIMAGE_EXTRACT_AND_RUN=1 \
+    -e TAURI_CONFIG="{\"version\":\"$APP_VERSION\"}" \
     -v "$ROOT:/repo" -v entrenous-cargo:/root/.cargo/registry -v entrenous-xwin:/root/.cache/cargo-xwin \
     -v entrenous-tauri:/root/.cache/tauri \
     -v entrenous-desktop-target:/repo/desktop/src-tauri/target -w /repo/desktop/src-tauri "$IMAGE" sh -c "$1"

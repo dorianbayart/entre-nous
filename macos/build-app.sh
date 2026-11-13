@@ -8,6 +8,9 @@ set -eu
 cd "$(dirname "$0")"
 ROOT=$(pwd)
 APP="$ROOT/build/Entre Nous.app"
+# Version: 0.1.<number of commits>, the same as the other apps built from this commit
+APP_BUILD=$(git rev-list --count HEAD)
+export APP_VERSION=${APP_VERSION:-0.1.$APP_BUILD}
 
 (cd ../web && npm run build >/dev/null)
 rm -rf "$APP"
@@ -45,8 +48,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>EntreNous</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
+  <key>CFBundleVersion</key><string>$APP_BUILD</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>

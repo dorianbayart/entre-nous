@@ -15,11 +15,17 @@ const PERSIST = env.PERSIST === 'true';
 const MAX_STORAGE = parseSize(env.MAX_STORAGE || '0'); // 0 = unlimited (bounded by memory)
 const MAX_TTL = parseDuration(env.MAX_TTL || '7d');
 const PUBLIC_DIR = env.PUBLIC_DIR || fileURLToPath(new URL('../public', import.meta.url));
+// GitHub repository whose latest release holds the apps ("off": none)
+const RELEASES = env.RELEASES ?? 'dorianbayart/entre-nous';
 
 const CHUNK_MAX = 1024 * 1024 + 128 * 1024; // 1 MiB of plaintext + padding and tag
 const META_MAX = 512 * 1024;
 const PAIR_TTL = 5 * 60 * 1000;
 const MAX_CONN_PER_IP = 32;
+const IDLE_AFTER = parseDuration(env.IDLE_AFTER || '10m') * 1000; // no activity for this long: may restart
+// Requests that do not count as activity: devices make them by themselves while connected.
+const PASSIVE_OPS = new Set(['hello', 'ping', 'storage', 'items.list', 'state.put', 'prekey.put']);
+let lastActivity = Date.now();
 
 function parseSize(s) {
   const m = /^(\d+(?:\.\d+)?)\s*([kmgt]?)b?$/i.exec(String(s).trim());
@@ -35,6 +41,34 @@ function parseDuration(s) {
 
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
+// ---------------------------------------------------------------- releases
+
+// The latest release of the apps, checked every hour: its version is sent to the apps (which
+// announce an update), its files and sizes to the landing page. Only the relay asks GitHub:
+// the devices never do.
+let release = null; // { version, files: { name: size } }
+
+async function checkRelease() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${RELEASES}/releases/latest`, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'entrenous-relay' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const r = await res.json();
+    const version = String(r.tag_name).replace(/^v/, '');
+    if (version !== release?.version) log('release', version);
+    release = { version, files: Object.fromEntries(r.assets.map((a) => [a.name, a.size])) };
+  } catch (err) {
+    log('release check failed:', err.message);
+  }
+}
+
+if (RELEASES !== 'off') {
+  checkRelease();
+  setInterval(checkRelease, 3600_000).unref();
+}
+
 // ---------------------------------------------------------------- static files
 
 const MIME = {
@@ -47,11 +81,6 @@ const MIME = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
-  '.zip': 'application/zip',
-  '.apk': 'application/vnd.android.package-archive',
-  '.deb': 'application/vnd.debian.binary-package',
-  '.AppImage': 'application/vnd.appimage',
-  '.exe': 'application/vnd.microsoft.portable-executable',
 };
 
 function securityHeaders(req) {
@@ -95,6 +124,29 @@ async function serveStatic(req, res) {
     res.writeHead(405).end();
     return;
   }
+  // For scripts/auto-update.sh, from inside the container only: can the relay be restarted
+  // without losing anything? No content held, no pairing under way, no activity for IDLE_AFTER.
+  if (url.pathname === '/idle') {
+    const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress ?? '') && !req.headers['x-forwarded-for'];
+    if (!local) {
+      res.writeHead(404).end();
+      return;
+    }
+    const idle = Date.now() - lastActivity >= IDLE_AFTER && pairings.size === 0 && !(await store.hasItems());
+    res.writeHead(idle ? 200 : 503, { 'Content-Type': 'text/plain' }).end(idle ? 'idle' : 'busy');
+    return;
+  }
+  if (url.pathname === '/release.json') {
+    res.writeHead(release ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    res.end(release ? JSON.stringify(release) : '{}');
+    return;
+  }
+  // the apps are downloaded from GitHub (older links and QR codes pointed here)
+  const download = /^\/download\/([\w.-]+)$/.exec(url.pathname);
+  if (download && RELEASES !== 'off') {
+    res.writeHead(302, { Location: `https://github.com/${RELEASES}/releases/latest/download/${download[1]}` }).end();
+    return;
+  }
   if (url.pathname === '/app') {
     res.writeHead(301, { Location: '/app/' }).end();
     return;
@@ -126,7 +178,6 @@ async function serveStatic(req, res) {
       'Content-Length': body.length,
       ETag: etag,
     };
-    if (path.startsWith('/download/')) headers['Content-Disposition'] = 'attachment';
     if (req.headers['if-none-match'] === etag) {
       res.writeHead(304, headers).end();
       return;
@@ -237,6 +288,7 @@ const handlers = {
       now: Date.now(),
       maxTtl: MAX_TTL,
       persist: PERSIST,
+      latest: release?.version ?? null,
       storage: await storage(),
     };
   },
@@ -449,6 +501,7 @@ async function handle(ws, msg, binary) {
   const reply = { rid: msg.rid };
   try {
     if (!ws.rate()) throw new Error('rate limited');
+    if (!PASSIVE_OPS.has(msg.op)) lastActivity = Date.now();
     let result;
     if (msg.op === 'chunk.put') {
       const room = requireRoom(ws);

@@ -1,7 +1,7 @@
 # Héberger son propre serveur relais
 
-Le relais est un seul conteneur Docker (Node + Redis en mémoire). Il sert aussi la page d'accueil,
-l'appli web (`/app/`) et les applis à télécharger (`/download/…`). Il ne voit que des données
+Le relais est un seul conteneur Docker (Node + Redis en mémoire). Il sert aussi la page d'accueil
+et l'appli web (`/app/`) ; les applis se téléchargent depuis les releases GitHub. Il ne voit que des données
 chiffrées (voir [securite.md](securite.md)), mais l'héberger soi-même permet de ne dépendre de
 personne et de garder les métadonnées (adresses IP, heures d'envoi) chez soi.
 
@@ -111,6 +111,8 @@ Variables d'environnement du conteneur (dans `docker-compose.yml`) :
 | `MAX_TTL` | `7d` | durée de conservation maximale qu'un groupe peut choisir |
 | `PERSIST` | `false` | `true` + un volume sur `/data` : l'historique survit aux redémarrages |
 | `PORT` | `8080` | port d'écoute dans le conteneur |
+| `IDLE_AFTER` | `10m` | inactivité après laquelle `scripts/auto-update.sh` peut redémarrer le relais |
+| `RELEASES` | `dorianbayart/entre-nous` | dépôt GitHub dont la dernière release est annoncée aux applis ; `off` : aucune |
 
 - **Mémoire** : Redis prend 80 % de `mem_limit` et refuse les nouveaux envois au-delà (les applis
   affichent « Serveur saturé ») plutôt que de faire tuer le conteneur. L'espace restant est affiché
@@ -119,6 +121,9 @@ Variables d'environnement du conteneur (dans `docker-compose.yml`) :
   associations ne sont pas perdues (elles vivent sur les appareils, qui republient l'état du groupe
   à la connexion) ; seul l'historique en attente disparaît. Avec `PERSIST=true`, décommente le volume
   dans le compose ; `docker compose down -v` efface tout.
+- **Nouvelles versions** : le relais consulte la dernière release GitHub toutes les heures et
+  transmet son numéro aux applis, qui proposent alors la mise à jour ; les appareils, eux, ne
+  contactent jamais GitHub. La page d'accueil y prend aussi la taille des fichiers (`/release.json`).
 - **Journaux** : le relais n'écrit ni contenu ni identifiant de salle. Configure ton proxy dans le
   même esprit si tu veux éviter de garder les adresses IP.
 
@@ -150,21 +155,17 @@ Le serveur par défaut peut aussi être choisi à la compilation ou sans ouvrir 
 
 Les applis exigent un relais en HTTPS (sauf `http://127.0.0.1` pour le développement).
 
-## Proposer les applis au téléchargement
+## Les applis à télécharger
 
-L'image Docker copie le dossier `downloads/` dans `/download/` : c'est là que pointent les boutons
-de la page d'accueil. Compile les applis avant de construire l'image (voir
-[developpement.md](developpement.md)) :
+Les boutons de la page d'accueil pointent vers la dernière release GitHub
+(`…/releases/latest/download/Entre-Nous-mac.zip`, etc.), que la CI publie à chaque push sur
+`master` (voir [developpement.md](developpement.md)). Les anciennes adresses `/download/…` du relais
+y redirigent.
 
-```sh
-UNIVERSAL=1 macos/build-app.sh   # downloads/Entre-Nous-mac.zip   (sur un Mac)
-android/build.sh                 # downloads/Entre-Nous-android.apk (Docker)
-desktop/build.sh                 # downloads/Entre-Nous-linux.deb, .AppImage, Entre-Nous-windows.exe (Docker)
-docker compose up -d --build
-```
-
-L'APK Android doit être signé par ta propre clé (créée au premier `android/build.sh`) ; son empreinte
-est publiée dans `/.well-known/assetlinks.json` pour que les liens d'invitation ouvrent l'appli.
+Pour distribuer tes propres applis (un autre relais intégré, ta propre clé Android), publie-les
+dans les releases de ton fork et règle `RELEASES` sur ce fork. L'APK doit être signé par ta clé
+(créée au premier `android/build.sh`) ; son empreinte est publiée dans
+`/.well-known/assetlinks.json` pour que les liens d'invitation ouvrent l'appli.
 
 ## Un relais à la maison
 
@@ -182,10 +183,26 @@ Les transferts directs du mode local n'en dépendent pas : ils passent de toute 
 
 ## Mettre à jour
 
+À la main :
+
 ```sh
 git pull
 docker compose up -d --build
 ```
+
+Ou automatiquement, en suivant les releases (le relais, l'appli web et les applis proposées
+changent ensemble) : `scripts/auto-update.sh` regarde s'il y a une nouvelle release et, si oui, la
+compile tout de suite. Il ne relance le relais que quand il n'y a rien à perdre : aucun contenu
+gardé, aucune association en cours, aucune activité depuis 10 minutes (`IDLE_AFTER`). Il vérifie
+chaque minute pendant 23 heures au plus, puis réessaie le lendemain. Une fois par jour suffit
+(`crontab -e`) :
+
+```
+0 4 * * * /chemin/vers/entre-nous/scripts/auto-update.sh >> /chemin/vers/update.log 2>&1
+```
+
+Si ton `docker-compose.yml` est ailleurs que dans le clone (proxy, réglages à toi), indique son
+dossier : `COMPOSE_DIR=/chemin/du/compose`. `FORCE=1` relance sans attendre.
 
 Sans `PERSIST`, la mise à jour vide le relais (l'historique en attente est perdu, les groupes
 restent).

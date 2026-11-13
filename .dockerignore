@@ -3,5 +3,5 @@ web/dist
 macos
 .git
 *.md
-downloads/.gitkeep
+downloads
 desktop

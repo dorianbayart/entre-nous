@@ -1,12 +1,13 @@
-# Builds every app (Linux, Windows, Android, Mac) on each push to master, on a version tag or by
-# hand. The packages are attached to the run for one day only (storage quota); a newer push
-# cancels the build still running. Pushes that only touch the documentation build nothing.
+# Builds every app (Linux, Windows, Android, Mac) on each push to master, then publishes them as
+# the latest GitHub release (version 0.1.<number of commits>), the only one kept: the landing
+# page links to it, the relays announce it to the apps. The build packages themselves stay one
+# day (storage quota); a newer push cancels the build still running. Pushes that only touch the
+# documentation build nothing.
 name: Applis
 
 on:
   push:
     branches: [master]
-    tags: ['v*']
     paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   workflow_dispatch:
 
@@ -15,8 +16,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.v.outputs.build }}
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          n=$(git rev-list --count HEAD)
+          echo "build=$n" >> "$GITHUB_OUTPUT"
+          echo "version=0.1.$n" >> "$GITHUB_OUTPUT"
+
   desktop:
     name: ${{ matrix.name }}
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -34,6 +51,9 @@ jobs:
             artifact: Entre-Nous-windows
             path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
     runs-on: ${{ matrix.os }}
+    env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
+      TAURI_CONFIG: '{"version":"${{ needs.version.outputs.version }}"}'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -65,8 +85,11 @@ jobs:
 
   android:
     name: Android
+    needs: version
     runs-on: ubuntu-latest
     env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
+      APP_BUILD: ${{ needs.version.outputs.build }}
       KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
       PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
     steps:
@@ -84,8 +107,8 @@ jobs:
       - name: Interface web
         working-directory: web
         run: npm ci --no-audit --no-fund && npm run build && npx cap sync android
-      # Signed with the release key when the repository holds it (secrets ANDROID_KEYSTORE,
-      # base64 of the .jks, and ANDROID_KEYSTORE_PASSWORD); otherwise an unsigned APK.
+      # Signed with the release key (secrets ANDROID_KEYSTORE, base64 of the .jks, and
+      # ANDROID_KEYSTORE_PASSWORD); without them, an unsigned APK, which is not published.
       - name: Clé de signature
         if: env.KEYSTORE != ''
         run: |
@@ -107,9 +130,14 @@ jobs:
 
   mac:
     name: Mac
+    needs: version
     runs-on: macos-latest
+    env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # build-app.sh counts the commits
       - uses: actions/setup-node@v5
         with:
           node-version: lts/*
@@ -125,3 +153,40 @@ jobs:
           path: downloads/Entre-Nous-mac.zip
           if-no-files-found: error
           retention-days: 1
+
+  # The latest release: the files under fixed names (…/releases/latest/download/<name>), and the
+  # previous releases deleted with their tags.
+  release:
+    name: Publication
+    needs: [version, desktop, android, mac]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: in
+      - name: Fichiers
+        run: |
+          mkdir out
+          if [ ! -f in/Entre-Nous-android/app-release.apk ]; then
+            echo "::error::APK non signé : ajouter les secrets ANDROID_KEYSTORE et ANDROID_KEYSTORE_PASSWORD"
+            exit 1
+          fi
+          cp in/Entre-Nous-android/app-release.apk out/Entre-Nous-android.apk
+          cp in/Entre-Nous-mac/Entre-Nous-mac.zip out/Entre-Nous-mac.zip
+          cp in/Entre-Nous-windows/*-setup.exe out/Entre-Nous-windows.exe
+          cp in/Entre-Nous-linux/deb/*.deb out/Entre-Nous-linux.deb
+          cp in/Entre-Nous-linux/appimage/*.AppImage out/Entre-Nous-linux.AppImage
+          ls -l out
+      - name: Release
+        run: |
+          gh release create "v$VERSION" out/* --target "$GITHUB_SHA" --latest \
+            --title "Entre Nous $VERSION" --notes "Compilée depuis ${GITHUB_SHA::7}."
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | grep -vx "v$VERSION" \
+            | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done

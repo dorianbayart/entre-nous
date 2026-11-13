@@ -11,7 +11,8 @@ Les choix de conception et leur historique sont dans [BRAINSTORM.md](../BRAINSTO
 | `macos/` | appli de barre des menus (Swift + WKWebView) |
 | `desktop/` | appli Linux et Windows (Rust + Tauri, WebKitGTK / WebView2) |
 | `android/` | appli Android (Capacitor 8), plugin natif `EntreNousPlugin.java` |
-| `downloads/` | applis compilées proposées par la page d'accueil (non versionnées) |
+| `downloads/` | applis compilées en local (non versionnées) |
+| `scripts/auto-update.sh` | mise à jour automatique d'un relais sur la dernière release |
 | `Dockerfile`, `docker-compose.yml` | le relais en un seul conteneur |
 
 Toutes les applis embarquent la même interface (`web/dist/app`) et parlent au même cœur ; chacune
@@ -84,9 +85,8 @@ ENTRENOUS_RELAY=https://… desktop/build.sh
 - Linux : presse-papier X11 (sous Wayland, via XWayland). Sous GNOME, l'icône demande l'extension
   AppIndicator ; sans elle, relancer l'appli ramène sa fenêtre.
 - La CI GitHub (`.github/workflows/apps.yml`) compile les quatre applis (Linux, Windows, Android,
-  Mac) à chaque push sur `master`, sauf quand seule la documentation change. Les paquets restent
-  un jour en pièce jointe du build. Sans les secrets `ANDROID_KEYSTORE` (le `.jks` en base64) et
-  `ANDROID_KEYSTORE_PASSWORD`, l'APK de la CI n'est pas signé.
+  Mac) à chaque push sur `master`, sauf quand seule la documentation change, puis les publie comme
+  dernière release GitHub (la seule gardée). Voir [Versions et releases](#versions-et-releases).
 
 ## Appli Android
 
@@ -100,6 +100,21 @@ android/build.sh          # APK signé → downloads/Entre-Nous-android.apk (Doc
 - Son empreinte est publiée dans `web/public/.well-known/assetlinks.json` (généré) : les liens
   d'invitation ouvrent l'appli.
 - Relais inscrit dans `web/src/platform/android.ts`.
+
+## Versions et releases
+
+- Version d'un build : `0.1.<nombre de commits>` (`git rev-list --count HEAD`), la même pour toutes
+  les applis compilées depuis un commit ; `APP_VERSION` la remplace. Elle est inscrite dans
+  l'interface (`__VERSION__`, `web/build.mjs`), l'appli Mac, l'APK (`versionCode` = nombre de commits)
+  et les applis Tauri.
+- La CI publie la release `v0.1.N` avec des noms de fichiers fixes (`Entre-Nous-mac.zip`,
+  `Entre-Nous-android.apk`, `Entre-Nous-windows.exe`, `Entre-Nous-linux.deb`,
+  `Entre-Nous-linux.AppImage`) et supprime les précédentes.
+- L'APK est signé avec les secrets `ANDROID_KEYSTORE` (le `.jks` en base64) et
+  `ANDROID_KEYSTORE_PASSWORD` ; sans eux, la release n'est pas publiée. L'appli Mac a une signature
+  ad hoc.
+- Les relais annoncent la dernière release aux applis (champ `latest` de la réponse à `hello`) ;
+  une appli plus ancienne affiche « Nouvelle version disponible ».
 
 ## Règles du code
 
