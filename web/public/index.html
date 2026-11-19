@@ -50,6 +50,12 @@
     <p class="note" id="version" hidden></p>
   </header>
 
+  <picture class="shot wide">
+    <source media="(prefers-color-scheme: dark)" srcset="/images/appareils-sombre.webp">
+    <img src="/images/appareils.webp" width="2144" height="1226"
+         alt="Entre Nous sur un Mac (barre des menus), un téléphone Android et un PC dans un navigateur : le même historique partout">
+  </picture>
+
   <section class="qr-card desktop-only" aria-label="Sur ton téléphone">
     <img id="qr" alt="QR&nbsp;code vers cette page" width="148" height="148">
     <div>
@@ -62,14 +68,22 @@
     <h2>Comment ça marche</h2>
     <ol class="steps">
       <li><strong>Installe Entre&nbsp;Nous</strong> sur un premier appareil ou lance l’application web.</li>
-      <li><strong>Ajoute tes autres appareils</strong> en scannant un QR&nbsp;code. Aucun compte à créer.</li>
+      <li><strong>Ajoute tes autres appareils</strong> en scannant un QR&nbsp;code, ou en collant son lien.
+        Aucun compte à créer.</li>
       <li><strong>Copie, colle.</strong> Textes, photos, fichiers&nbsp;: tout passe
         d’un appareil à l’autre en un instant.</li>
     </ol>
+    <picture class="demo wide">
+      <source media="(prefers-reduced-motion: reduce)" srcset="/images/demo-fixe.webp">
+      <img src="/images/demo.webp" width="1000" height="667" loading="lazy"
+           alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; une note partagée s’écrit en direct sur les trois appareils">
+    </picture>
   </section>
 
   <section>
     <h2>Entre nous, et personne d’autre</h2>
+    <img class="schema wide" src="/images/chiffrement.svg" width="960" height="380" loading="lazy"
+         alt="Le contenu est chiffré sur le Mac ; le serveur relais ne transporte que des données illisibles ; le téléphone le déchiffre">
     <ul class="facts">
       <li><strong>Confidentiel.</strong> Ce que tu transfères est chiffré sur ton appareil, et voyage
         sur une connexion elle-même chiffrée.</li>

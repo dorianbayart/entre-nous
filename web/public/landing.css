@@ -111,6 +111,19 @@ details p strong { color: var(--text); }
 
 footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: 13px; }
 
+/* pictures wider than the text, centred on it (up to 1000 px, 16 px from the edges) */
+body { overflow-x: hidden; }
+.wide { display: block; width: min(1000px, 100vw - 32px); margin-left: calc(50% - min(500px, 50vw - 16px)); }
+.wide img { display: block; width: 100%; height: auto; }
+img.wide { height: auto; }
+.shot { margin-top: 36px; }
+.demo { margin-top: 28px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 12px 40px rgb(0 0 0 / .08); }
+.schema { margin-bottom: 24px; }
+
+/* the schema's small print is not readable on a phone: the text below says the same */
+@media (max-width: 560px) { .schema { display: none; } }
+
 @media (max-width: 480px) {
   .page { padding-top: calc(env(safe-area-inset-top) + 32px); }
   h1 { font-size: 30px; }

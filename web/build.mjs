@@ -3,6 +3,7 @@
 import * as esbuild from 'esbuild';
 import { execSync } from 'node:child_process';
 import { cp, mkdir, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // The version of this build: 0.1.<number of commits>, the same for every app built from a
@@ -22,6 +23,9 @@ const outdir = fileURLToPath(new URL('./dist/', import.meta.url)); // a real pat
 await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
 await cp(fileURLToPath(new URL('./public/', import.meta.url)), outdir, { recursive: true });
+// the landing page shows a schema of the documentation (docs/images/, the only copy)
+const schema = fileURLToPath(new URL('../docs/images/chiffrement.svg', import.meta.url));
+if (existsSync(schema)) await cp(schema, outdir + 'images/chiffrement.svg');
 
 const options = {
   entryPoints: [

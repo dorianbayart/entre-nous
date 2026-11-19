@@ -49,8 +49,10 @@ coupure, suppression pendant un envoi, retrait d'un appareil, mode local (avec u
 
 Les images de la documentation (`docs/images/`) se refont avec `npm run screenshots` (relais lancé,
 Chrome et ffmpeg) : trois appareils de démonstration dans Chrome, dont un Mac dont le pont natif est
-simulé ; captures, mises en scène et animation. Les schémas SVG (`chiffrement.svg`, `reseau.svg`)
-sont écrits à la main.
+simulé ; captures, mises en scène et animation. Il refait aussi celles de la page d'accueil du relais
+(`web/public/images/` : les trois appareils en clair et en sombre, l'animation en WebP). Les schémas
+SVG (`chiffrement.svg`, `reseau.svg`) sont écrits à la main ; la page d'accueil reprend
+`chiffrement.svg`, copié à la construction (`build.mjs`).
 
 Les tests d'interface (`test/ui/`) ouvrent l'appli servie par le relais dans plusieurs profils Chrome
 (un par appareil, dont un téléphone Android simulé) : note, confirmations, envoi en cours et

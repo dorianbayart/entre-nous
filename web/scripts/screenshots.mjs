@@ -5,13 +5,17 @@
 // app, with automatic sharing), an Android phone and a PC (the web app in a browser). Demo
 // contents only. The screenshots are put on a stage (stage()), drawn image by image.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const OUT = ROOT + 'docs/images/';
+const LANDING = ROOT + 'web/public/images/'; // the relay's landing page
+mkdirSync(LANDING, { recursive: true });
+/** PNG → WebP (lossy, small enough for a web page). */
+const webp = (png, out, quality = 82) => execFileSync('magick', [png, '-quality', String(quality), out]);
 const APP = (process.env.RELAY ?? 'http://127.0.0.1:8080') + '/app/';
 const ICON = 'data:image/svg+xml;base64,' + readFileSync(ROOT + 'web/public/app/icon.svg').toString('base64');
 const PUBLIC = 'entrenous.0xdba.dev'; // shown in the pictures instead of the local relay
@@ -202,6 +206,7 @@ function stage(theme) {
     body { position: relative; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; color: ${p.text};
       background: radial-gradient(1200px 600px at 20% 0%, ${p.bg1}, ${p.bg2}); }
     header { position: relative; height: 128px; }
+    body.bare { background: transparent; } body.bare header { visibility: hidden; }
     .cap { position: absolute; inset: 0; text-align: center; padding: 34px 40px 0; }
     h1 { margin: 0; font-size: 38px; letter-spacing: -.02em; font-weight: 750; }
     .cap p { margin: 8px 0 0; color: ${p.muted}; font-size: 19px; }
@@ -214,7 +219,7 @@ function stage(theme) {
     .menubar .dots { flex: 1; height: 6px; background: linear-gradient(90deg, ${p.muted}55 0 40px, transparent 40px 56px, ${p.muted}33 56px 120px, transparent 120px); border-radius: 3px; opacity: .5; }
     .menubar img { width: 20px; height: 20px; border-radius: 5px; outline: 3px solid ${p.accent}44; }
     .pop { position: relative; margin-top: 12px; width: 360px; height: 576px; border-radius: 14px;
-      box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 24px 60px rgba(0,0,0,.18); }
+      box-shadow: 0 0 0 1px ${theme === 'dark' ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}, 0 24px 60px rgba(0,0,0,.18); }
     .pop img, .screen img, .content img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
     .pop img { border-radius: 14px; }
     .arrow { position: absolute; top: -8px; right: 54px; width: 16px; height: 16px; transform: rotate(45deg); background: ${p.app}; box-shadow: -1px -1px 0 rgba(0,0,0,.08); }
@@ -232,7 +237,7 @@ function stage(theme) {
     .bat { width: 20px; height: 10px; border: 1.5px solid ${p.appText}; border-radius: 3px; padding: 1px; }
     .bat b { display: block; height: 100%; width: 75%; background: ${p.appText}; border-radius: 1px; }
     .island { position: absolute; z-index: 2; top: 13px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #0b0b0b; }
-    .win { border-radius: 12px; overflow: hidden; background: ${p.app}; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 24px 60px rgba(0,0,0,.18); }
+    .win { border-radius: 12px; overflow: hidden; background: ${p.app}; box-shadow: 0 0 0 1px ${theme === 'dark' ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)'}, 0 24px 60px rgba(0,0,0,.18); }
     .win .bar { height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: ${p.chrome}; }
     .win .bar i { width: 10px; height: 10px; border-radius: 50%; background: ${p.muted}55; }
     .win .url { flex: 1; margin-left: 10px; height: 19px; border-radius: 10px; background: ${p.app}; font-size: 11px; color: ${p.muted}; padding: 0 10px; line-height: 19px; }
@@ -279,6 +284,7 @@ function stage(theme) {
       const at = (id, fy) => { const r = $(id).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height * fy]; };
       const cap = (el, t, s, o) => { el.querySelector('h1').textContent = t || ''; el.querySelector('p').textContent = s || ''; el.style.opacity = t ? o : 0; };
       window.setScene = async (s) => {
+        document.body.classList.toggle('bare', !!s.bare); // devices only, on a transparent background
         for (const slot of ['mac', 'phone', 'mac3', 'phone3', 'pc3']) {
           const [a, b] = $(slot).querySelectorAll('img');
           const set = (el, key) => { if (key && el.dataset.k !== key) { el.src = images[key]; el.dataset.k = key; } };
@@ -346,12 +352,23 @@ async function composer(theme, scale) {
     return keys.get(png);
   };
   return {
-    async draw(state, path) {
+    async draw(state, path, options = {}) {
       const s = { ...state };
       for (const slot of SLOTS) for (const f of [slot, slot + 'Next']) if (s[f]) s[f] = await image(s[f]);
       await page.evaluate((x) => window.setScene(x), s);
-      return page.screenshot({ type: 'png', path });
+      return page.screenshot({ type: 'png', path, ...options });
     },
+    /** The three devices and their labels, with room for their shadows. */
+    trioBox: () =>
+      page.evaluate(() => {
+        let [x0, y0, x1, y1] = [Infinity, Infinity, 0, 0];
+        for (const el of document.querySelectorAll('#trio > div, #trio .label')) {
+          const r = el.getBoundingClientRect();
+          [x0, y0, x1, y1] = [Math.min(x0, r.left), Math.min(y0, r.top), Math.max(x1, r.right), Math.max(y1, r.bottom)];
+        }
+        const m = 40;
+        return { x: x0 - m, y: y0 - m / 2, width: x1 - x0 + 2 * m, height: y1 - y0 + m * 1.5 };
+      }),
   };
 }
 
@@ -541,6 +558,7 @@ for (let i = 1; i <= chunks; i++) {
 const pasted = `<kbd>⌘V</kbd>Colle où tu veux`;
 tween(9, (k) => ({ ...tu, ...caption(T.paste, T.trio, k), bubbles: [bubble('mac3', pasted, k)] }));
 hold({ ...tu, ...caption(T.paste), bubbles: [bubble('mac3', pasted, 1)] }, 2.2);
+const poster = timeline.at(-1).state;
 
 // 3. the live note, letter by letter, on every device
 const note = 'Courses : pain, tomates, café, citrons';
@@ -562,6 +580,22 @@ tween(12, (k) => ({ ...last, ...caption(T.note), end: k }));
 hold({ ...last, end: 1 }, 3.5);
 
 // ------------------------------------------------------------------ stills
+
+// landing page: the three devices, no title, on a transparent background, light and dark
+const devices = async (theme, shots, name) => {
+  const c = await composer(theme, 2);
+  await c.draw({ ...shots, bare: true }); // the scene in place, to measure it
+  const tmp = join(tmpdir(), `entrenous-${name}.png`);
+  await c.draw({ ...shots, bare: true }, tmp, { omitBackground: true, clip: await c.trioBox() });
+  webp(tmp, LANDING + name + '.webp');
+  rmSync(tmp);
+};
+await devices('light', last, 'appareils');
+for (const d of [mac, phone, pc]) await d.emulateMedia({ colorScheme: 'dark' });
+await sleep(300);
+await devices('dark', await trioShots(), 'appareils-sombre');
+for (const d of [mac, phone, pc]) await d.emulateMedia({ colorScheme: 'light' });
+await sleep(300);
 
 const hero = { title: 'Copie sur un appareil, colle sur un autre.', sub: 'Un presse-papier partagé, éphémère, chiffré, sans inscription, sur tous tes appareils.' };
 await (await composer('light', 2)).draw({ ...(await duoShots()), ...hero }, OUT + 'apercu.png');
@@ -644,7 +678,15 @@ execFileSync('ffmpeg', [
   '-vf', `fps=${FPS},scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=160:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
   '-loop', '0', OUT + 'demo.gif',
 ]);
+// landing page: the same film, as an animated WebP (far lighter than the GIF), and a still
+// for the visitors who ask for less motion
+const frames = [];
+for (const [i, f] of timeline.entries()) frames.push('-delay', `${Math.max(1, Math.round(f.seconds * FPS))}x${FPS}`, join(dir, `f${String(i).padStart(4, '0')}.png`));
+execFileSync('magick', [...frames, '-resize', '1000x', '-loop', '0', '-quality', '70', LANDING + 'demo.webp'], { maxBuffer: 1 << 26 });
+await film.draw(poster, join(dir, 'poster.png'));
+execFileSync('magick', [join(dir, 'poster.png'), '-resize', '1000x', '-quality', '80', LANDING + 'demo-fixe.webp']);
 rmSync(dir, { recursive: true });
 
 await browser.close();
 console.log(`docs/images: apercu.png, apercu-sombre.png, demo.gif (${timeline.length} images), association.png, envoi-en-cours.png, reglages.png`);
+console.log('web/public/images: appareils.webp, appareils-sombre.webp, demo.webp, demo-fixe.webp');
