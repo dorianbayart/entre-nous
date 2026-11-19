@@ -147,8 +147,10 @@ export function desktopPlatform(): PlatformApi {
       await call('clipWrite', { kind: 'file', token });
     },
 
+    /** Manual send, while the clipboard is not shared automatically (paused, or turned off). */
     async read() {
-      return null; // desktop apps share their clipboard automatically (onLocalCopy)
+      const payload = await call('clipRead');
+      return payload ? ((await fromNative(payload, Infinity)) as Outgoing) : null;
     },
 
     async save(blob, name) {

@@ -13,7 +13,8 @@ Android, relais Docker). `BRAINSTORM.md` fait référence pour les décisions de
 - Dépôt public : aucune information d'infrastructure (hébergeur, serveur, chemins, hôtes SSH)
   dans les fichiers versionnés. Le déploiement du relais public est dans `CLAUDE.local.md` et
   `deploy/` (non versionnés).
-- Tests : `cd web && npm test`, avec le relais lancé (`docker compose up -d --build` à la racine).
+- Tests : `cd web && npm test` (moteur) et `npm run test:ui` (interface, Chrome), avec le relais
+  lancé et reconstruit (`docker compose up -d --build` à la racine).
 - Le relais ne doit jamais journaliser de contenu ni d'identifiant de salle.
 - Pas de version figée pour les images Docker de base (`node:lts-alpine`, `eclipse-temurin:21-jdk`).
 - Interface : `native` = appli embarquée (Mac, Linux, Windows, Android), `desktop` = appli de

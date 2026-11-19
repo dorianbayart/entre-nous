@@ -1,4 +1,4 @@
-# Type checking and end-to-end tests of the core against a real relay.
+# Type checking, end-to-end tests of the core and interface tests (Chrome) against a real relay.
 name: Tests
 
 on:
@@ -29,3 +29,6 @@ jobs:
         run: npm run typecheck
       - working-directory: web
         run: npm test
+      # several browser devices (Chrome profiles) using the app served by the relay
+      - working-directory: web
+        run: npm run test:ui

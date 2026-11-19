@@ -64,6 +64,12 @@ impl Clip {
         self.set(vec![ClipboardContent::Files(vec![path.to_string_lossy().to_string()])])
     }
 
+    /// Manual send (paused, or no automatic sharing): what the clipboard holds now.
+    pub fn read(&self, register: impl Fn(PathBuf) -> String) -> Option<Value> {
+        let guard = self.ctx.lock().unwrap();
+        contents(guard.as_ref()?, register).into_iter().next()
+    }
+
     fn is_own_change(&self) -> bool {
         self.own_write.lock().unwrap().is_some_and(|t| t.elapsed() < OWN_WRITE)
     }

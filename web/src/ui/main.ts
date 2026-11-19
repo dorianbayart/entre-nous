@@ -3,7 +3,7 @@
 import Alpine from '@alpinejs/csp';
 import qrcode from 'qrcode-generator';
 import jsQR from 'jsqr';
-import { Engine, ItemGoneError, type ItemView, type Invite } from '../core/engine.ts';
+import { Engine, ItemGoneError, UPLOAD_STALLED, type ItemView, type Invite } from '../core/engine.ts';
 import { hash } from '../core/crypto.ts';
 import { b64, utf8 } from '../core/bytes.ts';
 import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
@@ -101,6 +101,10 @@ let noteTypedAt = 0;
 const copiedIds = new Set<string>(); // items already written to the clipboard here
 let noteRetry: ReturnType<typeof setTimeout> | undefined;
 let awake = false; // screen (phone) or system (Mac) kept awake during a transfer
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+let dragDepth = 0; // dragenter/dragleave also fire on the page's children
+/** A confirmation not given within that time is dropped. */
+const CONFIRM_FOR = 4000;
 /** An upload that has received nothing for that long shows as paused. */
 const STALLED_AFTER = 30_000;
 
@@ -146,12 +150,16 @@ Alpine.data('app', () => ({
   native: platform.native, // bundled app (Mac, Android): the code does not come from the relay
   mac: platform.kind === 'mac',
   desktop: !!platform.onLocalCopy, // desktop app (Mac, Linux, Windows): watches the clipboard
+  mobile: platform.kind === 'ios' || platform.kind === 'android',
   ios: isIOS,
   standalone: isStandalone,
   device: { id: '', name: '' },
   groups: [] as ReturnType<Engine['groupView']>[],
   groupId: null as string | null,
-  transfers: [] as any[],
+  /** Uploads from here (and contents served directly to another device). */
+  sending: [] as any[],
+  /** Downloads in progress, by item. */
+  downloads: {} as Record<string, { done: number; total: number; rate?: number }>,
   version: __VERSION__,
   canAutostart: !!platform.autostart,
   autostart: false,
@@ -272,11 +280,14 @@ Alpine.data('app', () => ({
       this.groupId = this.groups.find((g) => g.id === this.prefs.groupId)?.id ?? this.groups[0]?.id ?? null;
     }
     // copies: the engine mutates its transfers, the UI must see new objects to update.
-    // An announced upload shows its progress in the history, not in this list.
-    const listed = new Set(this.groups.flatMap((g) => g.items.map((i) => i.id)));
-    this.transfers = [...engine.transfers.values()]
-      .filter((t) => !(t.itemId && listed.has(t.itemId) && !t.error))
-      .map((t) => ({ ...t }));
+    // Uploads: small lines above the history, gone once over. Downloads: in their item.
+    const all = [...engine.transfers.values()];
+    this.sending = all.filter((t) => t.direction === 'up').map((t) => ({ ...t }));
+    const downloads: Record<string, { done: number; total: number; rate?: number }> = {};
+    for (const t of all) {
+      if (t.direction === 'down' && t.itemId) downloads[t.itemId] = { done: t.done, total: t.total, rate: t.rate };
+    }
+    this.downloads = downloads;
     if (engine.busy !== awake) {
       awake = engine.busy;
       platform.keepAwake?.(awake);
@@ -390,7 +401,17 @@ Alpine.data('app', () => ({
       .catch((err) => this.toast('Copie impossible : ' + (err.message ?? err)));
   },
 
+  /** The note is erased for every device: confirmed like a deletion. */
   clearNote() {
+    if (this.prefs.confirmDelete && !this.isConfirming('note')) {
+      this.askConfirm('note');
+      return;
+    }
+    this.confirming = '';
+    this.eraseNote();
+  },
+
+  eraseNote() {
     const el = (this as any).$refs.note as HTMLTextAreaElement;
     el.value = '';
     this.noteEmpty = true;
@@ -413,9 +434,15 @@ Alpine.data('app', () => ({
   },
 
   get shareHint() {
-    if (this.prefs.paused) return 'En pause : l’envoi automatique du presse-papier est désactivé.';
+    // turned off: the pause button is hidden, so this comes first
     if (!this.prefs.autoShare) return 'Envoi automatique désactivé (voir Réglages).';
+    if (this.prefs.paused) return 'En pause : l’envoi automatique du presse-papier est désactivé.';
     return '';
+  },
+
+  /** Desktop apps share their clipboard by themselves; by hand when paused or turned off. */
+  get manualClipboard() {
+    return !this.desktop || this.prefs.paused || !this.prefs.autoShare;
   },
 
   get group() {
@@ -469,22 +496,62 @@ Alpine.data('app', () => ({
     return ms < 60_000 ? 'à l’instant' : 'il y a ' + duration(ms);
   },
 
+  /** Still being uploaded, but its sender sent nothing for minutes: a download would give up. */
+  interrupted(item: ItemView) {
+    return !!item.pending && this.now - (item.progressAt ?? 0) > UPLOAD_STALLED;
+  },
+
   left(item: ItemView) {
     if (item.unavailable) return `réseau local · « ${item.fromName} » n’est pas connecté`;
     if (item.local) return 'réseau local · expire dans ' + duration(item.expiresAt - this.now);
+    if (this.interrupted(item)) return 'envoi interrompu';
     if (item.pending) return this.now - (item.progressAt ?? 0) > STALLED_AFTER ? 'envoi en pause' : 'envoi en cours';
     return 'expire dans ' + duration(item.expiresAt - this.now);
   },
 
-  /** Upload progress of an item still being sent (on every device). */
-  itemProgress(item: ItemView) {
-    // stalled: its last speed means nothing any more
-    const stalled = this.now - (item.progressAt ?? 0) > STALLED_AFTER;
-    return this.progress({ done: item.have ?? 0, total: item.chunks, rate: stalled ? undefined : item.rate });
+  /**
+   * The upload lines: those of this device, and the items another device is still sending
+   * (or this one, before a restart). An interrupted upload is no longer shown.
+   */
+  get transfers() {
+    const lines: any[] = [...this.sending];
+    const shown = new Set(lines.map((t) => t.itemId).filter(Boolean));
+    for (const item of this.items) {
+      if (!item.pending || shown.has(item.id) || this.interrupted(item)) continue;
+      // stalled: its last speed means nothing any more
+      const paused = this.now - (item.progressAt ?? 0) > STALLED_AFTER;
+      lines.push({
+        id: 'item:' + item.id,
+        direction: 'up',
+        name: item.name ?? '',
+        from: item.mine ? undefined : item.fromName,
+        done: item.have ?? 0,
+        total: item.chunks,
+        rate: paused ? undefined : item.rate,
+        paused,
+      });
+    }
+    return lines;
   },
 
-  itemRingOffset(item: ItemView) {
-    return this.ringOffset({ done: item.have ?? 0, total: item.chunks });
+  transferState(t: { error?: string; paused?: boolean; done: number; total: number; rate?: number }) {
+    if (t.error) return t.error;
+    return t.paused ? this.progress(t) + ' · en pause' : this.progress(t);
+  },
+
+  /** A download in progress: its loader takes the place of Copy and Save. */
+  downloading(item: ItemView) {
+    return !!this.downloads[item.id];
+  },
+
+  downloadProgress(item: ItemView) {
+    const d = this.downloads[item.id];
+    return d ? this.progress(d) : '';
+  },
+
+  downloadOffset(item: ItemView) {
+    const d = this.downloads[item.id];
+    return d ? this.ringOffset(d) : 100;
   },
 
   label(item: ItemView) {
@@ -501,13 +568,18 @@ Alpine.data('app', () => ({
   },
 
   canCopy(item: ItemView) {
-    if (item.error || item.unavailable) return false;
-    if (item.kind === 'text' || item.kind === 'image') return true;
+    if (item.error || item.unavailable || this.interrupted(item)) return false;
+    // being received: the clipboard would only be written at the end of the upload, long
+    // after the tap (refused by browsers); the apps copy it by themselves once complete
+    if (item.pending && !item.mine) return false;
+    if (item.kind === 'text') return true;
+    if (item.kind === 'image') return !platform.imageCopyMax || (item.size ?? 0) <= platform.imageCopyMax;
     return this.desktop; // desktop apps paste any file
   },
 
+  /** Also while it is being uploaded: the download follows the upload. */
   canSave(item: ItemView) {
-    return !item.error && !item.unavailable && item.kind !== 'text';
+    return !item.error && !item.unavailable && !this.interrupted(item) && item.kind !== 'text';
   },
 
   /** Copy keeps the user gesture: the content is passed as a promise. */
@@ -529,25 +601,31 @@ Alpine.data('app', () => ({
     }
   },
 
+  /** Deleted for every device of the group. */
   async remove(item: ItemView) {
-    if (this.prefs.confirmDelete && this.confirming !== 'item:' + item.id) {
-      this.confirming = 'item:' + item.id;
+    if (this.prefs.confirmDelete && !this.isConfirming(this.itemKey(item))) {
+      this.askConfirm(this.itemKey(item));
       return;
     }
     this.confirming = '';
     await engine.deleteItem(this.groupId!, item.id).catch((err) => this.toast(err.message));
   },
 
+  /** More than one thing to delete (items, live note): otherwise their own button does it. */
+  get canClearAll() {
+    return this.items.length + (this.note ? 1 : 0) > 1;
+  },
+
   /** Whole history of the group, for every member. Always confirmed. */
   async clearAll() {
-    if (this.confirming !== 'clear') {
-      this.confirming = 'clear';
+    if (!this.isConfirming('clear')) {
+      this.askConfirm('clear');
       return;
     }
     this.confirming = '';
     try {
       await engine.clearAll(this.groupId!);
-      this.clearNote();
+      this.eraseNote();
       this.toast('Historique supprimé');
     } catch (err: any) {
       this.toast('Erreur : ' + (err.message ?? err));
@@ -623,22 +701,30 @@ Alpine.data('app', () => ({
     input.value = '';
   },
 
+  /** Files dropped on the main screen (elsewhere, the drop is only kept from opening them). */
   onDrop(e: DragEvent) {
+    dragDepth = 0;
     this.dragging = false;
+    if (this.view !== 'main') return;
     for (const f of Array.from(e.dataTransfer?.files ?? [])) this.send({ kind: 'file', blob: f, name: f.name });
   },
 
-  onDragOver() {
+  onDragEnter(e: DragEvent) {
+    if (this.view !== 'main' || !Array.from(e.dataTransfer?.types ?? []).includes('Files')) return;
+    dragDepth++;
     this.dragging = true;
   },
 
+  /** Accepts the drop (and keeps the browser from opening the file). */
+  onDragOver() {},
+
   onDragLeave() {
-    this.dragging = false;
+    if (dragDepth && --dragDepth === 0) this.dragging = false;
   },
 
-  /** Cmd/Ctrl+V in the page (desktop browsers). */
+  /** Cmd/Ctrl+V in the page (browsers; desktop apps when the clipboard is not shared by itself). */
   onPaste(e: ClipboardEvent) {
-    if (this.desktop || this.view !== 'main') return;
+    if (!this.manualClipboard || this.view !== 'main') return;
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     const files = Array.from(e.clipboardData?.files ?? []);
@@ -725,6 +811,7 @@ Alpine.data('app', () => ({
       if (left <= 0) {
         this.closeInvite();
         this.view = 'settings';
+        this.toast('Invitation expirée');
         return;
       }
       this.inviteLeft = duration(left);
@@ -888,10 +975,11 @@ Alpine.data('app', () => ({
     if (this.groupId) await engine.setLocalOnly(this.groupId, on).catch((err) => this.toast(err.message));
   },
 
-  transferLabel(t: { direction: string; name: string; direct?: boolean; peer?: string }) {
-    const way = t.direction === 'up' ? 'vers' : 'de';
-    const direct = t.direct ? ' · en direct' + (t.peer ? ` ${way} ${t.peer}` : '') : '';
-    return (t.direction === 'up' ? '↑ ' : '↓ ') + (t.name || 'texte') + direct;
+  /** An upload line: from here (to the relay, or straight to a device), or by another device. */
+  transferLabel(t: { name: string; direct?: boolean; peer?: string; from?: string }) {
+    const name = t.name || 'texte';
+    if (t.from) return `↑ ${name} · envoyé par ${t.from}`;
+    return '↑ ' + name + (t.direct ? ' · en direct' + (t.peer ? ` vers ${t.peer}` : '') : '');
   },
 
   toggleAutoShare() {
@@ -900,7 +988,8 @@ Alpine.data('app', () => ({
   },
 
   async createGroup() {
-    const name = this.newGroupName.trim() || 'Nouveau groupe';
+    // the first group gets the name the desktop apps give to theirs
+    const name = this.newGroupName.trim() || (this.groups.length ? 'Nouveau groupe' : 'Mes appareils');
     this.newGroupName = '';
     const id = await engine.createGroup(name);
     this.selectGroup(id);
@@ -948,9 +1037,9 @@ Alpine.data('app', () => ({
   },
 
   async removeMember(member: { id: string; name: string; me: boolean }) {
-    const key = 'member:' + member.id;
-    if (this.confirming !== key) {
-      this.confirming = key;
+    const key = this.memberKey(member);
+    if (!this.isConfirming(key)) {
+      this.askConfirm(key);
       return;
     }
     this.confirming = '';
@@ -964,8 +1053,8 @@ Alpine.data('app', () => ({
   },
 
   async resetAll() {
-    if (this.confirming !== 'reset') {
-      this.confirming = 'reset';
+    if (!this.isConfirming('reset')) {
+      this.askConfirm('reset');
       return;
     }
     this.confirming = '';
@@ -973,8 +1062,21 @@ Alpine.data('app', () => ({
     location.reload();
   },
 
+  /** A destructive button turns into its confirmation, back to normal after a few seconds. */
+  askConfirm(key: string) {
+    this.confirming = key;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => {
+      if (this.confirming === key) this.confirming = '';
+    }, CONFIRM_FOR);
+  },
+
   isConfirming(key: string) {
     return this.confirming === key;
+  },
+
+  dismissTransfer(t: { id: string }) {
+    engine.dismissTransfer(t.id);
   },
 
   memberKey(member: { id: string }) {

@@ -95,7 +95,7 @@ export interface Transfer {
   groupId: string;
   name: string;
   direction: 'up' | 'down';
-  /** Upload: the item, once announced (it then shows its own progress in the history). */
+  /** The item: once announced (upload), or the one being downloaded. */
   itemId?: string;
   /** Straight between two devices on the same network (download, or served from here). */
   direct?: boolean;
@@ -185,8 +185,9 @@ export interface Invite {
 }
 
 const INVITE_TTL = 3 * 60 * 1000;
-/** A download that follows an upload gives up when the sender sent nothing for that long. */
-const UPLOAD_STALLED = 5 * 60 * 1000;
+/** A download that follows an upload gives up when the sender sent nothing for that long;
+ *  the item then shows as interrupted. */
+export const UPLOAD_STALLED = 5 * 60 * 1000;
 /** Chunks requested at once by a download (a direct link pipelines them). */
 const DOWNLOAD_WORKERS = 3;
 /** Upload back-pressure: bytes allowed to wait in the relay socket before the next chunk. */
@@ -1002,6 +1003,7 @@ export class Engine {
       else if (thumb) header.thumb = thumb;
       const sealed = sealItem(this.device, this.recipients(rt), header, Math.max(blob.size, 1));
       transfer.total = sealed.chunks;
+      transfer.itemId = sealed.id; // its announcement may arrive before the relay's answer
       // served from here to the devices on the same network, before even the relay has it
       rt.outbox.set(sealed.id, { blob, key: sealed.key, chunks: sealed.chunks, name: name || 'texte', text });
       this.changed();
@@ -1016,7 +1018,6 @@ export class Engine {
         max: maxItemsOf(rt.g.state),
         ...(local ? { local: true } : {}),
       });
-      transfer.itemId = sealed.id;
       if (local) {
         this.transfers.delete(key);
         return;
@@ -1037,6 +1038,13 @@ export class Engine {
       this.changed();
       this.stopIfIdle();
     }
+  }
+
+  /** A failed transfer stays listed with its error until the user closes it. */
+  dismissTransfer(id: string) {
+    if (!this.transfers.get(id)?.error) return;
+    this.transfers.delete(id);
+    this.changed();
   }
 
   /** A transfer is in progress (a failed one stays listed with its error). */
@@ -1138,8 +1146,11 @@ export class Engine {
     if (local && directFailed) throw unreachable();
     if (!directFailed) peers!.warm(from);
     const chunks = entry.relay.chunks;
-    const transfer: Transfer = { id: itemId, groupId, name: header.name ?? '', direction: 'down', done: 0, total: chunks, peer: sender };
-    if (chunks > 1) this.transfers.set(itemId, transfer);
+    const transfer: Transfer = { id: itemId, groupId, itemId, name: header.name ?? '', direction: 'down', done: 0, total: chunks, peer: sender };
+    if (chunks > 1) {
+      this.transfers.set(itemId, transfer);
+      this.changed(); // shown at once, even while waiting for the sender's first chunks
+    }
     try {
       const parts: Uint8Array[] = new Array(chunks);
       const queue = [...Array(chunks).keys()];

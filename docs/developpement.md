@@ -40,11 +40,17 @@ npm run build                    # dist/ : page d'accueil (/) et appli web (/app
 npm run dev                      # build en continu
 npm run typecheck
 npm test                         # le relais doit tourner (RELAY=https://… pour un autre)
+npm run test:ui                  # interface, dans Chrome (HEADED=1 pour la voir)
 ```
 
 Les tests lancent de vrais appareils (moteurs) contre le relais : association, envois, reprise après
 coupure, suppression pendant un envoi, retrait d'un appareil, mode local (avec une liaison en mémoire
 à la place de WebRTC, absent de Node).
+
+Les tests d'interface (`test/ui/`) ouvrent l'appli servie par le relais dans plusieurs profils Chrome
+(un par appareil, dont un téléphone Android simulé) : note, confirmations, envoi en cours et
+téléchargements, invitations, retrait. Ils utilisent le Chrome installé (`playwright-core`, aucun
+navigateur téléchargé) ; le relais doit avoir été reconstruit avec l'appli à tester.
 
 ## Appli Mac
 

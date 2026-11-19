@@ -18,7 +18,8 @@
 </head>
 <body>
 <div class="app" x-data="app" x-cloak
-     @dragover.prevent="onDragOver" @dragleave="onDragLeave" @drop.prevent="onDrop($event)">
+     @dragenter="onDragEnter($event)" @dragover.prevent="onDragOver" @dragleave="onDragLeave"
+     @drop.prevent="onDrop($event)">
 
   <!-- Loading -->
   <div class="center" x-show="view === 'loading'">
@@ -37,14 +38,28 @@
     <p class="muted">Sur iPhone, l’appli installée ne voit pas les données de Safari : l’association se fait donc depuis l’appli.</p>
   </section>
 
-  <!-- First launch on a phone -->
+  <!-- No group: first launch on a phone, or the last group left -->
   <section class="center page" x-show="view === 'welcome'">
     <div class="logo"></div>
     <h1>Entre Nous</h1>
     <p class="muted">Un presse-papier commun à tous tes appareils.<br>Chiffré de bout en bout : le serveur ne peut rien lire.</p>
-    <button class="primary wide" @click="startScan" :disabled="busy">Scanner un QR code</button>
-    <p class="muted small">Sur un appareil déjà associé, ouvre Réglages → Inviter un appareil pour afficher le QR code.</p>
-    <button class="ghost" @click="createGroup">Ou créer un nouveau groupe</button>
+    <template x-if="mobile">
+      <div class="welcome">
+        <button class="primary wide" @click="startScan" :disabled="busy">Scanner un QR code</button>
+        <p class="muted small">Sur un appareil déjà associé, ouvre Réglages → Inviter un appareil pour afficher le QR code.</p>
+        <button class="ghost" @click="createGroup">Ou créer un nouveau groupe</button>
+      </div>
+    </template>
+    <template x-if="!mobile">
+      <div class="welcome">
+        <button class="primary wide" @click="createGroup">Créer un groupe</button>
+        <p class="muted small">Ou colle le lien d’invitation affiché par un appareil déjà associé (Réglages → Inviter un appareil).</p>
+        <div class="inline">
+          <input type="url" placeholder="Lien d’invitation" x-model="joinLink">
+          <button class="secondary" @click="joinFromLink" :disabled="busy">Rejoindre</button>
+        </div>
+      </div>
+    </template>
     <button class="ghost" x-show="canInstall" @click="install">Installer l’appli</button>
   </section>
 
@@ -65,7 +80,7 @@
         </template>
       </div>
       <div class="bar-actions">
-      <button class="icon" x-show="desktop" @click="togglePause" :class="prefs.paused ? 'paused' : ''"
+      <button class="icon" x-show="desktop && prefs.autoShare" @click="togglePause" :class="prefs.paused ? 'paused' : ''"
               :aria-label="prefs.paused ? 'Reprendre le partage' : 'Mettre en pause'"
               :title="prefs.paused ? 'Reprendre le partage' : 'Mettre en pause'">
         <svg viewBox="0 0 24 24" x-show="!prefs.paused"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
@@ -84,7 +99,7 @@
     </div>
 
     <div class="actions">
-      <button class="primary" x-show="!desktop" @click="sendClipboard">
+      <button class="primary" x-show="manualClipboard" @click="sendClipboard">
         <svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11v6M9 14l3-3 3 3"/></svg>
         Envoyer le presse-papier
       </button>
@@ -103,7 +118,8 @@
         <span x-text="noteInfo"></span>
         <button class="small ghost" @click="sendNote">Envoyer</button>
         <button class="small ghost" @click="copyNote">Copier</button>
-        <button class="small ghost danger" @click="clearNote">Effacer</button>
+        <button class="small ghost danger" @click="clearNote" title="Efface la note sur tous les appareils"
+                x-text="isConfirming('note') ? 'Effacer partout' : 'Effacer'"></button>
       </div>
     </div>
 
@@ -117,12 +133,13 @@
             <circle class="ring-track" cx="18" cy="18" r="15.9155"/>
             <circle class="ring-bar" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="ringOffset(t)"/>
           </svg>
-          <span x-text="t.error ? t.error : progress(t)"></span>
+          <span x-text="transferState(t)"></span>
         </span>
+        <button class="small ghost" x-show="t.error" @click="dismissTransfer(t)">Fermer</button>
       </div>
     </template>
 
-    <div class="history-bar" x-show="items.length > 1">
+    <div class="history-bar" x-show="canClearAll">
       <button class="ghost danger small" @click="clearAll"
               x-text="isConfirming('clear') ? 'Confirmer : tout supprimer pour tous les appareils' : 'Tout supprimer'"></button>
     </div>
@@ -142,17 +159,18 @@
             </p>
           </div>
           <div class="item-actions">
-            <span class="transfer-state pending" x-show="item.pending">
+            <button class="small primary" x-show="canCopy(item) && !downloading(item)" @click="copy(item)">Copier</button>
+            <button class="small secondary" x-show="item.canPublish" @click="publish(item)">Envoyer au serveur</button>
+            <button class="small secondary" x-show="canSave(item) && !downloading(item)" @click="save(item)">Enregistrer</button>
+            <span class="transfer-state download" x-show="downloading(item)" title="Téléchargement">
               <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
                 <circle class="ring-track" cx="18" cy="18" r="15.9155"/>
-                <circle class="ring-bar" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="itemRingOffset(item)"/>
+                <circle class="ring-bar" cx="18" cy="18" r="15.9155" pathLength="100" stroke-dasharray="100" :stroke-dashoffset="downloadOffset(item)"/>
               </svg>
-              <span x-text="itemProgress(item)"></span>
+              <span x-text="downloadProgress(item)"></span>
             </span>
-            <button class="small primary" x-show="canCopy(item)" @click="copy(item)">Copier</button>
-            <button class="small secondary" x-show="item.canPublish" @click="publish(item)">Envoyer au serveur</button>
-            <button class="small secondary" x-show="canSave(item)" @click="save(item)">Enregistrer</button>
-            <button class="small ghost danger" @click="remove(item)" x-text="isConfirming(itemKey(item)) ? 'Confirmer' : 'Supprimer'"></button>
+            <button class="small ghost danger" @click="remove(item)" title="Supprime l’élément sur tous les appareils"
+                    x-text="isConfirming(itemKey(item)) ? 'Supprimer partout' : 'Supprimer'"></button>
           </div>
         </li>
       </template>

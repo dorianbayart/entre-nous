@@ -127,6 +127,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             }
             return true
 
+        // Manual send (paused, or no automatic sharing): what the pasteboard holds now
+        case "clipRead":
+            let items = PasteboardWatcher.contents(of: NSPasteboard.general) { [weak self] in self?.files.register($0) ?? "" }
+            return items.first ?? NSNull()
+
         case "notify":
             notify(title: a["title"] as? String ?? "Entre Nous", body: a["body"] as? String ?? "")
             return true

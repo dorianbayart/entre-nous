@@ -45,6 +45,7 @@ export function androidPlatform(): PlatformApi {
     defaultName: 'Android',
     defaultRelay: RELAY,
     autoWrite: true,
+    imageCopyMax: IMAGE_MAX,
 
     async init() {
       const { model } = await Native.info().catch(() => ({ model: '' }));

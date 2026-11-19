@@ -24,7 +24,9 @@ export interface PlatformApi {
     mime: string,
     content: Promise<{ text?: string; blob?: Blob; name?: string; expiresAt?: number }>,
   ): Promise<void>;
-  /** Reads the local clipboard (needs a tap on mobile). */
+  /** Largest image `copy` can write (bytes); above, the Copy button is not shown. */
+  imageCopyMax?: number;
+  /** Reads the local clipboard (needs a tap on mobile; desktop apps: when not shared automatically). */
   read(): Promise<Outgoing | null>;
   /** Saves or shares a received file. */
   save(blob: Blob, name: string): Promise<void>;

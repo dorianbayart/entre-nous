@@ -64,6 +64,8 @@ p { margin: 8px 0; }
 
 .center { display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 70vh; gap: 10px; }
 .page { padding-top: 8px; }
+.welcome { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.welcome .inline { width: 100%; margin-top: 0; }
 
 .logo {
   width: 56px; height: 56px; border-radius: 16px;
@@ -142,7 +144,7 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
   background: var(--accent-soft); font-size: 13px;
 }
 .transfer { align-items: center; }
-.transfer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transfer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .transfer-state { display: inline-flex; align-items: center; gap: 6px; flex: none; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
 .ring { width: 18px; height: 18px; transform: rotate(-90deg); }
 .transfer-state .ring { width: 14px; height: 14px; }
@@ -180,7 +182,7 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
 .content.file { font-weight: 500; }
 .meta { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 .item-actions { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-.item-actions .pending { margin-right: auto; padding: 0 4px; color: var(--muted); font-size: 12px; }
+.item-actions .download { padding: 0 8px; min-height: 30px; color: var(--muted); font-size: 12px; }
 
 .empty { text-align: center; color: var(--muted); margin-top: 48px; font-size: 14px; }
 

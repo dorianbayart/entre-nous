@@ -144,6 +144,7 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
             }
             Ok(json!(true))
         }
+        "clipRead" => Ok(b.clip.read(|p| b.files.register(p)).unwrap_or(Value::Null)),
 
         "notify" => {
             // only while the window is not in front; never the content itself
