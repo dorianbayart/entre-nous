@@ -143,6 +143,8 @@ interface Runtime {
   /** Live note typed here and not yet acknowledged by the relay. */
   noteDraft?: string;
   noteSending: boolean;
+  /** A key arrived while the note was being sent: check, once sent, that everyone can read it. */
+  noteRecheck?: boolean;
   /** Relay events are handled one after the other, in their order of arrival: a handler that
    *  waits (refresh, state) must not let a later event (a note) land on items it then replaces. */
   events: Promise<void>;
@@ -700,6 +702,9 @@ export class Engine {
 
   private async onOpen(rt: Runtime, c: RelayConnection) {
     rt.ready = false; // members' prekeys are reloaded below
+    // emptied before the hello: a key published while it is on its way comes as an event, and
+    // must not be lost when the answer (read before it) arrives
+    rt.bundles.clear();
     const res = await c.raw('hello', { roomKey: roomKey(rt.g), device: this.device.id });
     rt.maxTtl = res.maxTtl;
     rt.persist = res.persist;
@@ -718,10 +723,10 @@ export class Engine {
       if (await this.handleRotation(rt, item)) throw new Error('group rotated');
     }
     await this.syncState(rt, c, res.state);
-    rt.bundles.clear();
     for (const raw of Object.values(res.prekeys ?? {}) as string[]) {
       const b = openBundle(rt.g, raw);
-      if (b) rt.bundles.set(b.device, b);
+      const known = b && rt.bundles.get(b.device);
+      if (b && (!known || known.at < b.at)) rt.bundles.set(b.device, b);
     }
     await this.publishPrekey(rt, c);
     rt.items.clear();
@@ -1305,6 +1310,10 @@ export class Engine {
       }
     } finally {
       rt.noteSending = false;
+      if (rt.noteRecheck) {
+        rt.noteRecheck = false;
+        this.extendNote(rt);
+      }
       this.changed();
     }
   }
@@ -1353,8 +1362,13 @@ export class Engine {
 
   /** A device joined: the author of the current note re-sends it so that it can read it. */
   private extendNote(rt: Runtime) {
+    if (rt.noteSending) {
+      // the note being sent may be sealed without this key: checked again once it is sent
+      rt.noteRecheck = true;
+      return;
+    }
     const cur = this.currentNote(rt);
-    if (!cur?.note?.text || cur.relay.from !== this.device.id || rt.noteSending) return;
+    if (!cur?.note?.text || cur.relay.from !== this.device.id) return;
     if (this.recipients(rt).every((r) => cur.opened!.meta.env[r.device])) return;
     rt.noteDraft = cur.note.text;
     this.flushNote(rt);
