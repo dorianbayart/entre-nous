@@ -23,9 +23,11 @@ const outdir = fileURLToPath(new URL('./dist/', import.meta.url)); // a real pat
 await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
 await cp(fileURLToPath(new URL('./public/', import.meta.url)), outdir, { recursive: true });
-// the landing page shows a schema of the documentation (docs/images/, the only copy)
-const schema = fileURLToPath(new URL('../docs/images/chiffrement.svg', import.meta.url));
-if (existsSync(schema)) await cp(schema, outdir + 'images/chiffrement.svg');
+// the landing page shows the schemas of the documentation (docs/images/, the only copy)
+for (const name of ['chiffrement.svg', 'reseau.svg']) {
+  const schema = fileURLToPath(new URL('../docs/images/' + name, import.meta.url));
+  if (existsSync(schema)) await cp(schema, outdir + 'images/' + name);
+}
 
 const options = {
   entryPoints: [

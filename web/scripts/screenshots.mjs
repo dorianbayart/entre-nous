@@ -661,6 +661,11 @@ await renderPair(
   OUT + 'reglages.png',
 );
 
+// landing page: the pictures of the documentation shown in its FAQ, lighter
+for (const name of ['association', 'envoi-en-cours', 'reglages']) {
+  execFileSync('magick', [OUT + name + '.png', '-resize', '1200x', '-quality', '82', LANDING + name + '.webp']);
+}
+
 // ------------------------------------------------------------------ the film
 
 const film = await composer('light', 1);
@@ -689,4 +694,4 @@ rmSync(dir, { recursive: true });
 
 await browser.close();
 console.log(`docs/images: apercu.png, apercu-sombre.png, demo.gif (${timeline.length} images), association.png, envoi-en-cours.png, reglages.png`);
-console.log('web/public/images: appareils.webp, appareils-sombre.webp, demo.webp, demo-fixe.webp');
+console.log('web/public/images: appareils(-sombre).webp, demo(-fixe).webp, association.webp, envoi-en-cours.webp, reglages.webp');

@@ -154,19 +154,80 @@
         <a href="https://github.com/dorianbayart/entre-nous">open source</a>&nbsp;: chacun peut le vérifier.</p>
     </details>
     <details>
-      <summary>Combien de temps mes données sont-elles gardées&nbsp;?</summary>
-      <p>24&nbsp;heures par défaut. Tu peux choisir 10&nbsp;minutes, 1&nbsp;heure, 24&nbsp;heures ou 7&nbsp;jours.
-        Passé ce délai, tout s’efface.</p>
-    </details>
-    <details>
-      <summary>Et si je perds un appareil&nbsp;?</summary>
-      <p>Retire-le depuis un autre de tes appareils&nbsp;: il perd aussitôt l’accès à tout ce que tu partages.</p>
+      <summary>Mes mots de passe copiés sont-ils partagés aussi&nbsp;?</summary>
+      <p>Non. Sur ordinateur, ce que ton gestionnaire de mots de passe marque comme secret n’est
+        jamais partagé automatiquement.</p>
+      <p>À l’inverse, ce qu’Entre&nbsp;Nous écrit dans ton presse-papier est marqué de la même façon&nbsp;:
+        les historiques de presse-papier ne le gardent pas.</p>
     </details>
     <details>
       <summary>Faut-il installer quelque chose&nbsp;?</summary>
       <p>Pas forcément&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur récent.
         Les applis vont plus loin&nbsp;: partage depuis n’importe quelle appli sur Android,
         et copie automatique sur Mac, Windows et Linux.</p>
+    </details>
+    <details>
+      <summary>Comment ajouter un appareil&nbsp;?</summary>
+      <p>Sur un appareil déjà associé, ouvre <strong>Réglages → Inviter un appareil</strong>.
+        Scanne le QR&nbsp;code avec le nouvel appareil, ou colle son lien dans <strong>Rejoindre</strong>&nbsp;:
+        pratique sur un ordinateur sans caméra, ou pour l’envoyer à distance.
+        L’invitation est valable 3&nbsp;minutes, pour un seul appareil.</p>
+      <a class="figure" href="/images/association.webp"><img src="/images/association.webp" width="1200" height="1040" loading="lazy"
+         alt="Le Mac affiche le QR code d’invitation et son lien ; le téléphone le scanne, ou colle le lien"></a>
+    </details>
+    <details>
+      <summary>Faut-il attendre la fin d’un gros envoi&nbsp;?</summary>
+      <p>Non. Un fichier apparaît sur tous tes appareils dès le début de son envoi&nbsp;: chacun peut
+        l’enregistrer tout de suite, le téléchargement suit l’envoi. Pour le copier, en revanche,
+        il faut attendre la fin de l’envoi.</p>
+      <a class="figure" href="/images/envoi-en-cours.webp"><img src="/images/envoi-en-cours.webp" width="1200" height="800" loading="lazy"
+         alt="Pendant que le téléphone envoie une vidéo, le Mac et le PC la téléchargent déjà"></a>
+    </details>
+    <details>
+      <summary>Chez moi, est-ce que ça passe par internet&nbsp;?</summary>
+      <p>Le contenu, non&nbsp;: quand tes appareils sont sur le même Wi-Fi, il va directement de l’un à
+        l’autre, au débit du Wi-Fi. Seule une annonce chiffrée passe par le serveur, pour les mettre
+        en relation.</p>
+      <p>Ailleurs (4G, autre réseau), le contenu passe par le serveur relais, toujours chiffré.
+        Avec <strong>Réseau local uniquement</strong>, il ne passe jamais par le serveur.</p>
+      <a class="figure" href="/images/reseau.svg"><img src="/images/reseau.svg" width="960" height="400" loading="lazy"
+         alt="Sur le même Wi-Fi, le contenu passe en direct ; ailleurs, par le relais, toujours chiffré"></a>
+    </details>
+    <details>
+      <summary>Combien de temps mes données sont-elles gardées&nbsp;?</summary>
+      <p>24&nbsp;heures par défaut. Tu peux choisir 10&nbsp;minutes, 1&nbsp;heure, 24&nbsp;heures ou 7&nbsp;jours.
+        Passé ce délai, tout s’efface.</p>
+      <p>Dans les réglages du groupe, tu choisis aussi la taille de l’historique (1&nbsp;élément, 10 ou
+        sans limite) et jusqu’à quelle taille le presse-papier est partagé automatiquement.</p>
+      <a class="figure" href="/images/reglages.webp"><img src="/images/reglages.webp" width="1200" height="1040" loading="lazy"
+         alt="Les réglages de l’appareil et du groupe, et la liste des appareils du groupe"></a>
+    </details>
+    <details>
+      <summary>Mon téléphone était éteint&nbsp;: est-ce que je reçois quand même&nbsp;?</summary>
+      <p>Oui. Ce que tu partages attend sur le serveur jusqu’à son expiration, et ton téléphone
+        le reçoit dès qu’il se reconnecte. Le serveur ne garde rien sur disque&nbsp;: s’il redémarre,
+        ce qui attendait est effacé.</p>
+    </details>
+    <details>
+      <summary>Y a-t-il une limite de taille&nbsp;?</summary>
+      <p>Pas par fichier&nbsp;: seule compte la place libre sur le serveur, indiquée dans les Réglages.
+        Sur ordinateur, le partage automatique s’arrête à 1&nbsp;Mo par défaut&nbsp;; au-delà, envoie le
+        fichier avec le bouton <strong>Fichier</strong>.</p>
+    </details>
+    <details>
+      <summary>Puis-je partager avec ma famille ou des collègues&nbsp;?</summary>
+      <p>Oui. Crée un groupe pour chacun (famille, travail…) et invites-y leurs appareils.
+        Les groupes sont indépendants&nbsp;: ce que tu partages dans l’un n’apparaît pas dans l’autre.</p>
+    </details>
+    <details>
+      <summary>Et si je perds un appareil&nbsp;?</summary>
+      <p>Retire-le depuis un autre de tes appareils&nbsp;: il perd aussitôt l’accès à tout ce que tu partages.</p>
+    </details>
+    <details>
+      <summary>Puis-je utiliser mon propre serveur&nbsp;?</summary>
+      <p>Oui&nbsp;: le serveur relais s’installe en deux commandes avec Docker. Choisis-le ensuite dans
+        les applis (<strong>Réglages → Serveur</strong>), ou ouvre l’appli web depuis ton serveur.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/deploiement.md">Le guide d’hébergement</a></p>
     </details>
   </section>
 
