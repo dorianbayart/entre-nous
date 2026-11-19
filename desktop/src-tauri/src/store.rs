@@ -47,7 +47,7 @@ impl Store {
 
     pub fn set(&mut self, key: &str, value: &str) -> Result<(), String> {
         if self.unreadable {
-            return Err("Stockage sécurisé inaccessible".into());
+            return Err(crate::l10n::t("noStorage").into());
         }
         self.cache.insert(key.to_string(), value.to_string());
         self.save()
@@ -113,7 +113,7 @@ impl Store {
         let stored = keyring::Entry::new(SERVICE, ACCOUNT).and_then(|e| e.set_password(&hex));
         if let Err(err) = stored {
             if cfg!(windows) {
-                return Err(format!("Gestionnaire d’identification inaccessible : {err}"));
+                return Err(format!("{} : {err}", crate::l10n::t("noCredentials")));
             }
             // Linux without a Secret Service (minimal desktops): a key file for the user only
             eprintln!("entrenous: no Secret Service ({err}), key kept in {}", self.key_file.display());

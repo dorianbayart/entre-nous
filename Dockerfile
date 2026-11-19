@@ -5,7 +5,7 @@ WORKDIR /build
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web/ ./
-COPY docs/images/chiffrement.svg docs/images/reseau.svg /docs/images/
+COPY docs/images/chiffrement.svg docs/images/reseau.svg docs/images/chiffrement-en.svg docs/images/reseau-en.svg /docs/images/
 RUN npm run build
 
 FROM node:lts-alpine

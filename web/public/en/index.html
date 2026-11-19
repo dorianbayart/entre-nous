@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Copy on one device, paste on another. A clipboard shared across all your devices: end-to-end encrypted, ephemeral, no account, no tracking.">
+  <title>Entre Nous · An encrypted clipboard shared across all your devices</title>
+  <link rel="alternate" hreflang="fr" href="/fr/">
+  <link rel="alternate" hreflang="en" href="/en/">
+  <link rel="alternate" hreflang="x-default" href="/">
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/app/icon-192.png">
+  <link rel="stylesheet" href="/landing.css">
+  <script type="module" src="/landing.js"></script>
+</head>
+<body>
+<main class="page">
+  <a class="lang-switch" href="/fr/" hreflang="fr" lang="fr">Français</a>
+
+  <header class="hero">
+    <img class="logo" src="/app/icon.svg" alt="" width="64" height="64">
+    <h1>Entre&nbsp;Nous</h1>
+    <p class="lead">Copy on one device, paste on another.</p>
+    <p class="sub">A clipboard shared across all your devices: end-to-end encrypted, ephemeral, no account, no tracking.</p>
+
+    <div class="cta">
+      <a class="button primary" id="web" href="/app/">Open the web app</a>
+      <a class="button secondary download" id="android" href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-android.apk">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Download for Android
+      </a>
+      <a class="button secondary download" id="mac" href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-mac.zip">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Download for Mac
+      </a>
+      <a class="button secondary download" id="windows" href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-windows.exe">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Download for Windows
+      </a>
+      <a class="button secondary download" id="linux" href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-linux.deb">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        Download for Linux
+      </a>
+    </div>
+    <p class="note download-note" id="android-note">Android 7 or later</p>
+    <p class="note download-note" id="mac-note">macOS 14 or later</p>
+    <p class="note download-note" id="windows-note">Windows 10 or 11 · beta</p>
+    <p class="note download-note" id="linux-note">Debian, Ubuntu and derivatives<span class="size"></span> · <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-linux.AppImage">AppImage</a> for other distributions · beta</p>
+    <p class="note" id="ios-note">On iPhone, add the web app to your Home Screen.</p>
+    <p class="platforms">Mac · Android · iPhone · Windows · Linux</p>
+    <p class="note" id="version" hidden></p>
+  </header>
+
+  <picture class="shot wide">
+    <source media="(prefers-color-scheme: dark)" srcset="/images/appareils-sombre-en.webp">
+    <img src="/images/appareils-en.webp" width="2144" height="1226"
+         alt="Entre Nous on a Mac (menu bar), an Android phone and a PC in a browser: the same history everywhere">
+  </picture>
+
+  <section class="qr-card desktop-only" aria-label="On your phone">
+    <img id="qr" alt="QR&nbsp;code to this page" width="148" height="148">
+    <div>
+      <h2>On your phone</h2>
+      <p>Scan this code to open this page on your phone.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><strong>Install Entre&nbsp;Nous</strong> on a first device, or open the web app.</li>
+      <li><strong>Add your other devices</strong> by scanning a QR&nbsp;code, or by pasting its link.
+        No account to create.</li>
+      <li><strong>Copy, paste.</strong> Text, photos, files: everything goes
+        from one device to another in an instant.</li>
+    </ol>
+    <picture class="demo wide">
+      <source media="(prefers-reduced-motion: reduce)" srcset="/images/demo-fixe-en.webp">
+      <img src="/images/demo-en.webp" width="1000" height="667" loading="lazy"
+           alt="A copy on the Mac arrives, encrypted, on the phone; a photo shared from Android arrives on the Mac and on a PC at the same time; a shared note is typed live on all three devices">
+    </picture>
+  </section>
+
+  <section>
+    <h2>Between us, and no one else</h2>
+    <img class="schema wide" src="/images/chiffrement-en.svg" width="960" height="380" loading="lazy"
+         alt="The content is encrypted on the Mac; the relay server only carries unreadable data; the phone decrypts it">
+    <ul class="facts">
+      <li><strong>Private.</strong> What you transfer is encrypted on your device, then travels
+        over a connection that is itself encrypted.</li>
+      <li><strong>Ephemeral.</strong> Everything is erased automatically. You choose the size of the
+        history and how long the clipboard is kept.</li>
+      <li><strong>No account.</strong> No sign-up, no email, no password.</li>
+      <li><strong>No tracking.</strong> No ads, no trackers, no logs.</li>
+      <li><strong>Open source.</strong> The code is public, under the AGPL licence: anyone can check
+        what it does. <a href="https://github.com/dorianbayart/entre-nous">See the code on GitHub</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <details data-platform="android">
+      <summary>Android</summary>
+      <p>Download <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-android.apk">the app</a> and open the file.
+        Android will ask you to allow the installation: Entre&nbsp;Nous is not on
+        the Play Store.</p>
+      <p>Entre&nbsp;Nous then shows up in the <strong>Share</strong> menu of all your apps.</p>
+      <p>Without installing anything, <a href="/app/">the web app</a> also works in Chrome.</p>
+    </details>
+    <details data-platform="ios">
+      <summary>iPhone and iPad</summary>
+      <p>Open <a href="/app/">the web app</a> in Safari, then
+        <strong>Share → Add to Home Screen</strong>.</p>
+      <p>Launch Entre&nbsp;Nous from that icon, not from Safari, to add your iPhone.</p>
+    </details>
+    <details data-platform="mac">
+      <summary>Mac</summary>
+      <p>Unzip the file and drag <strong>Entre&nbsp;Nous</strong> to Applications.
+        The app lives in the menu bar, at the top of the screen.
+        To send a file, drop it on its icon.</p>
+      <p>On first launch, macOS blocks it because it is not yet notarized by Apple:
+        go to <strong>System Settings → Privacy &amp; Security</strong>, then click
+        <strong>Open Anyway</strong>.</p>
+      <p>If your Mac asks for access to the keychain, choose <strong>Always Allow</strong>.</p>
+    </details>
+    <details data-platform="windows">
+      <summary>Windows</summary>
+      <p>Download <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-windows.exe">the installer</a> and run it.
+        If Windows shows “Windows protected your PC”, click
+        <strong>More info</strong>, then <strong>Run anyway</strong>:
+        Entre&nbsp;Nous is not signed by a known publisher yet.</p>
+      <p>The app lives in the notification area, at the bottom right of the screen.
+        To send a file, drop it on its window.</p>
+    </details>
+    <details data-platform="linux">
+      <summary>Linux</summary>
+      <p>On Debian, Ubuntu and their derivatives, install <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-linux.deb">the .deb package</a>.
+        Elsewhere, download <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-linux.AppImage">the AppImage</a>,
+        make it executable and run it.</p>
+      <p>The app lives in the notification area. On GNOME, you need the AppIndicator
+        extension to see its icon. To send a file, drop it on its window.</p>
+    </details>
+    <details data-platform="other">
+      <summary>Other devices</summary>
+      <p>Nothing to install: <a href="/app/">the web app</a> works in any recent
+        browser. Paste (Ctrl+V) or drop a file to send it.</p>
+    </details>
+  </section>
+
+  <section>
+    <h2>Frequently asked questions</h2>
+    <details>
+      <summary>Who can read what I share?</summary>
+      <p>Your devices, and no one else. Not even us. The code is
+        <a href="https://github.com/dorianbayart/entre-nous">open source</a>: anyone can check it.</p>
+    </details>
+    <details>
+      <summary>Are the passwords I copy shared too?</summary>
+      <p>No. On a computer, what your password manager marks as secret is
+        never shared automatically.</p>
+      <p>The other way round, what Entre&nbsp;Nous writes to your clipboard is marked the same way:
+        clipboard history tools don’t keep it.</p>
+    </details>
+    <details>
+      <summary>Do I need to install anything?</summary>
+      <p>Not necessarily: <a href="/app/">the web app</a> works in any recent browser.
+        The apps go further: sharing from any app on Android,
+        and automatic copying on Mac, Windows and Linux.</p>
+    </details>
+    <details>
+      <summary>How do I add a device?</summary>
+      <p>On a device that is already paired, open <strong>Settings → Invite a device</strong>.
+        Scan the QR&nbsp;code with the new device, or paste its link into <strong>Join</strong>:
+        handy on a computer without a camera, or to send it to a device that isn’t nearby.
+        The invitation is valid for 3&nbsp;minutes, for a single device.</p>
+      <a class="figure" href="/images/association-en.webp"><img src="/images/association-en.webp" width="1200" height="1040" loading="lazy"
+         alt="The Mac shows the invitation QR code and its link; the phone scans it, or pastes the link"></a>
+    </details>
+    <details>
+      <summary>Do I have to wait for a large upload to finish?</summary>
+      <p>No. A file shows up on all your devices as soon as its upload starts: each of them can
+        save it right away, and the download follows the upload. To copy it, however,
+        you have to wait for the upload to finish.</p>
+      <a class="figure" href="/images/envoi-en-cours-en.webp"><img src="/images/envoi-en-cours-en.webp" width="1200" height="800" loading="lazy"
+         alt="While the phone uploads a video, the Mac and the PC are already downloading it"></a>
+    </details>
+    <details>
+      <summary>At home, does it go through the internet?</summary>
+      <p>The content doesn’t: when your devices are on the same Wi-Fi, it goes straight from one
+        to the other, at Wi-Fi speed. Only an encrypted announcement goes through the server, to
+        put them in touch.</p>
+      <p>Elsewhere (4G, another network), the content goes through the relay server, still encrypted.
+        With <strong>Local network only</strong>, it never goes through the server.</p>
+      <a class="figure" href="/images/reseau-en.svg"><img src="/images/reseau-en.svg" width="960" height="400" loading="lazy"
+         alt="On the same Wi-Fi, the content goes direct; elsewhere, through the relay, still encrypted"></a>
+    </details>
+    <details>
+      <summary>How long is my data kept?</summary>
+      <p>24&nbsp;hours by default. You can choose 10&nbsp;minutes, 1&nbsp;hour, 24&nbsp;hours or 7&nbsp;days.
+        After that, everything is erased.</p>
+      <p>In the group’s settings, you also choose the size of the history (1&nbsp;item, 10 or
+        unlimited) and up to what size the clipboard is shared automatically.</p>
+      <a class="figure" href="/images/reglages-en.webp"><img src="/images/reglages-en.webp" width="1200" height="1040" loading="lazy"
+         alt="The device and group settings, and the list of the group’s devices"></a>
+    </details>
+    <details>
+      <summary>My phone was off: do I still get what was shared?</summary>
+      <p>Yes. What you share waits on the server until it expires, and your phone
+        gets it as soon as it reconnects. The server keeps nothing on disk: if it restarts,
+        whatever was waiting is erased.</p>
+    </details>
+    <details>
+      <summary>Is there a size limit?</summary>
+      <p>Not per file: only the free space on the server counts, shown in Settings.
+        On a computer, automatic sharing stops at 1&nbsp;MB by default; above that, send the
+        file with the <strong>File</strong> button.</p>
+    </details>
+    <details>
+      <summary>Can I share with my family or colleagues?</summary>
+      <p>Yes. Create a group for each (family, work…) and invite their devices to it.
+        Groups are independent: what you share in one doesn’t show up in another.</p>
+    </details>
+    <details>
+      <summary>What if I lose a device?</summary>
+      <p>Remove it from another of your devices: it immediately loses access to everything you share.</p>
+    </details>
+    <details>
+      <summary>Can I use my own server?</summary>
+      <p>Yes: the relay server installs in two commands with Docker. Then choose it in
+        the apps (<strong>Settings → Server</strong>), or open the web app from your server.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/en/deployment.md">The hosting guide</a></p>
+    </details>
+  </section>
+
+  <footer>Entre&nbsp;Nous · <a href="/app/">Open the web app</a> ·
+    <a href="https://github.com/dorianbayart/entre-nous">Source code</a> · AGPL licence ·
+    <a href="/fr/" hreflang="fr" lang="fr">Français</a></footer>
+</main>
+</body>
+</html>

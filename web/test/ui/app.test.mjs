@@ -38,10 +38,11 @@ after(() => browser?.close());
 const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
 
-/** A device: its own browser profile (storage). `phone`: seen as an Android phone. */
-async function device(name, { phone = false } = {}) {
+/** A device: its own browser profile (storage). `phone`: seen as an Android phone; `locale`: its language. */
+async function device(name, { phone = false, locale = 'fr-FR' } = {}) {
   const context = await browser.newContext({
     acceptDownloads: true,
+    locale, // the interface follows the browser's language
     ...(phone ? { userAgent: ANDROID_UA, viewport: { width: 412, height: 860 }, isMobile: true, hasTouch: true } : {}),
   });
   await context.addInitScript(INIT);
@@ -268,5 +269,44 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   await until('Alice still with Bob', async () => (await a.page.locator('.note textarea').inputValue()) === 'sans Carla');
 
   for (const d of [a, b, c]) await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+test('languages: English by the browser, French by the settings, the landing page by Accept-Language', { timeout: 60_000 }, async () => {
+  const d = await device('Erin', { locale: 'en-GB' });
+  await d.page.goto(APP);
+  await d.page.locator('section.main').waitFor();
+  assert.equal(await d.page.evaluate(() => document.documentElement.lang), 'en');
+  assert.ok(await button(d.page, 'File').isVisible(), 'English main screen');
+  assert.equal(await d.page.locator('.title strong').textContent(), 'My devices');
+
+  // French chosen in the settings: everything follows at once, and after a reload
+  await d.page.getByLabel('Settings').click();
+  await d.page.getByLabel('Language').selectOption('fr');
+  await d.page.getByText('Cet appareil', { exact: true }).waitFor();
+  await d.page.getByLabel('Retour').click();
+  await button(d.page, 'Fichier').waitFor(); // French main screen
+  await d.page.reload();
+  await d.page.locator('section.main').waitFor();
+  assert.equal(await d.page.evaluate(() => document.documentElement.lang), 'fr');
+  // back to the browser's language
+  await d.page.getByLabel('Réglages').click();
+  await d.page.getByLabel('Langue').selectOption('');
+  await d.page.getByText('This device', { exact: true }).waitFor();
+
+  // landing page: / by Accept-Language (English for any language but French), /fr/ and /en/
+  const root = APP.replace(/app\/$/, '');
+  const page = async (path, lang) => {
+    const res = await fetch(root + path, { headers: lang ? { 'Accept-Language': lang } : {} });
+    assert.equal(res.status, 200, path);
+    return /<html lang="(\w+)"/.exec(await res.text())[1];
+  };
+  assert.equal(await page('', 'fr-FR,fr;q=0.9,en;q=0.8'), 'fr');
+  assert.equal(await page('', 'de-DE,en;q=0.5,fr;q=0.9'), 'fr');
+  assert.equal(await page('', 'de-DE'), 'en');
+  assert.equal(await page('', 'en-US,fr;q=0.5'), 'en');
+  assert.equal(await page('fr/', 'en-US'), 'fr');
+  assert.equal(await page('en/', 'fr-FR'), 'en');
+  await d.context.close();
   assert.deepEqual(problems, []);
 });

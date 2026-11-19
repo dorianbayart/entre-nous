@@ -8,6 +8,9 @@ Android, relais Docker). `BRAINSTORM.md` fait référence pour les décisions de
   du Mac et Node (tests). Garder cette propriété.
 - Interface : Alpine.js **build CSP** (`@alpinejs/csp`) : pas d'`eval`, donc pas de fonctions
   fléchées ni de template literals dans les attributs HTML ; passer par des méthodes.
+- Langues : français et anglais partout (interface, page d'accueil `web/public/en/`, docs `docs/en/`,
+  `README.en.md`). Tout texte d'interface passe par `web/src/i18n/fr.ts` + `en.ts` (`t('clé')`,
+  `x-rich` pour le gras ; `x-html` est interdit en build CSP) ; jamais de variable de boucle `t`.
 - Protocole relais : requêtes JSON `{ rid, op, … }`, réponses `{ rid, ok, … }`, évènements `{ ev, … }`.
   Ne jamais réutiliser `rid` comme champ métier.
 - Dépôt public : aucune information d'infrastructure (hébergeur, serveur, chemins, hôtes SSH)

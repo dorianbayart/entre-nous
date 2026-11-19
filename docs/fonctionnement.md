@@ -1,4 +1,5 @@
 # Comment ça marche
+[English](en/how-it-works.md)
 
 Entre Nous relie les appareils d'une même personne : ce qui est copié sur l'un se colle sur
 l'autre. Tout est chiffré sur l'appareil qui envoie et déchiffré sur celui qui reçoit ;

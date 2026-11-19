@@ -1,4 +1,5 @@
 # Utiliser Entre Nous
+[English](en/usage.md)
 
 Copie sur un appareil, colle sur un autre. Pas de compte : tes appareils forment un **groupe**,
 associé par QR code.
@@ -100,6 +101,9 @@ Modifiables par n'importe quel appareil du groupe :
 l'autre sans internet, automatiquement (« · en direct vers Pixel » s'affiche). Avec **Réseau local
 uniquement**, un élément n'est disponible que tant que son expéditeur est connecté sur le même
 réseau ; une fois le réglage désactivé, **Envoyer au serveur** permet de le confier au relais, à la main.
+
+**Langue** : l'appli suit la langue du système ou du navigateur (français ou anglais, l'anglais
+pour les autres langues) ; **Réglages → Langue** permet de la changer.
 
 ## 6. Utiliser ton propre serveur
 

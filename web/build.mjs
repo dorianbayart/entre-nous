@@ -24,7 +24,7 @@ await rm(outdir, { recursive: true, force: true });
 await mkdir(outdir, { recursive: true });
 await cp(fileURLToPath(new URL('./public/', import.meta.url)), outdir, { recursive: true });
 // the landing page shows the schemas of the documentation (docs/images/, the only copy)
-for (const name of ['chiffrement.svg', 'reseau.svg']) {
+for (const name of ['chiffrement.svg', 'reseau.svg', 'chiffrement-en.svg', 'reseau-en.svg']) {
   const schema = fileURLToPath(new URL('../docs/images/' + name, import.meta.url));
   if (existsSync(schema)) await cp(schema, outdir + 'images/' + name);
 }

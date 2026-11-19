@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node test/run.mjs",
     "test:ui": "node --test --test-force-exit test/ui/",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs fr && node scripts/screenshots.mjs en"
   },
   "dependencies": {
     "@alpinejs/csp": "^3.17.5",

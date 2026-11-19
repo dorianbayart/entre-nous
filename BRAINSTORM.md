@@ -20,6 +20,7 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
 |---|---|
 | Architecture | Cœur TypeScript commun ; PWA (Android, iOS, navigateurs) ; Mac = Swift + WKWebView ; Linux et Windows = Tauri (§8 ter) ; Android = Capacitor ; les applis embarquent la même interface |
 | Interface | Alpine.js en build CSP (pas d'`eval`), politique de sécurité stricte |
+| Langues | Français et anglais (interface, page d'accueil, docs) ; langue du système ou du navigateur, l'anglais pour toute autre ; réglage par appareil (Réglages → Langue) ; page d'accueil négociée par `Accept-Language` sur `/`, `/fr/` et `/en/` explicites |
 | Transport | Relais WebSocket ; WebRTC direct entre appareils du même réseau (mode local, §8 bis) |
 | Hors ligne | Boîte aux lettres chiffrée sur le relais, historique partagé jusqu'à expiration |
 | Rétention | Réglage du groupe, modifiable par tout membre, 24 h par défaut, plafonnée par `MAX_TTL` (7 j) ; raccourcir s'applique aussi aux éléments existants, allonger seulement aux nouveaux |

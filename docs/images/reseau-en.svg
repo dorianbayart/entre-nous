@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img" aria-labelledby="t d">
+  <title id="t">Direct or through the relay</title>
+  <desc id="d">On the same network, the content goes straight from one device to another; elsewhere, it goes through the relay, still encrypted.</desc>
+  <style>
+    .bg { fill: #f6f5f2; } .panel { fill: #fff; stroke: #e4e2dc; } .text { fill: #1b1b1a; } .muted { fill: #74726c; }
+    .accent { fill: #2f5d50; } .line { stroke: #2f5d50; } .thin { stroke: #9a988f; } .soft { fill: #e3ece8; }
+    .dev { fill: #2f5d50; } .hole { fill: #fff; } .relay { fill: #eceae4; stroke: #c9c6bd; } .wifi { stroke: #2f5d50; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #151515; } .panel { fill: #1f1f1e; stroke: #34332f; } .text { fill: #ecebe7; } .muted { fill: #a9a69e; }
+      .accent { fill: #7fb8a3; } .line { stroke: #7fb8a3; } .thin { stroke: #6f6d66; } .soft { fill: #233630; }
+      .dev { fill: #7fb8a3; } .hole { fill: #1f1f1e; } .relay { fill: #1a1a19; stroke: #3a3935; } .wifi { stroke: #7fb8a3; }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .h { font-size: 17px; font-weight: 700; } .s { font-size: 12.5px; } .b { font-size: 13px; font-weight: 650; }
+    .flow { stroke-dasharray: 2 10; stroke-linecap: round; animation: flow 1s linear infinite; }
+    .flow.rev { animation-direction: reverse; }
+    @keyframes flow { to { stroke-dashoffset: -24; } }
+  </style>
+  <defs>
+    <g id="mac"><rect class="dev" x="-30" y="-22" width="60" height="38" rx="5"/><rect class="hole" x="-25" y="-17" width="50" height="28" rx="2"/><rect class="dev" x="-38" y="17" width="76" height="6" rx="3"/></g>
+    <g id="phone"><rect class="dev" x="-15" y="-27" width="30" height="54" rx="7"/><rect class="hole" x="-11" y="-21" width="22" height="40" rx="3"/></g>
+    <g id="relay"><rect class="relay" x="-48" y="-30" width="96" height="60" rx="12" stroke-width="1.5"/>
+      <rect class="muted" x="-24" y="-16" width="48" height="10" rx="3"/><rect class="muted" x="-24" y="2" width="48" height="10" rx="3"/>
+      <circle class="bg" cx="16" cy="-11" r="2"/><circle class="bg" cx="16" cy="7" r="2"/></g>
+  </defs>
+  <rect class="bg" width="960" height="400" rx="20"/>
+
+  <!-- same network -->
+  <rect class="panel" x="24" y="24" width="444" height="352" rx="18"/>
+  <text class="text h" x="246" y="60" text-anchor="middle">On the same Wi-Fi</text>
+  <text class="muted s" x="246" y="80" text-anchor="middle">the content goes direct, without the internet</text>
+  <use href="#relay" x="246" y="140"/>
+  <text class="muted s" x="246" y="190" text-anchor="middle">announcement and introduction</text>
+  <text class="muted s" x="246" y="206" text-anchor="middle">(encrypted)</text>
+  <line class="thin" x1="106" y1="270" x2="205" y2="166" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <line class="thin" x1="386" y1="270" x2="287" y2="166" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <line class="line flow" x1="140" y1="305" x2="352" y2="305" stroke-width="5"/>
+  <line class="line flow rev" x1="140" y1="317" x2="352" y2="317" stroke-width="2.5" opacity=".45"/>
+  <use href="#mac" x="96" y="300"/>
+  <use href="#phone" x="390" y="305"/>
+  <text class="accent b" x="246" y="294" text-anchor="middle">direct · WebRTC</text>
+  <text class="muted s" x="96" y="345" text-anchor="middle">Mac</text>
+  <text class="muted s" x="390" y="345" text-anchor="middle">Phone</text>
+  <text class="muted s" x="246" y="345" text-anchor="middle">Wi-Fi speed, not internet speed</text>
+  <g transform="translate(246 248)" fill="none" class="wifi" stroke-width="2.5" stroke-linecap="round" opacity=".55">
+    <path d="M-14 -4 a20 20 0 0 1 28 0"/><path d="M-8 2 a11 11 0 0 1 16 0"/><circle cx="0" cy="7" r="1.5" class="accent" stroke="none"/>
+  </g>
+
+  <!-- elsewhere -->
+  <rect class="panel" x="492" y="24" width="444" height="352" rx="18"/>
+  <text class="text h" x="714" y="60" text-anchor="middle">Elsewhere (4G, another network)</text>
+  <text class="muted s" x="714" y="80" text-anchor="middle">the relay takes over, nothing to set up</text>
+  <use href="#relay" x="714" y="160"/>
+  <path class="line flow" d="M574 268 L668 186" stroke-width="5" fill="none"/>
+  <path class="line flow" d="M760 186 L854 268" stroke-width="5" fill="none"/>
+  <use href="#mac" x="564" y="300"/>
+  <use href="#phone" x="864" y="305"/>
+  <text class="accent b" x="714" y="226" text-anchor="middle">still encrypted</text>
+  <text class="muted s" x="714" y="244" text-anchor="middle">the relay keeps the item</text>
+  <text class="muted s" x="714" y="260" text-anchor="middle">until it expires</text>
+  <text class="muted s" x="714" y="320" text-anchor="middle">a device that was off</text>
+  <text class="muted s" x="714" y="336" text-anchor="middle">gets it when it’s back</text>
+  <text class="muted s" x="564" y="345" text-anchor="middle">Mac</text>
+  <text class="muted s" x="864" y="345" text-anchor="middle">Phone</text>
+</svg>

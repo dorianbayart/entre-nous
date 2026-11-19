@@ -3,7 +3,7 @@
 import Alpine from '@alpinejs/csp';
 import qrcode from 'qrcode-generator';
 import jsQR from 'jsqr';
-import { Engine, ItemGoneError, UPLOAD_STALLED, type ItemView, type Invite } from '../core/engine.ts';
+import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ItemView, type Invite } from '../core/engine.ts';
 import { hash } from '../core/crypto.ts';
 import { b64, utf8 } from '../core/bytes.ts';
 import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
@@ -11,26 +11,16 @@ import { androidPlatform, isAndroidApp } from '../platform/android.ts';
 import { isIOS, isStandalone, webPlatform } from '../platform/web.ts';
 import { webrtcAvailable, webrtcLinks } from '../core/webrtc.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
+import { LANGS, duration, humanSize, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
 
 const platform: PlatformApi = isDesktopApp() ? desktopPlatform() : isAndroidApp() ? androidPlatform() : webPlatform();
 
-const TTL_CHOICES = [
-  { value: 600, label: '10 minutes' },
-  { value: 3600, label: '1 heure' },
-  { value: 86400, label: '24 heures' },
-  { value: 7 * 86400, label: '7 jours' },
-];
-const MAX_ITEMS_CHOICES = [
-  { value: 1, label: '1 élément' },
-  { value: 10, label: '10 éléments' },
-  { value: 0, label: 'Illimitée' },
-];
+const TTL_CHOICES = [600, 3600, 86400, 7 * 86400]; // labels: ttl.<seconds>
+const MAX_ITEMS_CHOICES = [1, 10, 0]; // labels: maxItems.<n>
 const MB = 1024 * 1024;
-const AUTO_MAX_CHOICES = [
-  { value: MB, label: '1 Mo' },
-  { value: 10 * MB, label: '10 Mo' },
-  { value: 100 * MB, label: '100 Mo' },
-];
+const AUTO_MAX_CHOICES = [MB, 10 * MB, 100 * MB];
+/** The language of the system: the desktop apps say it, their web view may not. */
+const systemLang = () => pick(platform.systemLang ? [platform.systemLang] : systemLangs());
 const MAILBOX_AGE = 60_000; // an item received while closed is copied at opening if younger
 
 interface Prefs {
@@ -39,6 +29,7 @@ interface Prefs {
   confirmDelete: boolean;
   notify: boolean; // desktop apps: notification on reception
   groupId: string | null;
+  lang?: Lang; // chosen by the user; none: the system's
   relay?: string; // native apps: server of new groups, when not the default one
   updateSeen?: string; // new version whose banner was closed
   updateNotified?: string; // new version already announced by a system notification
@@ -126,23 +117,27 @@ async function thumbnail(blob: Blob): Promise<string | undefined> {
 }
 
 /** Toast text of a failed copy or save: a deleted item says so plainly. */
-const failure = (prefix: string, err: any) => (err instanceof ItemGoneError ? err.message : prefix + (err?.message ?? err));
+const failure = (key: Key, err: any) => (err instanceof ItemGoneError ? err.message : translate(key, { msg: err?.message ?? err }));
 
-function humanSize(n = 0) {
-  const fr = (x: number, digits: number) => x.toFixed(digits).replace('.', ',').replace(/,0+$/, '');
-  if (n < 1024) return `${n} o`;
-  if (n < 1024 ** 2) return `${fr(n / 1024, 0)} Ko`;
-  if (n < 1024 ** 3) return `${fr(n / 1024 ** 2, 1)} Mo`;
-  return `${fr(n / 1024 ** 3, 1)} Go`;
+/** The nodes of a text with **bold**, [[glyph]] and line breaks (never parsed as HTML). */
+function richNodes(text: string): Node[] {
+  return text.split(/(\*\*.+?\*\*|\[\[.+?\]\]|\n)/).filter(Boolean).map((part) => {
+    if (part === '\n') return document.createElement('br');
+    const bold = /^\*\*(.+)\*\*$/.exec(part);
+    const glyph = /^\[\[(.+)\]\]$/.exec(part);
+    if (!bold && !glyph) return document.createTextNode(part);
+    const el = document.createElement(bold ? 'strong' : 'span');
+    if (glyph) el.className = 'glyph';
+    el.textContent = (bold ?? glyph)![1];
+    return el;
+  });
 }
 
-function duration(ms: number) {
-  const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 60) return `${s} s`;
-  if (s < 3600) return `${Math.round(s / 60)} min`;
-  if (s < 2 * 86400) return `${Math.round(s / 3600)} h`;
-  return `${Math.round(s / 86400)} j`;
-}
+// x-rich="t('…')": a translated text with a little markup (x-html is not in the CSP build).
+Alpine.directive('rich', (el, { expression }, { effect, evaluateLater }) => {
+  const get = evaluateLater(expression);
+  effect(() => get((text) => el.replaceChildren(...richNodes(String(text ?? '')))));
+});
 
 Alpine.data('app', () => ({
   view: 'loading' as string,
@@ -171,8 +166,6 @@ Alpine.data('app', () => ({
     notify: true,
     groupId: null,
   } as Prefs,
-  maxItemsChoices: MAX_ITEMS_CHOICES,
-  autoMaxChoices: AUTO_MAX_CHOICES,
   noteMax: NOTE_MAX,
   noteEmpty: true,
   toastText: '',
@@ -187,13 +180,17 @@ Alpine.data('app', () => ({
   scanError: '',
   canInstall: false,
   now: Date.now(),
-  ttlChoices: TTL_CHOICES,
   dragging: false,
   relayInput: platform.defaultRelay,
+  /** Language of the interface: read by t(), so that the texts follow a change. */
+  lang: currentLang() as Lang,
+  langNames: { fr: 'Français', en: 'English' } as Record<Lang, string>,
+  langs: LANGS,
 
   async init() {
     await platform.init?.();
     this.prefs = { ...this.prefs, ...((await platform.kv.get<Prefs>('prefs')) ?? {}) };
+    this.applyLang();
     // the web app always uses the server that serves it (its policy allows no other)
     if (platform.native && this.prefs.relay) this.relayInput = this.prefs.relay;
     engine = await Engine.load({
@@ -211,7 +208,7 @@ Alpine.data('app', () => ({
         this.notifyIncoming(e.item);
       } else if (e.type === 'synced') this.onSynced(e.groupId);
       else if (e.type === 'presence') this.onPresence(e.groupId);
-      else if (e.type === 'removed') this.toast(`Cet appareil a été retiré de « ${e.groupName} »`);
+      else if (e.type === 'removed') this.toast(this.t('toast.removedHere', { group: e.groupName }));
       else if (e.type === 'error') this.toast(e.message);
     });
     platform.autostart?.get().then((on) => (this.autostart = on), () => {});
@@ -251,7 +248,7 @@ Alpine.data('app', () => ({
     else document.addEventListener('visibilitychange', () => onForeground(document.visibilityState === 'visible'));
 
     // The Mac (and desktop browsers) start with a group of their own, ready to invite.
-    if (engine.groups.length === 0 && !mobile && !pendingInvite) await engine.createGroup('Mes appareils');
+    if (engine.groups.length === 0 && !mobile && !pendingInvite) await engine.createGroup(this.t('group.default'));
     engine.start();
     this.refresh();
 
@@ -299,6 +296,42 @@ Alpine.data('app', () => ({
     this.showNote();
   },
 
+  // ---------------------------------------------------------------- language
+
+  /** A text of the interface (reads `lang`: the bindings follow a change of language). */
+  t(key: Key, vars?: Record<string, string | number>) {
+    void this.lang;
+    return translate(key, vars);
+  },
+
+  /** A text by a number: `key.one` or `key.other`. */
+  tn(key: string, n: number) {
+    void this.lang;
+    return translateN(key, n);
+  },
+
+  /** The chosen language, or the system's: the texts, the page, the menu of the icon. */
+  applyLang() {
+    const l = this.prefs.lang ?? systemLang();
+    setLang(l);
+    this.lang = l;
+    document.documentElement.lang = l;
+    platform.setLang?.(l);
+  },
+
+  /** Settings: the selected entry of the language list ('' = the system's). */
+  isLangChoice(code: string) {
+    return (this.prefs.lang ?? '') === code;
+  },
+
+  /** Settings: '' follows the system. */
+  setLanguage(e: Event) {
+    const v = (e.target as HTMLSelectElement).value as Lang | '';
+    this.prefs.lang = v || undefined;
+    this.savePrefs();
+    this.applyLang();
+  },
+
   // ---------------------------------------------------------------- new version
 
   /** A newer version of this app, not dismissed yet (the web app updates itself). */
@@ -318,7 +351,7 @@ Alpine.data('app', () => ({
     if (!v || !platform.notify || this.prefs.updateNotified === v) return;
     this.prefs.updateNotified = v;
     this.savePrefs();
-    platform.notify('Entre Nous', `Nouvelle version disponible (${v})`);
+    platform.notify('Entre Nous', this.t('update.notify', { v }));
   },
 
   dismissUpdate() {
@@ -335,8 +368,8 @@ Alpine.data('app', () => ({
   get noteInfo() {
     const n = this.note;
     if (!n) return '';
-    const who = n.mine ? 'Moi' : n.byName;
-    return n.expiresAt ? `${who} · expire dans ${duration(n.expiresAt - this.now)}` : who;
+    const who = n.mine ? this.t('me') : n.byName;
+    return n.expiresAt ? this.t('note.by', { who, left: duration(n.expiresAt - this.now) }) : who;
   },
 
   /** Puts the group's note in the field, unless the user is typing in it right now. */
@@ -385,9 +418,9 @@ Alpine.data('app', () => ({
   async publish(item: ItemView) {
     try {
       await engine.publish(this.groupId!, item.id);
-      this.toast('Envoyé au serveur');
+      this.toast(this.t('toast.published'));
     } catch (err: any) {
-      this.toast(/^Envoi annulé/.test(err.message) ? err.message : 'Erreur : ' + (err.message ?? err));
+      this.toast(err instanceof SendCancelledError ? err.message : this.t('toast.error', { msg: err.message ?? err }));
     }
   },
 
@@ -397,8 +430,8 @@ Alpine.data('app', () => ({
     lastShared = b64(hash(utf8(text)));
     platform
       .copy('text/plain', Promise.resolve({ text }))
-      .then(() => this.toast('Copié'))
-      .catch((err) => this.toast('Copie impossible : ' + (err.message ?? err)));
+      .then(() => this.toast(this.t('toast.copied')))
+      .catch((err) => this.toast(this.t('toast.copyFailed', { msg: err.message ?? err })));
   },
 
   /** The note is erased for every device: confirmed like a deletion. */
@@ -430,13 +463,13 @@ Alpine.data('app', () => ({
     pendingLocal = undefined; // a copy made before the pause is not sent afterwards
     platform.setPaused?.(paused);
     this.savePrefs();
-    this.toast(paused ? 'En pause : l’envoi automatique du presse-papier est désactivé.' : 'Envoi automatique réactivé');
+    this.toast(this.t(paused ? 'pause.on' : 'pause.off'));
   },
 
   get shareHint() {
     // turned off: the pause button is hidden, so this comes first
-    if (!this.prefs.autoShare) return 'Envoi automatique désactivé (voir Réglages).';
-    if (this.prefs.paused) return 'En pause : l’envoi automatique du presse-papier est désactivé.';
+    if (!this.prefs.autoShare) return this.t('autoShare.off');
+    if (this.prefs.paused) return this.t('pause.on');
     return '';
   },
 
@@ -460,15 +493,24 @@ Alpine.data('app', () => ({
   get statusText() {
     const g = this.group;
     if (!g) return '';
-    if (g.status !== 'online') return g.status === 'connecting' ? 'Connexion…' : 'Hors ligne';
+    if (g.status !== 'online') return this.t(g.status === 'connecting' ? 'status.connecting' : 'status.offline');
     const online = this.others.filter((m) => m.online).map((m) => m.name);
-    if (!this.others.length) return 'Aucun autre appareil : invites-en un depuis les Réglages';
-    return online.length ? `En ligne : ${online.join(', ')}` : 'Aucun autre appareil en ligne';
+    if (!this.others.length) return this.t('status.alone');
+    return online.length ? this.t('status.online', { names: online.join(', ') }) : this.t('status.nobodyOnline');
   },
 
   get ttlOptions() {
     const max = this.group?.maxTtl ?? 7 * 86400;
-    return TTL_CHOICES.filter((c) => c.value <= max);
+    return TTL_CHOICES.filter((v) => v <= max).map((value) => ({ value, label: this.t(('ttl.' + value) as Key) }));
+  },
+
+  get maxItemsChoices() {
+    return MAX_ITEMS_CHOICES.map((value) => ({ value, label: this.t(('maxItems.' + value) as Key) }));
+  },
+
+  get autoMaxChoices() {
+    void this.lang;
+    return AUTO_MAX_CHOICES.map((value) => ({ value, label: humanSize(value) }));
   },
 
   savePrefs() {
@@ -493,7 +535,7 @@ Alpine.data('app', () => ({
 
   ago(item: ItemView) {
     const ms = this.now - item.createdAt;
-    return ms < 60_000 ? 'à l’instant' : 'il y a ' + duration(ms);
+    return ms < 60_000 ? this.t('ago.now') : this.t('ago', { d: duration(ms) });
   },
 
   /** Still being uploaded, but its sender sent nothing for minutes: a download would give up. */
@@ -502,11 +544,11 @@ Alpine.data('app', () => ({
   },
 
   left(item: ItemView) {
-    if (item.unavailable) return `réseau local · « ${item.fromName} » n’est pas connecté`;
-    if (item.local) return 'réseau local · expire dans ' + duration(item.expiresAt - this.now);
-    if (this.interrupted(item)) return 'envoi interrompu';
-    if (item.pending) return this.now - (item.progressAt ?? 0) > STALLED_AFTER ? 'envoi en pause' : 'envoi en cours';
-    return 'expire dans ' + duration(item.expiresAt - this.now);
+    if (item.unavailable) return this.t('left.unavailable', { name: item.fromName });
+    if (item.local) return this.t('left.local', { d: duration(item.expiresAt - this.now) });
+    if (this.interrupted(item)) return this.t('left.interrupted');
+    if (item.pending) return this.t(this.now - (item.progressAt ?? 0) > STALLED_AFTER ? 'left.paused' : 'left.sending');
+    return this.t('expires', { d: duration(item.expiresAt - this.now) });
   },
 
   /**
@@ -536,7 +578,7 @@ Alpine.data('app', () => ({
 
   transferState(t: { error?: string; paused?: boolean; done: number; total: number; rate?: number }) {
     if (t.error) return t.error;
-    return t.paused ? this.progress(t) + ' · en pause' : this.progress(t);
+    return t.paused ? this.t('transfer.paused', { p: this.progress(t) }) : this.progress(t);
   },
 
   /** A download in progress: its loader takes the place of Copy and Save. */
@@ -555,9 +597,9 @@ Alpine.data('app', () => ({
   },
 
   label(item: ItemView) {
-    if (item.error) return 'Impossible à déchiffrer sur cet appareil';
-    if (item.kind === 'text') return item.text ?? 'Texte resté sur le réseau local';
-    return item.name ?? 'fichier';
+    if (item.error) return this.t('item.undecryptable');
+    if (item.kind === 'text') return item.text ?? this.t('item.localText');
+    return item.name ?? this.t('name.file');
   },
 
   /** Size shown in the item's details (texts too: their UTF-8 size). */
@@ -588,16 +630,16 @@ Alpine.data('app', () => ({
     const mime = item.kind === 'text' ? 'text/plain' : (item.mime ?? 'application/octet-stream');
     platform
       .copy(mime, engine.content(groupId, item.id).then((c) => ({ ...c, expiresAt: item.expiresAt })))
-      .then(() => this.toast('Copié'))
-      .catch((err) => this.toast(failure('Copie impossible : ', err)));
+      .then(() => this.toast(this.t('toast.copied')))
+      .catch((err) => this.toast(failure('toast.copyFailed', err)));
   },
 
   async save(item: ItemView) {
     try {
       const c = await engine.content(this.groupId!, item.id);
-      await platform.save(c.blob!, c.name ?? 'fichier');
+      await platform.save(c.blob!, c.name ?? this.t('name.file'));
     } catch (err: any) {
-      this.toast(failure('Erreur : ', err));
+      this.toast(failure('toast.error', err));
     }
   },
 
@@ -626,9 +668,9 @@ Alpine.data('app', () => ({
     try {
       await engine.clearAll(this.groupId!);
       this.eraseNote();
-      this.toast('Historique supprimé');
+      this.toast(this.t('toast.cleared'));
     } catch (err: any) {
-      this.toast('Erreur : ' + (err.message ?? err));
+      this.toast(this.t('toast.error', { msg: err.message ?? err }));
     }
   },
 
@@ -654,8 +696,8 @@ Alpine.data('app', () => ({
   /** Mac: a notification while the window is closed (never the content itself). */
   notifyIncoming(item: ItemView) {
     if (!this.prefs.notify || !platform.notify) return;
-    const what = item.kind === 'text' ? 'Texte reçu' : item.kind === 'image' ? 'Image reçue' : 'Fichier reçu';
-    platform.notify('Entre Nous', `${what} de ${item.fromName}`);
+    const what = item.kind === 'text' ? 'notify.text' : item.kind === 'image' ? 'notify.image' : 'notify.file';
+    platform.notify('Entre Nous', this.t(what, { name: item.fromName }));
   },
 
   // ---------------------------------------------------------------- sending
@@ -670,11 +712,11 @@ Alpine.data('app', () => ({
         const thumb = isImage ? await thumbnail(o.blob) : undefined;
         await engine.sendBlob(this.groupId, o.blob, o.name, isImage ? 'image' : 'file', thumb);
       }
-      this.toast('Envoyé');
+      this.toast(this.t('toast.sent'));
     } catch (err: any) {
-      if (err.message === 'full') this.toast('Serveur saturé, réessaie plus tard');
-      else if (/^Envoi annulé/.test(err.message)) this.toast(err.message);
-      else this.toast('Erreur : ' + (err.message ?? err));
+      if (err.message === 'full') this.toast(this.t('toast.full'));
+      else if (err instanceof SendCancelledError) this.toast(err.message);
+      else this.toast(this.t('toast.error', { msg: err.message ?? err }));
     }
   },
 
@@ -682,12 +724,12 @@ Alpine.data('app', () => ({
     try {
       const o = await platform.read();
       if (!o) {
-        this.toast('Presse-papier vide');
+        this.toast(this.t('toast.clipboardEmpty'));
         return;
       }
       await this.send(o);
     } catch (err: any) {
-      this.toast('Accès au presse-papier refusé');
+      this.toast(this.t('toast.clipboardDenied'));
     }
   },
 
@@ -745,8 +787,8 @@ Alpine.data('app', () => ({
     if (this.prefs.paused || !this.prefs.autoShare) return;
     if (c.kind === 'toobig') {
       const limit = humanSize(this.group?.autoMax);
-      const how = this.mac ? 'envoie-le avec « Fichier » ou glisse-le sur l’icône' : 'envoie-le avec « Fichier »';
-      this.toast(`${c.name} (${humanSize(c.size)}) dépasse ${limit} : ${how}`);
+      const how = this.t(this.mac ? 'toast.tooBigHowMac' : 'toast.tooBigHow');
+      this.toast(this.t('toast.tooBig', { name: c.name, size: humanSize(c.size), limit, how }));
       return;
     }
     const o = c;
@@ -778,7 +820,7 @@ Alpine.data('app', () => ({
       const res = await cache.match(req);
       if (!res) continue;
       const blob = await res.blob();
-      const name = decodeURIComponent(res.headers.get('X-Name') || 'partage');
+      const name = decodeURIComponent(res.headers.get('X-Name') || this.t('name.shared'));
       await cache.delete(req);
       if (blob.type === 'text/plain' && name === 'texte') await this.send({ kind: 'text', text: await blob.text() });
       else await this.send({ kind: 'file', blob, name });
@@ -793,7 +835,7 @@ Alpine.data('app', () => ({
     invite = engine.invite(
       this.groupId,
       (name) => {
-        this.toast(`${name} a rejoint le groupe`);
+        this.toast(this.t('toast.joined', { name }));
         this.closeInvite();
         this.view = 'main';
       },
@@ -811,7 +853,7 @@ Alpine.data('app', () => ({
       if (left <= 0) {
         this.closeInvite();
         this.view = 'settings';
-        this.toast('Invitation expirée');
+        this.toast(this.t('toast.inviteExpired'));
         return;
       }
       this.inviteLeft = duration(left);
@@ -832,10 +874,10 @@ Alpine.data('app', () => ({
     try {
       const id = await engine.join(link);
       this.selectGroup(id);
-      this.toast('Appareil associé');
+      this.toast(this.t('toast.paired'));
       this.view = 'main';
     } catch (err: any) {
-      this.toast('Association impossible : ' + (err.message ?? err));
+      this.toast(this.t('toast.pairFailed', { msg: err.message ?? err }));
     } finally {
       this.busy = false;
     }
@@ -853,7 +895,7 @@ Alpine.data('app', () => ({
     try {
       scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     } catch {
-      this.scanError = "Accès à la caméra refusé";
+      this.scanError = this.t('toast.cameraDenied');
       return;
     }
     const video = (this as any).$refs.video as HTMLVideoElement;
@@ -943,9 +985,9 @@ Alpine.data('app', () => ({
     const want = !this.autostart;
     try {
       this.autostart = await platform.autostart!.set(want);
-      if (want && !this.autostart) this.toast('Autorise Entre Nous dans les réglages du système qui viennent de s’ouvrir');
+      if (want && !this.autostart) this.toast(this.t('toast.autostartAllow'));
     } catch (err: any) {
-      this.toast('Réglage non appliqué : ' + (err?.message ?? err));
+      this.toast(this.t('toast.settingFailed', { msg: err?.message ?? err }));
     }
   },
 
@@ -962,7 +1004,7 @@ Alpine.data('app', () => ({
   get storageText() {
     const st = this.group?.storage;
     if (!st) return '';
-    return `${humanSize(Math.max(0, st.limit - st.used))} disponibles sur ${humanSize(st.limit)}`;
+    return this.t('storage.space', { free: humanSize(Math.max(0, st.limit - st.used)), total: humanSize(st.limit) });
   },
 
   get storageLow() {
@@ -977,9 +1019,10 @@ Alpine.data('app', () => ({
 
   /** An upload line: from here (to the relay, or straight to a device), or by another device. */
   transferLabel(t: { name: string; direct?: boolean; peer?: string; from?: string }) {
-    const name = t.name || 'texte';
-    if (t.from) return `↑ ${name} · envoyé par ${t.from}`;
-    return '↑ ' + name + (t.direct ? ' · en direct' + (t.peer ? ` vers ${t.peer}` : '') : '');
+    const name = t.name || this.t('name.text');
+    if (t.from) return this.t('transfer.from', { name, from: t.from });
+    if (!t.direct) return '↑ ' + name;
+    return t.peer ? this.t('transfer.directTo', { name, peer: t.peer }) : this.t('transfer.direct', { name });
   },
 
   toggleAutoShare() {
@@ -989,7 +1032,7 @@ Alpine.data('app', () => ({
 
   async createGroup() {
     // the first group gets the name the desktop apps give to theirs
-    const name = this.newGroupName.trim() || (this.groups.length ? 'Nouveau groupe' : 'Mes appareils');
+    const name = this.newGroupName.trim() || this.t(this.groups.length ? 'group.new' : 'group.default');
     this.newGroupName = '';
     const id = await engine.createGroup(name);
     this.selectGroup(id);
@@ -1008,13 +1051,13 @@ Alpine.data('app', () => ({
     try {
       relay = new URL(url).origin;
     } catch {
-      this.toast('Adresse invalide');
+      this.toast(this.t('toast.relayInvalid'));
       return;
     }
     this.busy = true;
     try {
       if (!(await reachable(relay))) {
-        this.toast('Serveur injoignable : ' + relay);
+        this.toast(this.t('toast.relayUnreachable', { relay }));
         return;
       }
       this.prefs.relay = relay === platform.defaultRelay ? undefined : relay;
@@ -1028,9 +1071,9 @@ Alpine.data('app', () => ({
         if (this.groupId === g.id) this.selectGroup(id);
         await engine.removeMember(g.id, me);
       }
-      this.toast('Serveur enregistré');
+      this.toast(this.t('toast.relaySaved'));
     } catch (err: any) {
-      this.toast('Erreur : ' + (err.message ?? err));
+      this.toast(this.t('toast.error', { msg: err.message ?? err }));
     } finally {
       this.busy = false;
     }
@@ -1045,10 +1088,10 @@ Alpine.data('app', () => ({
     this.confirming = '';
     try {
       await engine.removeMember(this.groupId!, member.id);
-      this.toast(member.me ? 'Tu as quitté le groupe' : `${member.name} a été retiré du groupe`);
+      this.toast(member.me ? this.t('toast.left') : this.t('toast.memberRemoved', { name: member.name }));
       if (member.me) this.back();
     } catch (err: any) {
-      this.toast('Erreur : ' + (err.message ?? err));
+      this.toast(this.t('toast.error', { msg: err.message ?? err }));
     }
   },
 
@@ -1088,7 +1131,7 @@ Alpine.data('app', () => ({
   },
 
   progress(t: { done: number; total: number; rate?: number }) {
-    const pct = (t.total ? Math.round((t.done / t.total) * 100) : 0) + ' %';
+    const pct = (t.total ? Math.round((t.done / t.total) * 100) : 0) + (this.lang === 'fr' ? ' %' : '%');
     return t.rate ? `${pct} · ${humanSize(Math.round(t.rate))}/s` : pct;
   },
 
@@ -1098,12 +1141,11 @@ Alpine.data('app', () => ({
   },
 
   deviceCount(g: { members: unknown[] }) {
-    const n = g.members.length;
-    return n + (n > 1 ? ' appareils' : ' appareil');
+    return this.tn('devices', g.members.length);
   },
 
   platformLabel(p: string) {
-    return { mac: 'Mac', linux: 'Linux', windows: 'Windows', android: 'Android', ios: 'iOS', desktop: 'Navigateur' }[p] ?? p;
+    return { mac: 'Mac', linux: 'Linux', windows: 'Windows', android: 'Android', ios: 'iOS', desktop: this.t('device.browser') }[p] ?? p;
   },
 }));
 

@@ -2,6 +2,7 @@
 import { IndexedKV } from '../core/storage.ts';
 import type { Platform } from '../core/group.ts';
 import type { Outgoing, PlatformApi } from './types.ts';
+import { t } from '../i18n/index.ts';
 
 const ua = navigator.userAgent;
 export const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && navigator.maxTouchPoints > 1);
@@ -18,9 +19,9 @@ function detectKind(): Platform {
 function defaultName(kind: Platform): string {
   if (kind === 'ios') return /iPad/.test(ua) ? 'iPad' : 'iPhone';
   if (kind === 'android') return 'Android';
-  if (/Windows/.test(ua)) return 'PC Windows';
-  if (/Linux/.test(ua)) return 'PC Linux';
-  return 'Navigateur';
+  if (/Windows/.test(ua)) return t('device.windows');
+  if (/Linux/.test(ua)) return t('device.linux');
+  return t('device.browser');
 }
 
 /** The async clipboard only accepts PNG images. */

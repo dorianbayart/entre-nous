@@ -43,7 +43,7 @@ impl Clip {
     fn set(&self, mut contents: Vec<ClipboardContent>) -> Result<(), String> {
         contents.extend(secret_marks());
         let guard = self.ctx.lock().unwrap();
-        let ctx = guard.as_ref().ok_or("presse-papier inaccessible")?;
+        let ctx = guard.as_ref().ok_or(crate::l10n::t("noClipboard"))?;
         *self.own_write.lock().unwrap() = Some(Instant::now());
         let res = ctx.set(contents).map_err(|e| e.to_string());
         *self.own_write.lock().unwrap() = Some(Instant::now());

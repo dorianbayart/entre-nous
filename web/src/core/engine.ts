@@ -43,6 +43,7 @@ import {
 import { RelayConnection, type RelayEvent } from './relay.ts';
 import { type LinkFactory, Peers } from './peers.ts';
 import type { KV } from './storage.ts';
+import { t } from '../i18n/index.ts';
 
 export interface Host {
   kv: KV;
@@ -85,8 +86,16 @@ export interface ItemView {
 /** The item disappeared from the relay before its content was fully downloaded. */
 export class ItemGoneError extends Error {
   constructor() {
-    super('Fichier supprimé avant la fin du téléchargement');
+    super(t('err.itemGone'));
     this.name = 'ItemGoneError';
+  }
+}
+
+/** The item was deleted (here or on another device) while this device was sending it. */
+export class SendCancelledError extends Error {
+  constructor() {
+    super(t('err.sendCancelled'));
+    this.name = 'SendCancelledError';
   }
 }
 
@@ -559,7 +568,7 @@ export class Engine {
   async publish(groupId: string, itemId: string) {
     const rt = this.rt(groupId);
     const o = rt.outbox.get(itemId);
-    if (!o) throw new Error('contenu plus disponible sur cet appareil');
+    if (!o) throw new Error(t('err.contentGone'));
     const key = `up-${++this.uploadSeq}`;
     const transfer: Transfer = { id: key, groupId, name: o.name, direction: 'up', done: 0, total: o.chunks, itemId };
     this.transfers.set(key, transfer);
@@ -572,9 +581,9 @@ export class Engine {
     } catch (err: any) {
       if (err.message === 'unknown item') {
         this.transfers.delete(key);
-        throw new Error('Envoi annulé : fichier supprimé');
+        throw new SendCancelledError();
       }
-      transfer.error = err.message === 'full' ? 'Serveur saturé' : String(err.message ?? err);
+      transfer.error = err.message === 'full' ? t('err.full') : String(err.message ?? err);
       throw err;
     } finally {
       this.changed();
@@ -778,7 +787,7 @@ export class Engine {
           theirs = openState(rt.g, remote.blob);
         } catch (err: any) {
           // Unreadable state on the relay: ours wins.
-          this.emit({ type: 'error', message: 'État du groupe illisible sur le serveur : ' + (err.message ?? err) });
+          this.emit({ type: 'error', message: t('err.stateUnreadable', { msg: err.message ?? err }) });
           rt.g.state = { ...rt.g.state, v: remote.v + 1, updatedBy: this.device.id, updatedAt: Date.now() };
           remote = null;
           continue;
@@ -1075,9 +1084,9 @@ export class Engine {
       if (err.message === 'unknown item') {
         // deleted (from this device or another) while being sent: nothing left to show
         this.transfers.delete(key);
-        throw new Error('Envoi annulé : fichier supprimé');
+        throw new SendCancelledError();
       }
-      transfer.error = err.message === 'full' ? 'Serveur saturé' : String(err.message ?? err);
+      transfer.error = err.message === 'full' ? t('err.full') : String(err.message ?? err);
       throw err;
     } finally {
       this.changed();
@@ -1119,8 +1128,8 @@ export class Engine {
   /** Waits for the connection (and the members' prekeys) to be back. */
   private async reconnected(rt: Runtime, until: number) {
     for (;;) {
-      if (Date.now() > until) throw new Error('connexion perdue');
-      if (!this.runtimes.has(rt.g.id)) throw new Error('groupe quitté');
+      if (Date.now() > until) throw new Error(t('err.connectionLost'));
+      if (!this.runtimes.has(rt.g.id)) throw new Error(t('err.groupLeft'));
       try {
         await this.whenReady(rt, 60_000);
         return;
@@ -1181,8 +1190,8 @@ export class Engine {
     const own = rt.outbox.get(itemId);
     if (own) return { blob: own.blob, name: header.name, mime: header.mime, ...(await textOf(own.blob)) };
     const from = entry.relay.from;
-    const sender = rt.g.state.members[from]?.name ?? 'l’expéditeur';
-    const unreachable = () => new Error(`Disponible seulement quand « ${sender} » est connecté sur le même réseau`);
+    const sender = rt.g.state.members[from]?.name ?? t('err.theSender');
+    const unreachable = () => new Error(t('err.localOnly', { name: sender }));
     // same network as the sender: straight from it. Until the direct link is up (or if it
     // cannot be), chunks come from the relay; local items can only come directly.
     const peers = from !== this.device.id && rt.online.has(from) ? rt.peers : undefined;
@@ -1233,7 +1242,7 @@ export class Engine {
                 continue;
               }
               if (Date.now() - (now.relay.progressAt ?? now.relay.createdAt) > UPLOAD_STALLED) {
-                throw new Error('Envoi interrompu : réessaie quand l’expéditeur sera de retour');
+                throw new Error(t('err.uploadInterrupted'));
               }
               await this.nextChange(5_000);
             }
@@ -1346,7 +1355,7 @@ export class Engine {
     } catch (err: any) {
       // kept as a draft, sent again at the next connection
       if (err.message !== 'disconnected' && err.message !== 'timeout') {
-        this.emit({ type: 'error', message: 'Note non envoyée : ' + (err.message ?? err) });
+        this.emit({ type: 'error', message: t('err.noteNotSent', { msg: err.message ?? err }) });
       }
     } finally {
       rt.noteSending = false;
@@ -1449,7 +1458,7 @@ export class Engine {
           setTimeout(() => conn.stop(), 1000);
           onJoined(member.name);
         } catch (err: any) {
-          this.emit({ type: 'error', message: "Échec de l'association : " + (err.message ?? err) });
+          this.emit({ type: 'error', message: t('err.pairFailed', { msg: err.message ?? err }) });
         }
       },
     );
@@ -1470,7 +1479,7 @@ export class Engine {
   async join(link: string): Promise<string> {
     const url = new URL(link);
     const param = new URLSearchParams(url.hash.slice(1)).get('p');
-    if (!param) throw new Error('lien invalide');
+    if (!param) throw new Error(t('err.badLink'));
     const secret = unb64(param);
     const relay = url.origin;
     const channel = b64(kdf(secret, 'pair-channel'));
@@ -1479,7 +1488,7 @@ export class Engine {
     const hello = b64(seal(key, utf8(JSON.stringify({ member: me })), utf8('join')));
 
     return new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => fail(new Error('invitation expirée')), 60_000);
+      const timer = setTimeout(() => fail(new Error(t('err.inviteExpired'))), 60_000);
       const fail = (err: Error) => {
         clearTimeout(timer);
         conn.stop();

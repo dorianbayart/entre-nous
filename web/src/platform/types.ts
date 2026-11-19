@@ -13,6 +13,10 @@ export interface PlatformApi {
   kv: KV;
   defaultName: string;
   defaultRelay: string;
+  /** Desktop apps: the language of the system (its web view may not say it). */
+  systemLang?: string;
+  /** Desktop apps: the language of the interface, for the menu of the icon. */
+  setLang?(lang: string): void;
   /** Can the app write the clipboard by itself, without a tap (Mac, Android)? */
   autoWrite: boolean;
 

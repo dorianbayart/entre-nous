@@ -133,3 +133,17 @@ img.wide { height: auto; }
   .lead { font-size: 19px; }
   .cta .button { flex: 1 1 100%; }
 }
+
+/* the other language of the page, top right */
+.lang-switch {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 14px);
+  right: 16px;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.lang-switch:hover { color: var(--text); border-color: var(--muted); }

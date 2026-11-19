@@ -2,6 +2,9 @@
 // device, and the downloads (size, or unavailable).
 import qrcode from 'qrcode-generator';
 
+// the page is French (/, /fr/) or English (/en/): its few texts written from here follow it
+const en = document.documentElement.lang === 'en';
+
 const ua = navigator.userAgent;
 const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 const android = /Android/.test(ua);
@@ -35,10 +38,10 @@ fetch('/release.json')
       version.hidden = false;
     }
     for (const [id, label] of [
-      ['mac', 'Appli Mac'],
-      ['android', 'Appli Android'],
-      ['windows', 'Appli Windows'],
-      ['linux', 'Appli Linux'],
+      ['mac', 'Mac'],
+      ['android', 'Android'],
+      ['windows', 'Windows'],
+      ['linux', 'Linux'],
     ]) {
       const link = document.getElementById(id) as HTMLAnchorElement | null;
       const note = document.getElementById(id + '-note');
@@ -47,10 +50,11 @@ fetch('/release.json')
       if (!size) {
         link.classList.add('disabled');
         link.removeAttribute('href');
-        note.textContent = label + ' bientôt disponible au téléchargement.';
+        note.textContent = en ? `${label} app available for download soon.` : `Appli ${label} bientôt disponible au téléchargement.`;
         continue;
       }
-      const human = size < 1024 * 1024 ? `${Math.round(size / 1024)} Ko` : `${(size / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`;
+      const mb = (size / 1024 / 1024).toFixed(1);
+      const human = size < 1024 * 1024 ? `${Math.round(size / 1024)} ${en ? 'KB' : 'Ko'}` : en ? `${mb} MB` : `${mb.replace('.', ',')} Mo`;
       const slot = note.querySelector('.size'); // where the size goes, when not at the end
       if (slot) slot.textContent = ' · ' + human;
       else note.append(' · ' + human);

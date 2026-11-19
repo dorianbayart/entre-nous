@@ -4,6 +4,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { b64, fromJSON, toJSON, unb64 } from '../core/bytes.ts';
 import type { KV } from '../core/storage.ts';
 import type { Outgoing, PlatformApi } from './types.ts';
+import { t } from '../i18n/index.ts';
 
 const Native = registerPlugin<any>('EntreNous');
 
@@ -59,7 +60,7 @@ export function androidPlatform(): PlatformApi {
         return;
       }
       const blob = c.blob!;
-      if (!mime.startsWith('image/') || blob.size > IMAGE_MAX) throw new Error('utilise « Enregistrer »');
+      if (!mime.startsWith('image/') || blob.size > IMAGE_MAX) throw new Error(t('err.useSave'));
       await Native.clipWrite({ kind: 'image', data: b64(new Uint8Array(await blob.arrayBuffer())), mime });
     },
 

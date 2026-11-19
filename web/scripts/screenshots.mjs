@@ -1,6 +1,7 @@
 // Screenshots and animation of the documentation (docs/images/), from the real app.
 //   docker compose up -d --build   (at the root: the relay serves the app to show)
-//   npm run screenshots            (needs Chrome and ffmpeg)
+//   npm run screenshots            (needs Chrome and ffmpeg): French, then English
+//   node scripts/screenshots.mjs en   one language (fr by default); the English files end in -en
 // Three devices in Chrome: a Mac (the desktop bridge is simulated: the app runs as in the Mac
 // app, with automatic sharing), an Android phone and a PC (the web app in a browser). Demo
 // contents only. The screenshots are put on a stage (stage()), drawn image by image.
@@ -13,6 +14,66 @@ import { chromium } from 'playwright-core';
 const ROOT = new URL('../../', import.meta.url).pathname;
 const OUT = ROOT + 'docs/images/';
 const LANDING = ROOT + 'web/public/images/'; // the relay's landing page
+const LANG = process.argv[2] === 'en' ? 'en' : 'fr';
+/** A file of this language: name.png in French, name-en.png in English. */
+const file = (dir, name, ext) => dir + name + (LANG === 'en' ? '-en' : '') + ext;
+/** The texts of the pictures and the labels of the app, in the language of the pictures. */
+const S = {
+  fr: {
+    settings: 'Réglages', name: 'Nom', back: 'Retour', invite: 'Inviter un appareil', scan: 'Scanner un QR code',
+    save: 'Enregistrer', devices: 'Appareils', pcName: 'PC Linux',
+    macLabel: 'Mac · barre des menus', pcLabel: 'PC · navigateur, rien à installer', lock: '🔒 chiffré de bout en bout',
+    endSub: 'Un presse-papier partagé entre tous tes appareils.',
+    chips: ['Éphémère', 'Chiffré de bout en bout', 'Sans inscription', 'Mac · Android · iPhone · Linux · Windows · navigateur'],
+    wifi: 'Code Wi-Fi invités : poney-violet-42', quote: 'Devis-cuisine.pdf',
+    T: {
+      copy: ['Tu copies sur ton Mac…', 'Rien à faire de plus : c’est envoyé tout seul.'],
+      got: ['…c’est déjà sur ton téléphone.', 'Chiffré sur le Mac, illisible entre les deux, déchiffré sur le téléphone.'],
+      trio: ['Une photo depuis Android, partout à la fois', 'Le Mac et le PC la reçoivent en même temps, par morceaux chiffrés.'],
+      paste: ['Déjà dans le presse-papier du Mac', 'Prête à coller, en pleine qualité.'],
+      note: ['Une note partagée, en direct', 'Tape-la sur le Mac : elle s’écrit sur tous les appareils.'],
+    },
+    address: 'Rendez-vous 14 h, 8 rue des Tanneurs', addressShort: '📋 Rendez-vous 14 h…', addressFind: 'Tanneurs',
+    received: 'Reçu à l’instant', chunk: (i, n) => `📷 morceau ${i}/${n}`, paste: 'Colle où tu veux',
+    note: 'Courses : pain, tomates, café, citrons',
+    hero: { title: 'Copie sur un appareil, colle sur un autre.', sub: 'Un presse-papier partagé, éphémère, chiffré, sans inscription, sur tous tes appareils.' },
+    pairing: { title: 'Association simple, par QR code ou par lien', leftLabel: 'Mac : Réglages → Inviter un appareil', rightLabel: 'Téléphone : scanner, ou coller le lien' },
+    video: 'Vacances.mp4',
+    uploading: {
+      title: 'Pas besoin d’attendre la fin d’un envoi',
+      sub: 'Pendant que le téléphone envoie la vidéo, le Mac et le PC la téléchargent déjà.',
+      labels: { mac3: 'Mac : télécharge déjà la vidéo', phone3: 'Android : envoie la vidéo', pc3: 'PC : la télécharge aussi' },
+    },
+    settingsPair: { title: 'Des réglages simples, pour tout le groupe', leftLabel: 'Réglages de l’appareil et du groupe', rightLabel: 'Les appareils du groupe' },
+  },
+  en: {
+    settings: 'Settings', name: 'Name', back: 'Back', invite: 'Invite a device', scan: 'Scan a QR code',
+    save: 'Save', devices: 'Devices', pcName: 'Linux PC',
+    macLabel: 'Mac · menu bar', pcLabel: 'PC · browser, nothing to install', lock: '🔒 end-to-end encrypted',
+    endSub: 'A clipboard shared across all your devices.',
+    chips: ['Ephemeral', 'End-to-end encrypted', 'No sign-up', 'Mac · Android · iPhone · Linux · Windows · browser'],
+    wifi: 'Guest Wi-Fi password: purple-pony-42', quote: 'Kitchen-quote.pdf',
+    T: {
+      copy: ['You copy on your Mac…', 'Nothing else to do: it’s sent on its own.'],
+      got: ['…and it’s already on your phone.', 'Encrypted on the Mac, unreadable in between, decrypted on the phone.'],
+      trio: ['A photo from Android, everywhere at once', 'The Mac and the PC receive it at the same time, in encrypted chunks.'],
+      paste: ['Already in the Mac’s clipboard', 'Ready to paste, in full quality.'],
+      note: ['A shared note, live', 'Type it on the Mac: it appears on every device.'],
+    },
+    address: 'Meet at 2 pm, 8 Tanners Street', addressShort: '📋 Meet at 2 pm…', addressFind: 'Tanners',
+    received: 'Just received', chunk: (i, n) => `📷 chunk ${i}/${n}`, paste: 'Paste it anywhere',
+    note: 'Shopping: bread, tomatoes, coffee, lemons',
+    hero: { title: 'Copy on one device, paste on another.', sub: 'A shared clipboard: ephemeral, encrypted, no sign-up, on all your devices.' },
+    pairing: { title: 'Easy pairing, with a QR code or a link', leftLabel: 'Mac: Settings → Invite a device', rightLabel: 'Phone: scan, or paste the link' },
+    video: 'Holidays.mp4',
+    uploading: {
+      title: 'No need to wait for an upload to finish',
+      sub: 'While the phone uploads the video, the Mac and the PC are already downloading it.',
+      labels: { mac3: 'Mac: already downloading the video', phone3: 'Android: uploading the video', pc3: 'PC: downloading it too' },
+    },
+    settingsPair: { title: 'Simple settings, for the whole group', leftLabel: 'Device and group settings', rightLabel: 'The group’s devices' },
+  },
+}[LANG];
 mkdirSync(LANDING, { recursive: true });
 /** PNG → WebP (lossy, small enough for a web page). */
 const webp = (png, out, quality = 82) => execFileSync('magick', [png, '-quality', String(quality), out]);
@@ -80,7 +141,7 @@ async function device(kind, url = APP) {
       : kind === 'mac'
         ? { viewport: MAC }
         : { viewport: PC, userAgent: LINUX_UA };
-  const context = await browser.newContext({ ...opts, deviceScaleFactor: 2, locale: 'fr-FR', bypassCSP: true });
+  const context = await browser.newContext({ ...opts, deviceScaleFactor: 2, locale: LANG === 'en' ? 'en-GB' : 'fr-FR', bypassCSP: true });
   await context.addInitScript(HOLD);
   if (kind === 'mac') await context.addInitScript(MAC_BRIDGE);
   const page = await context.newPage();
@@ -93,16 +154,16 @@ async function device(kind, url = APP) {
 const button = (scope, name) => scope.getByRole('button', { name, exact: true });
 
 async function rename(page, name) {
-  await page.getByLabel('Réglages').click();
-  const field = page.getByLabel('Nom', { exact: true });
+  await page.getByLabel(S.settings).click();
+  const field = page.getByLabel(S.name, { exact: true });
   await field.fill(name);
   await field.blur();
-  await page.getByLabel('Retour').click();
+  await page.getByLabel(S.back).click();
 }
 
 async function invite(host, open) {
-  await host.getByLabel('Réglages').click();
-  await button(host, 'Inviter un appareil').click();
+  await host.getByLabel(S.settings).click();
+  await button(host, S.invite).click();
   const link = await until('link', () => host.locator('input.link').inputValue());
   await open(link);
   await host.locator('section.main').waitFor();
@@ -185,13 +246,13 @@ const STATUSBAR = `<div class="statusbar"><span>14:02</span><span class="icons">
 const macHtml = (id, w) => `<div class="mac" style="width:${w}px">
     <div class="menubar"><span class="dots"></span><img src="${ICON}"><span class="clock">14:02</span></div>
     <div class="pop" id="${id}"><div class="arrow"></div><img><img></div>
-    <div class="label" data-for="${id}">Mac · barre des menus</div><div class="bubble" data-at="${id}"></div></div>`;
+    <div class="label" data-for="${id}">${S.macLabel}</div><div class="bubble" data-at="${id}"></div></div>`;
 const phoneHtml = (id) => `<div class="phone">
     <div class="frame"><div class="island"></div>${STATUSBAR}<div class="screen" id="${id}"><img><img></div></div>
     <div class="label" data-for="${id}">Android</div><div class="bubble" data-at="${id}"></div></div>`;
 const pcHtml = (id) => `<div class="pc">
     <div class="win"><div class="bar"><i></i><i></i><i></i><span class="url">${PUBLIC}/app/</span></div><div class="content" id="${id}"><img><img></div></div>
-    <div class="label" data-for="${id}">PC · navigateur, rien à installer</div><div class="bubble" data-at="${id}"></div></div>`;
+    <div class="label" data-for="${id}">${S.pcLabel}</div><div class="bubble" data-at="${id}"></div></div>`;
 
 /**
  * The stage: two devices (Mac, phone) or three (Mac, phone, PC), a title, and what moves
@@ -270,12 +331,12 @@ function stage(theme) {
     .chips span { font-size: 16px; font-weight: 600; color: ${p.accent}; background: ${p.soft}; padding: 8px 14px; border-radius: 999px; }
   </style></head><body>
     <header><div class="cap" id="capA"><h1></h1><p></p></div><div class="cap" id="capB"><h1></h1><p></p></div></header>
-    <main id="duo">${macHtml('mac', 360)}<div class="link"><div class="lock" id="lock">🔒 chiffré de bout en bout</div></div>${phoneHtml('phone')}</main>
+    <main id="duo">${macHtml('mac', 360)}<div class="link"><div class="lock" id="lock">${S.lock}</div></div>${phoneHtml('phone')}</main>
     <main id="trio">${macHtml('mac3', 300)}${phoneHtml('phone3')}${pcHtml('pc3')}</main>
     <div class="packet"><span class="plain"></span><span class="cipher"></span></div>
     <div class="packet"><span class="plain"></span><span class="cipher"></span></div>
-    <div class="end" id="end"><img src="${ICON}"><h1>Entre Nous</h1><p>Un presse-papier partagé entre tous tes appareils.</p>
-      <p class="chips"><span>Éphémère</span><span>Chiffré de bout en bout</span><span>Sans inscription</span><span>Mac · Android · iPhone · Linux · Windows · navigateur</span></p></div>
+    <div class="end" id="end"><img src="${ICON}"><h1>Entre Nous</h1><p>${S.endSub}</p>
+      <p class="chips">${S.chips.map((c) => `<span>${c}</span>`).join('')}</p></div>
     <script>
       const images = {};
       window.addImage = (k, url) => { images[k] = url; };
@@ -431,12 +492,12 @@ const mac = await device('mac');
 const phone = await device('phone');
 let pc; // opened on its invitation link
 await mac.locator('section.main').waitFor();
-await phone.locator('section.center', { hasText: 'Scanner un QR code' }).waitFor();
+await phone.locator('section.center', { hasText: S.scan }).waitFor();
 const welcomePhone = await shot(phone);
 
 // association: the Mac shows its QR code and its link
-await mac.getByLabel('Réglages').click();
-await button(mac, 'Inviter un appareil').click();
+await mac.getByLabel(S.settings).click();
+await button(mac, S.invite).click();
 await mac.locator('img.qr').waitFor();
 const link = await mac.locator('input.link').inputValue();
 await blurLink(mac);
@@ -450,20 +511,20 @@ await invite(mac, async (l) => {
   pc = await device('pc', l);
   await pc.locator('section.main').waitFor();
 });
-await until('three devices', async () => (await mac.locator('.status').textContent()).includes('PC Linux'));
+await until('three devices', async () => (await mac.locator('.status').textContent()).includes(S.pcName));
 await sleep(500);
 
 // a lived-in history
 const copy = (text) => mac.evaluate((t) => window.__entrenous.event('localCopy', { kind: 'text', text: t }), text);
-await copy('Code Wi-Fi invités : poney-violet-42');
-await phone.locator('.history .item', { hasText: 'poney-violet' }).waitFor();
-await mac.locator('input[type=file]').setInputFiles({ name: 'Devis-cuisine.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(1_830_000, 7) });
-await phone.locator('.history .item', { hasText: 'Devis-cuisine.pdf' }).waitFor();
-await pc.locator('.history .item', { hasText: 'Devis-cuisine.pdf' }).waitFor();
+await copy(S.wifi);
+await phone.locator('.history .item', { hasText: S.wifi }).waitFor();
+await mac.locator('input[type=file]').setInputFiles({ name: S.quote, mimeType: 'application/pdf', buffer: Buffer.alloc(1_830_000, 7) });
+await phone.locator('.history .item', { hasText: S.quote }).waitFor();
+await pc.locator('.history .item', { hasText: S.quote }).waitFor();
 await phone.locator('.transfer').first().waitFor({ state: 'detached' }).catch(() => {});
 await sleep(600);
 
-const pct = async (page) => /(\d+) %/.exec((await page.locator('.transfer').allTextContents()).join(' '))?.[1];
+const pct = async (page) => /(\d+) ?%/.exec((await page.locator('.transfer').allTextContents()).join(' '))?.[1];
 /** Lets one more chunk go, and waits until every device shows the same progress. */
 async function oneChunk(sender, others) {
   await until('a chunk sent', () => sender.evaluate(() => window.__heldCount()));
@@ -489,40 +550,34 @@ const blend = (a, b, k) => {
   for (const slot of SLOTS) if (a[slot] && b[slot] && a[slot] !== b[slot]) Object.assign(s, { [slot]: a[slot], [slot + 'Next']: b[slot], [slot + 'Mix']: k });
   return s;
 };
-const T = {
-  copy: ['Tu copies sur ton Mac…', 'Rien à faire de plus : c’est envoyé tout seul.'],
-  got: ['…c’est déjà sur ton téléphone.', 'Chiffré sur le Mac, illisible entre les deux, déchiffré sur le téléphone.'],
-  trio: ['Une photo depuis Android, partout à la fois', 'Le Mac et le PC la reçoivent en même temps, par morceaux chiffrés.'],
-  paste: ['Déjà dans le presse-papier du Mac', 'Prête à coller, en pleine qualité.'],
-  note: ['Une note partagée, en direct', 'Tape-la sur le Mac : elle s’écrit sur tous les appareils.'],
-};
+const T = S.T;
 const caption = (to, from, k = 1) => ({ title: to[0], sub: to[1], prevTitle: from?.[0], prevSub: from?.[1], capMix: k });
 const bubble = (at, html, k) => ({ at, html, k });
 
 // 1. two devices: a copy on the Mac travels to the phone
-const address = 'Rendez-vous 14 h, 8 rue des Tanneurs';
+const address = S.address;
 const copied = `<kbd>⌘C</kbd>${address}`;
 const d0 = await duoShots();
 hold({ ...d0, ...caption(T.copy) }, 0.8);
 tween(9, (k) => ({ ...d0, ...caption(T.copy), bubbles: [bubble('mac', copied, k)] }));
 hold({ ...d0, ...caption(T.copy), bubbles: [bubble('mac', copied, 1)] }, 1.3);
 await copy(address);
-await phone.locator('.history .item', { hasText: 'Tanneurs' }).waitFor();
-await pc.locator('.history .item', { hasText: 'Tanneurs' }).waitFor();
+await phone.locator('.history .item', { hasText: S.addressFind }).waitFor();
+await pc.locator('.history .item', { hasText: S.addressFind }).waitFor();
 await sleep(400);
 const d1 = await duoShots();
 tween(40, (p) => ({
   mac: d0.mac, macNext: d1.mac, macMix: Math.min(1, p * 8), phone: d0.phone,
   ...caption(T.got, T.copy, Math.min(1, p * 1.6)),
   bubbles: [bubble('mac', copied, Math.max(0, 1 - p * 4))],
-  packets: [{ p, from: 'mac', to: 'phone', plain: '📋 Rendez-vous 14 h…', cipher: '🔒 8f3a c91e 07d2 4be6' }],
+  packets: [{ p, from: 'mac', to: 'phone', plain: S.addressShort, cipher: '🔒 8f3a c91e 07d2 4be6' }],
 }));
-tween(7, (k) => ({ ...blend(d0, d1, k), mac: d1.mac, ...caption(T.got), bubbles: [bubble('phone', 'Reçu à l’instant', k)] }));
-hold({ ...d1, ...caption(T.got), bubbles: [bubble('phone', 'Reçu à l’instant', 1)] }, 2.2);
+tween(7, (k) => ({ ...blend(d0, d1, k), mac: d1.mac, ...caption(T.got), bubbles: [bubble('phone', S.received, k)] }));
+hold({ ...d1, ...caption(T.got), bubbles: [bubble('phone', S.received, 1)] }, 2.2);
 
 // 2. three devices: the phone shares a photo, the Mac and the PC receive it together
 const t0 = await trioShots();
-tween(12, (k) => ({ ...d1, ...t0, trio: k, ...caption(T.trio, T.got, k), bubbles: [bubble('phone', 'Reçu à l’instant', 1 - k)] }));
+tween(12, (k) => ({ ...d1, ...t0, trio: k, ...caption(T.trio, T.got, k), bubbles: [bubble('phone', S.received, 1 - k)] }));
 hold({ ...t0, ...caption(T.trio) }, 0.8);
 const jpeg = await photo(phone, 2800, 2100);
 await phone.evaluate(() => window.__hold());
@@ -546,7 +601,7 @@ for (let i = 1; i <= chunks; i++) {
   }
   await sleep(500);
   const tn = await trioShots();
-  const packet = { plain: `📷 morceau ${i}/${chunks}`, cipher: '🔒 ' + ciphers[(i - 1) % ciphers.length], from: 'phone3' };
+  const packet = { plain: S.chunk(i, chunks), cipher: '🔒 ' + ciphers[(i - 1) % ciphers.length], from: 'phone3' };
   const before = tu;
   tween(32, (p) => ({
     ...blend(before, tn, p > 0.82 ? (p - 0.82) / 0.18 : 0), ...caption(T.trio),
@@ -555,13 +610,13 @@ for (let i = 1; i <= chunks; i++) {
   tu = tn;
   hold({ ...tu, ...caption(T.trio) }, i < chunks ? 0.3 : 0.8);
 }
-const pasted = `<kbd>⌘V</kbd>Colle où tu veux`;
+const pasted = `<kbd>⌘V</kbd>${S.paste}`;
 tween(9, (k) => ({ ...tu, ...caption(T.paste, T.trio, k), bubbles: [bubble('mac3', pasted, k)] }));
 hold({ ...tu, ...caption(T.paste), bubbles: [bubble('mac3', pasted, 1)] }, 2.2);
 const poster = timeline.at(-1).state;
 
 // 3. the live note, letter by letter, on every device
-const note = 'Courses : pain, tomates, café, citrons';
+const note = S.note;
 tween(9, (k) => ({ ...tu, ...caption(T.note, T.paste, k), bubbles: [bubble('mac3', pasted, 1 - k)] }));
 let last = tu;
 for (let i = 2; i <= note.length; i += 2) {
@@ -590,43 +645,41 @@ const devices = async (theme, shots, name) => {
   webp(tmp, LANDING + name + '.webp');
   rmSync(tmp);
 };
-await devices('light', last, 'appareils');
+await devices('light', last, 'appareils' + (LANG === 'en' ? '-en' : ''));
 for (const d of [mac, phone, pc]) await d.emulateMedia({ colorScheme: 'dark' });
 await sleep(300);
-await devices('dark', await trioShots(), 'appareils-sombre');
+await devices('dark', await trioShots(), 'appareils-sombre' + (LANG === 'en' ? '-en' : ''));
 for (const d of [mac, phone, pc]) await d.emulateMedia({ colorScheme: 'light' });
 await sleep(300);
 
-const hero = { title: 'Copie sur un appareil, colle sur un autre.', sub: 'Un presse-papier partagé, éphémère, chiffré, sans inscription, sur tous tes appareils.' };
-await (await composer('light', 2)).draw({ ...(await duoShots()), ...hero }, OUT + 'apercu.png');
+const hero = S.hero;
+await (await composer('light', 2)).draw({ ...(await duoShots()), ...hero }, file(OUT, 'apercu', '.png'));
 for (const d of [mac, phone]) await d.emulateMedia({ colorScheme: 'dark' });
 await sleep(300);
 const dark = await duoShots();
 for (const d of [mac, phone]) await d.emulateMedia({ colorScheme: 'light' });
-await (await composer('dark', 2)).draw({ ...dark, ...hero }, OUT + 'apercu-sombre.png');
+await (await composer('dark', 2)).draw({ ...dark, ...hero }, file(OUT, 'apercu-sombre', '.png'));
 
 await renderPair(
   pair({
-    title: 'Association simple, par QR code ou par lien',
+    ...S.pairing,
     left: inviteMac,
     right: welcomePhone,
-    leftLabel: 'Mac : Réglages → Inviter un appareil',
-    rightLabel: 'Téléphone : scanner, ou coller le lien',
   }),
-  OUT + 'association.png',
+  file(OUT, 'association', '.png'),
 );
 
 // a video still being sent, already being downloaded by the two others
 const video = Buffer.alloc(6 * 1024 * 1024 + 4321);
 for (let i = 0; i < video.length; i += 4096) video[i] = i & 255;
 await phone.evaluate(() => window.__hold());
-await phone.locator('input[type=file]').setInputFiles({ name: 'Vacances.mp4', mimeType: 'video/mp4', buffer: video });
-await mac.locator('.transfer', { hasText: 'Vacances' }).waitFor();
-await pc.locator('.transfer', { hasText: 'Vacances' }).waitFor();
+await phone.locator('input[type=file]').setInputFiles({ name: S.video, mimeType: 'video/mp4', buffer: video });
+await mac.locator('.transfer', { hasText: S.video }).waitFor();
+await pc.locator('.transfer', { hasText: S.video }).waitFor();
 await oneChunk(phone, [mac, pc]);
 for (const d of [mac, pc]) {
-  const item = d.locator('.history .item', { hasText: 'Vacances.mp4' });
-  await button(item, 'Enregistrer').click();
+  const item = d.locator('.history .item', { hasText: S.video });
+  await button(item, S.save).click();
   await item.locator('.download').waitFor();
 }
 await oneChunk(phone, [mac, pc]);
@@ -635,35 +688,31 @@ await sleep(600);
 await (await composer('light', 2)).draw(
   {
     ...(await trioShots()),
-    title: 'Pas besoin d’attendre la fin d’un envoi',
-    sub: 'Pendant que le téléphone envoie la vidéo, le Mac et le PC la téléchargent déjà.',
-    labels: { mac3: 'Mac : télécharge déjà la vidéo', phone3: 'Android : envoie la vidéo', pc3: 'PC : la télécharge aussi' },
+    ...S.uploading,
   },
-  OUT + 'envoi-en-cours.png',
+  file(OUT, 'envoi-en-cours', '.png'),
 );
 await phone.evaluate(() => window.__release());
 for (const d of [mac, pc]) await d.locator('.transfer').first().waitFor({ state: 'detached' });
 
 // settings: the Mac at the top, the phone on the group and its devices
-await mac.getByLabel('Réglages').click();
-await phone.getByLabel('Réglages').click();
-await phone.locator('h3', { hasText: 'Appareils' }).scrollIntoViewIfNeeded();
+await mac.getByLabel(S.settings).click();
+await phone.getByLabel(S.settings).click();
+await phone.locator('h3', { hasText: S.devices }).scrollIntoViewIfNeeded();
 await phone.evaluate(() => window.scrollBy(0, 220));
 await sleep(400);
 await renderPair(
   pair({
-    title: 'Des réglages simples, pour tout le groupe',
+    ...S.settingsPair,
     left: await shot(mac),
     right: await shot(phone),
-    leftLabel: 'Réglages de l’appareil et du groupe',
-    rightLabel: 'Les appareils du groupe',
   }),
-  OUT + 'reglages.png',
+  file(OUT, 'reglages', '.png'),
 );
 
 // landing page: the pictures of the documentation shown in its FAQ, lighter
 for (const name of ['association', 'envoi-en-cours', 'reglages']) {
-  execFileSync('magick', [OUT + name + '.png', '-resize', '1200x', '-quality', '82', LANDING + name + '.webp']);
+  execFileSync('magick', [file(OUT, name, '.png'), '-resize', '1200x', '-quality', '82', file(LANDING, name, '.webp')]);
 }
 
 // ------------------------------------------------------------------ the film
@@ -681,17 +730,18 @@ writeFileSync(join(dir, 'list.txt'), list);
 execFileSync('ffmpeg', [
   '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'),
   '-vf', `fps=${FPS},scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=160:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
-  '-loop', '0', OUT + 'demo.gif',
+  '-loop', '0', file(OUT, 'demo', '.gif'),
 ]);
 // landing page: the same film, as an animated WebP (far lighter than the GIF), and a still
 // for the visitors who ask for less motion
 const frames = [];
 for (const [i, f] of timeline.entries()) frames.push('-delay', `${Math.max(1, Math.round(f.seconds * FPS))}x${FPS}`, join(dir, `f${String(i).padStart(4, '0')}.png`));
-execFileSync('magick', [...frames, '-resize', '1000x', '-loop', '0', '-quality', '70', LANDING + 'demo.webp'], { maxBuffer: 1 << 26 });
+execFileSync('magick', [...frames, '-resize', '1000x', '-loop', '0', '-quality', '70', file(LANDING, 'demo', '.webp')], { maxBuffer: 1 << 26 });
 await film.draw(poster, join(dir, 'poster.png'));
-execFileSync('magick', [join(dir, 'poster.png'), '-resize', '1000x', '-quality', '80', LANDING + 'demo-fixe.webp']);
+execFileSync('magick', [join(dir, 'poster.png'), '-resize', '1000x', '-quality', '80', file(LANDING, 'demo-fixe', '.webp')]);
 rmSync(dir, { recursive: true });
 
 await browser.close();
-console.log(`docs/images: apercu.png, apercu-sombre.png, demo.gif (${timeline.length} images), association.png, envoi-en-cours.png, reglages.png`);
-console.log('web/public/images: appareils(-sombre).webp, demo(-fixe).webp, association.webp, envoi-en-cours.webp, reglages.webp');
+const x = LANG === 'en' ? '-en' : '';
+console.log(`docs/images: apercu${x}.png, apercu-sombre${x}.png, demo${x}.gif (${timeline.length} images), association${x}.png, envoi-en-cours${x}.png, reglages${x}.png`);
+console.log(`web/public/images: appareils(-sombre)${x}.webp, demo(-fixe)${x}.webp, association${x}.webp, envoi-en-cours${x}.webp, reglages${x}.webp`);

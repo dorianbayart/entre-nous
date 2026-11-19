@@ -21,7 +21,7 @@ final class Keychain {
 
     func set(_ key: String, _ value: String) throws {
         var entries = load()
-        if unreadable { throw BridgeError("Trousseau inaccessible") }
+        if unreadable { throw BridgeError(L10n.t("keychain")) }
         entries[key] = value
         try save(entries)
     }

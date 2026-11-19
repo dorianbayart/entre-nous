@@ -18,15 +18,15 @@
     "active": true,
     "targets": ["deb", "appimage", "nsis"],
     "category": "Utility",
-    "shortDescription": "Presse-papier partagé et chiffré entre tes appareils",
-    "longDescription": "Copie sur un appareil, colle sur un autre. Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.",
+    "shortDescription": "Encrypted clipboard shared between your devices",
+    "longDescription": "Copy on one device, paste on another. A clipboard shared across all your devices: end-to-end encrypted, ephemeral, no account, no tracking.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
     "linux": {
       "deb": { "depends": ["libayatana-appindicator3-1"] }
     },
     "windows": {
       "webviewInstallMode": { "type": "downloadBootstrapper" },
-      "nsis": { "installMode": "currentUser", "languages": ["French"] }
+      "nsis": { "installMode": "currentUser", "languages": ["English", "French"], "displayLanguageSelector": false }
     }
   }
 }

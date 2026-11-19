@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
         statusItem.button?.window?.registerForDraggedTypes([.fileURL, .png, .tiff, .string])
         statusItem.button?.window?.delegate = self
         bridge.onPausedChange = { [weak self] paused in self?.updateIcon(paused: paused) }
+        bridge.updateIconLabel = { [weak self] in self.map { $0.updateIcon(paused: $0.bridge.paused) } }
         bridge.isVisible = { [weak self] in self?.popover.isShown ?? false }
         bridge.onModal = { [weak self] active in self?.popover.behavior = active ? .applicationDefined : .transient }
         UNUserNotificationCenter.current().delegate = self
@@ -48,15 +49,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
     /// A menu bar app has no menu, yet Cmd+A/C/V/X/Z in the web view go through the Edit menu
     /// (key equivalents): an invisible main menu brings them back.
     private func installEditMenu() {
-        let edit = NSMenu(title: "Édition")
-        edit.addItem(withTitle: "Annuler", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Rétablir", action: Selector(("redo:")), keyEquivalent: "Z")
+        let edit = NSMenu(title: L10n.t("edit"))
+        edit.addItem(withTitle: L10n.t("undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: L10n.t("redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Couper", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copier", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Coller", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Tout sélectionner", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
-        let editItem = NSMenuItem(title: "Édition", action: nil, keyEquivalent: "")
+        edit.addItem(withTitle: L10n.t("cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: L10n.t("copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: L10n.t("paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: L10n.t("selectAll"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let editItem = NSMenuItem(title: L10n.t("edit"), action: nil, keyEquivalent: "")
         editItem.submenu = edit
         let main = NSMenu()
         main.addItem(NSMenuItem(title: "Entre Nous", action: nil, keyEquivalent: ""))
@@ -66,10 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
 
     private func updateIcon(paused: Bool) {
         let name = paused ? "pause.circle" : "doc.on.clipboard"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: paused ? "Entre Nous (en pause)" : "Entre Nous")
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: paused ? L10n.t("pausedShort") : "Entre Nous")
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.toolTip = paused ? "Entre Nous : en pause" : "Entre Nous"
+        statusItem.button?.toolTip = paused ? L10n.t("paused") : "Entre Nous"
     }
 
     @objc private func onClick(_ sender: NSStatusBarButton) {
@@ -92,15 +93,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
 
     private func showMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Ouvrir Entre Nous", action: #selector(openPopover), keyEquivalent: "").target = self
+        menu.addItem(withTitle: L10n.t("open"), action: #selector(openPopover), keyEquivalent: "").target = self
         menu.addItem(
-            withTitle: bridge.paused ? "Reprendre le partage" : "Mettre en pause",
+            withTitle: L10n.t(bridge.paused ? "resume" : "pause"),
             action: #selector(togglePause),
             keyEquivalent: "p"
         ).target = self
-        menu.addItem(withTitle: "Recharger", action: #selector(reload), keyEquivalent: "r").target = self
+        menu.addItem(withTitle: L10n.t("reload"), action: #selector(reload), keyEquivalent: "r").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quitter", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: L10n.t("quit"), action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
         statusItem.menu = nil

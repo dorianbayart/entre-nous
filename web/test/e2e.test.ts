@@ -2,7 +2,7 @@
 //   RELAY=http://127.0.0.1:8080 node test/run.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Engine, ItemGoneError, type EngineEvent } from '../src/core/engine.ts';
+import { Engine, ItemGoneError, SendCancelledError, type EngineEvent } from '../src/core/engine.ts';
 import { MemoryKV } from '../src/core/storage.ts';
 
 const RELAY = process.env.RELAY ?? 'http://127.0.0.1:8080';
@@ -120,14 +120,14 @@ test('pairing, sync, mailbox, files, retention, removal', { timeout: 90_000 }, a
   await mac.e.deleteItem(gid, pend.id);
 
   // --- deleted by its sender during the upload: at once, even behind megabytes of chunks
-  const sendingBig = mac.e.sendBlob(gid, new Blob([big]), 'annule.bin', 'file').then(() => 'done', (e) => e.message);
+  const sendingBig = mac.e.sendBlob(gid, new Blob([big]), 'annule.bin', 'file').then(() => 'done', (e) => e);
   const toCancel = await until('phone sees annule.bin', () => group(phone.e, gid)!.items.find((i) => i.name === 'annule.bin'));
   await until('upload under way', () => (group(phone.e, gid)!.items.find((i) => i.id === toCancel.id)?.have ?? 0) > 0);
   const t0 = Date.now();
   await mac.e.deleteItem(gid, toCancel.id);
   const deleteMs = Date.now() - t0;
   assert.ok(deleteMs < 2000, 'delete took ' + deleteMs + ' ms');
-  assert.match(await sendingBig, /Envoi annulé/);
+  assert.ok((await sendingBig) instanceof SendCancelledError, 'unexpected: ' + (await sendingBig));
   await until('gone on the phone', () => !group(phone.e, gid)!.items.some((i) => i.id === toCancel.id));
   console.log('  … delete during upload: ' + deleteMs + ' ms');
 

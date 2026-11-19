@@ -15,6 +15,8 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
     private(set) var paused = false
     private var awakeActivity: NSObjectProtocol?
     var onPausedChange: ((Bool) -> Void)?
+    /// The language changed: the tooltip of the icon follows.
+    var updateIconLabel: (() -> Void)?
     /// Is the window (popover) on screen? Notifications are only shown when it is not.
     var isVisible: () -> Bool = { false }
     /// A system panel (file picker) opens or closes: the popover must stay open meanwhile.
@@ -29,7 +31,9 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         config.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "entrenous")
         config.websiteDataStore = .nonPersistent() // nothing stored by WebKit: the Keychain holds it all
         let controller = WKUserContentController()
-        let settings: [String: Any] = ["relay": WebBridge.relayURL, "name": Host.current().localizedName ?? "Mac"]
+        let settings: [String: Any] = [
+            "relay": WebBridge.relayURL, "name": Host.current().localizedName ?? "Mac", "lang": L10n.system,
+        ]
         let json = String(data: try! JSONSerialization.data(withJSONObject: settings), encoding: .utf8)!
         controller.addUserScript(WKUserScript(
             source: "window.__entrenous = { config: \(json), event() {} };",
@@ -149,6 +153,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             }
             return true
 
+        // the language of the UI, for the menu of the icon
+        case "setLang":
+            L10n.lang = a["lang"] as? String == "fr" ? "fr" : "en"
+            updateIconLabel?()
+            return true
         case "setPaused":
             paused = a["paused"] as? Bool ?? false
             pasteboard.paused = paused

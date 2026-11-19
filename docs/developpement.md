@@ -1,4 +1,5 @@
 # Développement
+[English](en/development.md)
 
 Les choix de conception et leur historique sont dans [BRAINSTORM.md](../BRAINSTORM.md).
 
@@ -50,9 +51,23 @@ coupure, suppression pendant un envoi, retrait d'un appareil, mode local (avec u
 Les images de la documentation (`docs/images/`) se refont avec `npm run screenshots` (relais lancé,
 Chrome et ffmpeg) : trois appareils de démonstration dans Chrome, dont un Mac dont le pont natif est
 simulé ; captures, mises en scène et animation. Il refait aussi celles de la page d'accueil du relais
-(`web/public/images/` : les trois appareils en clair et en sombre, l'animation en WebP). Les schémas
-SVG (`chiffrement.svg`, `reseau.svg`) sont écrits à la main ; la page d'accueil reprend
-`chiffrement.svg`, copié à la construction (`build.mjs`).
+(`web/public/images/` : les trois appareils en clair et en sombre, l'animation en WebP). Il tourne
+en français puis en anglais : les images anglaises finissent par `-en`
+(`node scripts/screenshots.mjs en` pour une seule langue). Les schémas SVG (`chiffrement.svg`,
+`reseau.svg` et leurs versions `-en.svg`) sont écrits à la main ; la page d'accueil les reprend,
+copiés à la construction (`build.mjs`).
+
+### Langues
+
+L'interface existe en français et en anglais : la langue du système ou du navigateur (l'anglais
+pour toute autre langue), ou celle choisie dans Réglages → Langue. Les textes sont dans
+`web/src/i18n/fr.ts` et `en.ts` (mêmes clés, vérifiées par `npm run typecheck`) ; le HTML les
+affiche par `x-text="t('clé')"`, et `x-rich` pour un peu de mise en forme (`**gras**`, saut de ligne).
+Les applis de bureau reçoivent la langue de l'interface (`setLang`) pour le menu de leur icône.
+
+La page d'accueil existe en deux fichiers, `web/public/index.html` (français) et
+`web/public/en/index.html` : `/` sert l'une ou l'autre selon `Accept-Language`, `/fr/` et `/en/`
+les servent directement. La documentation anglaise est dans `docs/en/` et `README.en.md`.
 
 Les tests d'interface (`test/ui/`) ouvrent l'appli servie par le relais dans plusieurs profils Chrome
 (un par appareil, dont un téléphone Android simulé) : note, confirmations, envoi en cours et
@@ -138,4 +153,6 @@ android/build.sh          # APK signé → downloads/Entre-Nous-android.apk (Doc
   `rid` n'est jamais un champ métier.
 - Le relais ne journalise jamais de contenu ni d'identifiant de salle.
 - Images Docker de base sans version figée (`node:lts-alpine`, `ubuntu:jammy`…).
-- Textes de l'interface en français naturel, sans jargon technique.
+- Textes de l'interface en français et en anglais naturels, sans jargon technique ; tout nouveau
+  texte va dans les deux dictionnaires (`web/src/i18n/`).
+- Ne jamais appeler `t` une variable de boucle (`x-for`) : elle masquerait la méthode `t()`.

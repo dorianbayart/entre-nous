@@ -1,4 +1,5 @@
 # Sécurité
+[English](en/security.md)
 
 L'idée de départ : **le serveur relais ne doit rien pouvoir lire**. Tout est chiffré sur l'appareil
 qui envoie et ne se déchiffre que sur les appareils du groupe ; le relais transporte et range des

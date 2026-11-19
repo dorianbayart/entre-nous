@@ -1,4 +1,5 @@
 # Entre Nous
+[English](README.en.md)
 
 **Copie sur un appareil, colle sur un autre.**
 

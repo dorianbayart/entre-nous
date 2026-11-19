@@ -109,6 +109,24 @@ function securityHeaders(req) {
   };
 }
 
+/** Language of the landing page at /: French or English by Accept-Language, English otherwise. */
+function landingLang(header = '') {
+  let best = 'en';
+  let weight = -1;
+  for (const part of header.split(',')) {
+    const [tag, ...params] = part.trim().toLowerCase().split(';');
+    const base = tag.split('-')[0];
+    if (base !== 'fr' && base !== 'en') continue;
+    const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
+    const w = q ? Number(q.slice(2)) || 0 : 1;
+    if (w > weight) {
+      best = base;
+      weight = w;
+    }
+  }
+  return best;
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/healthz') {
@@ -148,11 +166,15 @@ async function serveStatic(req, res) {
     res.writeHead(302, { Location: `https://github.com/${RELEASES}/releases/latest/download/${download[1]}` }).end();
     return;
   }
-  if (url.pathname === '/app') {
-    res.writeHead(301, { Location: '/app/' }).end();
+  if (url.pathname === '/app' || url.pathname === '/fr' || url.pathname === '/en') {
+    res.writeHead(301, { Location: url.pathname + '/' }).end();
     return;
   }
   let path = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
+  // landing page: / in the visitor's language, /fr/ and /en/ in theirs (index.html is French)
+  const negotiated = path === '/';
+  if (negotiated) path = landingLang(req.headers['accept-language']) === 'fr' ? '/' : '/en/';
+  else if (path === '/fr/') path = '/';
   if (path.endsWith('/')) path += 'index.html';
   let file = join(PUBLIC_DIR, path);
   if (!file.startsWith(PUBLIC_DIR)) {
@@ -176,6 +198,7 @@ async function serveStatic(req, res) {
       ...securityHeaders(req),
       'Content-Type': MIME[extname(file)] || 'application/octet-stream',
       'Cache-Control': 'no-cache',
+      ...(negotiated ? { Vary: 'Accept-Language' } : {}),
       'Content-Length': body.length,
       ETag: etag,
     };

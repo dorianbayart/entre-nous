@@ -7,6 +7,7 @@
 
 mod clip;
 mod files;
+mod l10n;
 mod store;
 
 use base64::engine::{general_purpose::GeneralPurposeConfig, DecodePaddingMode, GeneralPurpose};
@@ -43,7 +44,30 @@ pub struct Bridge {
     /// Pause state, set by the web UI (which keeps it in its preferences).
     pub paused: AtomicBool,
     awake: Mutex<Option<Awake>>,
-    pause_item: Mutex<Option<MenuItem<Wry>>>,
+    menu: Mutex<Option<TrayMenu>>,
+}
+
+/// The items of the tray menu, relabelled when the language or the pause changes.
+struct TrayMenu {
+    open: MenuItem<Wry>,
+    pause: MenuItem<Wry>,
+    reload: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
+}
+
+/// The tray menu and tooltip in the current language, for the current pause state.
+fn relabel(app: &AppHandle) {
+    let b = app.state::<Bridge>();
+    let paused = b.paused.load(Ordering::SeqCst);
+    if let Some(m) = b.menu.lock().unwrap().as_ref() {
+        let _ = m.open.set_text(l10n::t("open"));
+        let _ = m.pause.set_text(l10n::t(if paused { "resume" } else { "pause" }));
+        let _ = m.reload.set_text(l10n::t("reload"));
+        let _ = m.quit.set_text(l10n::t("quit"));
+    }
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(if paused { l10n::t("paused") } else { "Entre Nous" }));
+    }
 }
 
 /// Keeps the computer awake during a transfer (the guard is dropped on its own thread).
@@ -173,12 +197,13 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
         "setPaused" => {
             let paused = a.get("paused").and_then(Value::as_bool).unwrap_or(false);
             b.paused.store(paused, Ordering::SeqCst);
-            if let Some(item) = b.pause_item.lock().unwrap().as_ref() {
-                let _ = item.set_text(if paused { "Reprendre le partage" } else { "Mettre en pause" });
-            }
-            if let Some(tray) = app.tray_by_id("main") {
-                let _ = tray.set_tooltip(Some(if paused { "Entre Nous : en pause" } else { "Entre Nous" }));
-            }
+            relabel(app);
+            Ok(json!(true))
+        }
+        // the language of the UI, for the tray menu
+        "setLang" => {
+            l10n::set(&s("lang"));
+            relabel(app);
             Ok(json!(true))
         }
 
@@ -228,13 +253,13 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
 // ------------------------------------------------------------------ app
 
 fn tray(app: &tauri::App) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Ouvrir Entre Nous", true, None::<&str>)?;
-    let pause = MenuItem::with_id(app, "pause", "Mettre en pause", true, None::<&str>)?;
-    let reload = MenuItem::with_id(app, "reload", "Recharger", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", l10n::t("open"), true, None::<&str>)?;
+    let pause = MenuItem::with_id(app, "pause", l10n::t("pause"), true, None::<&str>)?;
+    let reload = MenuItem::with_id(app, "reload", l10n::t("reload"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", l10n::t("quit"), true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&open, &pause, &reload, &separator, &quit])?;
-    *app.state::<Bridge>().pause_item.lock().unwrap() = Some(pause);
+    *app.state::<Bridge>().menu.lock().unwrap() = Some(TrayMenu { open, pause, reload, quit });
 
     TrayIconBuilder::with_id("main")
         .icon(Image::from_bytes(include_bytes!("../icons/64x64.png"))?)
@@ -263,6 +288,7 @@ fn tray(app: &tauri::App) -> tauri::Result<()> {
 }
 
 fn main() {
+    l10n::init();
     tauri::Builder::default()
         // launched again (menu, shortcut): the window of the running app comes forward
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show(app)))
@@ -280,7 +306,7 @@ fn main() {
                 files: files::Files::new(),
                 paused: AtomicBool::new(false),
                 awake: Mutex::new(None),
-                pause_item: Mutex::new(None),
+                menu: Mutex::new(None),
             });
 
             let name = gethostname::gethostname().to_string_lossy().to_string();

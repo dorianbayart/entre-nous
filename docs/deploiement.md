@@ -1,4 +1,5 @@
 # Héberger son propre serveur relais
+[English](en/deployment.md)
 
 Le relais est un seul conteneur Docker (Node + Redis en mémoire). Il sert aussi la page d'accueil
 et l'appli web (`/app/`) ; les applis se téléchargent depuis les releases GitHub. Il ne voit que des données

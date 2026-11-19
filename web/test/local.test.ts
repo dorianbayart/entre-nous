@@ -6,6 +6,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine, type EngineEvent } from '../src/core/engine.ts';
 import { MemoryKV } from '../src/core/storage.ts';
+import { setLang } from '../src/i18n/index.ts';
+
+setLang('fr'); // one message is checked below
 import type { Link, LinkFactory, Pending } from '../src/core/peers.ts';
 
 const RELAY = process.env.RELAY ?? 'http://127.0.0.1:8080';

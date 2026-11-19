@@ -54,10 +54,20 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSLocalNetworkUsageDescription</key><string>Entre Nous transfère tes contenus directement entre tes appareils quand ils sont sur le même réseau.</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>fr</string></array>
+  <key>NSLocalNetworkUsageDescription</key><string>Entre Nous sends your content straight between your devices when they are on the same network.</string>
 </dict>
 </plist>
 PLIST
+# the system texts (local network permission, panels) in English or French
+mkdir -p "$APP/Contents/Resources/en.lproj" "$APP/Contents/Resources/fr.lproj"
+echo '"NSLocalNetworkUsageDescription" = "Entre Nous sends your content straight between your devices when they are on the same network.";' > "$APP/Contents/Resources/en.lproj/InfoPlist.strings"
+echo '"NSLocalNetworkUsageDescription" = "Entre Nous transfère tes contenus directement entre tes appareils quand ils sont sur le même réseau.";' > "$APP/Contents/Resources/fr.lproj/InfoPlist.strings"
+# the system texts (local network permission, panels) in English or French
+mkdir -p "$APP/Contents/Resources/en.lproj" "$APP/Contents/Resources/fr.lproj"
+echo '"NSLocalNetworkUsageDescription" = "Entre Nous sends your content straight between your devices when they are on the same network.";' > "$APP/Contents/Resources/en.lproj/InfoPlist.strings"
+echo '"NSLocalNetworkUsageDescription" = "Entre Nous transfère tes contenus directement entre tes appareils quand ils sont sur le même réseau.";' > "$APP/Contents/Resources/fr.lproj/InfoPlist.strings"
 
 # Stable identity (./signing-identity.sh, once per Mac): the Keychain then recognises every
 # new build; otherwise ad hoc, and each build asks again for the session password.

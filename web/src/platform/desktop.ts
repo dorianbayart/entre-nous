@@ -6,12 +6,13 @@ import { b64, fromJSON, toJSON, unb64 } from '../core/bytes.ts';
 import type { KV } from '../core/storage.ts';
 import { utf8 } from '../core/bytes.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from './types.ts';
+import { t } from '../i18n/index.ts';
 
 declare global {
   interface Window {
     webkit?: { messageHandlers: { native: { postMessage(msg: unknown): Promise<any> } } };
     __entrenous?: {
-      config: { relay: string; name: string; platform?: 'linux' | 'windows' };
+      config: { relay: string; name: string; platform?: 'linux' | 'windows'; lang?: string };
       event(name: string, payload: any): void;
       /** Linux and Windows (Tauri): the native call. */
       call?(msg: unknown): Promise<any>;
@@ -57,7 +58,7 @@ async function readNativeFile(token: string, size: number, mime: string): Promis
 async function fromNative(payload: any, limit: number): Promise<LocalCopy> {
   if (payload.kind === 'text') {
     const size = utf8(payload.text).length;
-    return size > limit ? { kind: 'toobig', name: 'texte', size } : { kind: 'text', text: payload.text };
+    return size > limit ? { kind: 'toobig', name: t('name.text'), size } : { kind: 'text', text: payload.text };
   }
   if (payload.kind === 'image') {
     const data = unb64(payload.data);
@@ -96,6 +97,7 @@ export function desktopPlatform(): PlatformApi {
     native: true,
     kv: new NativeKV(),
     defaultName: config.name || 'Mac',
+    systemLang: config.lang,
     defaultRelay: config.relay,
     autoWrite: true,
 
@@ -104,6 +106,9 @@ export function desktopPlatform(): PlatformApi {
       set: async (on) => !!(await call('autostartSet', { on })),
     },
 
+    setLang(lang) {
+      call('setLang', { lang }).catch(() => {});
+    },
     setPaused(paused) {
       call('setPaused', { paused }).catch(() => {});
     },
@@ -143,7 +148,7 @@ export function desktopPlatform(): PlatformApi {
       }
       // Any other file: written to the app's temporary folder, then put in the clipboard
       // as a file (paste in the file manager, a mail, an upload form…).
-      const token = await writeNativeFile(blob, c.name ?? 'fichier', c.expiresAt);
+      const token = await writeNativeFile(blob, c.name ?? t('name.file'), c.expiresAt);
       await call('clipWrite', { kind: 'file', token });
     },
 
