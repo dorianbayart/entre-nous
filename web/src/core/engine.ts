@@ -148,6 +148,9 @@ interface Runtime {
   /** Relay events are handled one after the other, in their order of arrival: a handler that
    *  waits (refresh, state) must not let a later event (a note) land on items it then replaces. */
   events: Promise<void>;
+  /** Connecting: the relay's events wait until its answer (the list of items) is applied, then
+   *  they are replayed in order. `answered`: the answer has come (events after it are newer). */
+  opening?: { answered: boolean; events: Array<{ e: RelayEvent; early: boolean }> };
   bundles: Map<string, PrekeyBundle>;
   online: Set<string>;
   maxTtl: number;
@@ -382,17 +385,22 @@ export class Engine {
       g.relay,
       (c) => this.onOpen(rt, c),
       (e) => {
-        rt.events = rt.events
-          // a runtime replaced meanwhile (rotation, group left) handles nothing more
-          .then(() => (this.runtimes.get(rt.g.id) === rt ? this.onEvent(rt, e) : undefined))
-          .catch((err) => {
-            if (err.message !== 'disconnected') this.emit({ type: 'error', message: String(err.message ?? err) });
-          });
+        if (rt.opening) rt.opening.events.push({ e, early: !rt.opening.answered });
+        else this.queueEvent(rt, e);
       },
       () => this.changed(),
     );
     this.runtimes.set(g.id, rt);
     return rt;
+  }
+
+  private queueEvent(rt: Runtime, e: RelayEvent) {
+    rt.events = rt.events
+      // a runtime replaced meanwhile (rotation, group left) handles nothing more
+      .then(() => (this.runtimes.get(rt.g.id) === rt ? this.onEvent(rt, e) : undefined))
+      .catch((err) => {
+        if (err.message !== 'disconnected') this.emit({ type: 'error', message: String(err.message ?? err) });
+      });
   }
 
   private detach(groupId: string) {
@@ -700,12 +708,34 @@ export class Engine {
 
   // ------------------------------------------------------------ relay session
 
+  /**
+   * A (re)connection. The relay's answer to the hello is a snapshot (items, keys, state) that
+   * replaces what this device had; the events that come meanwhile would land on items about to
+   * be replaced, so they wait and are replayed after it, in order. The handlers are safe to
+   * replay: an event may also be in the snapshot.
+   */
   private async onOpen(rt: Runtime, c: RelayConnection) {
+    const opening: NonNullable<Runtime['opening']> = { answered: false, events: [] };
+    rt.opening = opening;
+    let ok = false;
+    try {
+      await this.setUp(rt, c, opening);
+      ok = true;
+    } finally {
+      if (rt.opening === opening) rt.opening = undefined;
+      // sent before the answer, presence is older than the list of devices online in it;
+      // on a failure, the next connection brings a new snapshot
+      if (ok) for (const { e, early } of opening.events) if (!(early && e.ev === 'presence')) this.queueEvent(rt, e);
+    }
+  }
+
+  private async setUp(rt: Runtime, c: RelayConnection, opening: NonNullable<Runtime['opening']>) {
     rt.ready = false; // members' prekeys are reloaded below
     // emptied before the hello: a key published while it is on its way comes as an event, and
     // must not be lost when the answer (read before it) arrives
     rt.bundles.clear();
     const res = await c.raw('hello', { roomKey: roomKey(rt.g), device: this.device.id });
+    opening.answered = true;
     rt.maxTtl = res.maxTtl;
     rt.persist = res.persist;
     rt.storage = res.storage;
@@ -795,6 +825,12 @@ export class Engine {
   private async onEvent(rt: Runtime, e: RelayEvent) {
     switch (e.ev) {
       case 'item': {
+        const had = rt.items.get(e.item.id)?.relay;
+        if (had && !!had.local === !!e.item.local) {
+          // replayed after a list that already had it, as it is or newer (complete)
+          if (had.complete && !e.item.complete) break;
+          if (had.complete === e.item.complete && had.expiresAt === e.item.expiresAt) break;
+        }
         if (await this.handleRotation(rt, e.item)) return;
         const view = this.addItem(rt, e.item);
         if (view && !view.mine && rt.peers && rt.online.has(view.from)) rt.peers.warm(view.from);
@@ -807,7 +843,7 @@ export class Engine {
       }
       case 'progress': {
         const entry = rt.items.get(e.id);
-        if (!entry || entry.relay.complete) break;
+        if (!entry || entry.relay.complete || e.have <= (entry.relay.have ?? 0)) break; // never backwards
         entry.relay.have = e.have;
         entry.relay.progressAt = e.at;
         const speed: { rate?: number; marks?: Array<[number, number]> } = { marks: entry.marks };
@@ -842,18 +878,22 @@ export class Engine {
         break;
       case 'prekey': {
         const b = openBundle(rt.g, e.bundle);
-        if (b) rt.bundles.set(b.device, b);
+        const known = b && rt.bundles.get(b.device);
+        if (b && (!known || known.at <= b.at)) rt.bundles.set(b.device, b);
         this.extendNote(rt);
         break;
       }
       case 'note': {
         const entry = rt.items.get(e.id);
         if (!entry?.opened) break;
+        // the newest text, by the relay's clock (the authors' clocks may differ)
+        if (e.updatedAt && (entry.relay.updatedAt ?? 0) >= e.updatedAt) break;
         try {
           entry.note = openNote(entry.opened.key, e.id, e.data);
         } catch {
           break;
         }
+        if (e.updatedAt) entry.relay.updatedAt = e.updatedAt;
         entry.relay.expiresAt = entry.view.expiresAt = e.expiresAt;
         this.changed();
         break;
@@ -1356,6 +1396,7 @@ export class Engine {
     const note: NoteText = { text, by: this.device.id, at: Date.now() };
     const res = await rt.conn.request('note.put', { id: cur.relay.id, data: sealNote(cur.opened!.key, cur.relay.id, note) });
     cur.note = note;
+    if (res.updatedAt) cur.relay.updatedAt = res.updatedAt;
     cur.relay.expiresAt = cur.view.expiresAt = res.expiresAt;
     for (const e of notes) if (e !== cur) await this.deleteItem(rt.g.id, e.relay.id).catch(() => {});
   }
