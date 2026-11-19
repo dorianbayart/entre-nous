@@ -27,9 +27,13 @@ Au premier lancement, un ordinateur crée tout seul un groupe « Mes appareils �
 
 1. Sur un appareil déjà associé : **Réglages → Inviter un appareil**. Un QR code s'affiche
    (valable 3 minutes, pour un seul appareil).
-2. Sur le nouvel appareil : scanne-le avec l'appareil photo (ou **Scanner un QR code** dans l'appli).
-   Sur un ordinateur sans caméra, colle le lien d'invitation dans **Rejoindre**.
+2. Sur le nouvel appareil : scanne-le avec l'appareil photo (ou **Scanner un QR code** dans l'appli),
+   ou colle le lien d'invitation affiché sous le QR code dans **Rejoindre** (sur l'écran d'accueil,
+   ou dans les Réglages) : pratique sur un ordinateur sans caméra, ou pour envoyer le lien à
+   distance par une messagerie.
 3. C'est fait : les deux appareils apparaissent dans **Réglages → Appareils**.
+
+![Association simple, par QR code ou par lien : le Mac affiche le QR code et son lien ; le téléphone le scanne, ou colle le lien](images/association.png)
 
 Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils sont indépendants.
 
@@ -44,8 +48,11 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 
 - **Note** : le champ texte en haut se synchronise à chaque frappe sur tous les appareils.
   **Envoyer** l'ajoute à l'historique, la note restant en place.
-- **Pause** (ordinateurs) : bouton ⏸ ou menu de l'icône. Plus rien n'est lu ni envoyé tant que
-  la pause dure ; les copies faites pendant ce temps ne partent jamais.
+- **Pause** (ordinateurs) : bouton ⏸ ou menu de l'icône. Plus rien n'est lu ni envoyé tout seul
+  tant que la pause dure ; les copies faites pendant ce temps ne partent jamais. Pour envoyer
+  quand même ce que tu viens de copier : **Envoyer le presse-papier** (ou Cmd/Ctrl+V dans la
+  fenêtre), comme quand le partage automatique est désactivé dans les Réglages (le bouton ⏸
+  disparaît alors).
 - **Limite du partage automatique** (réglage du groupe, 1 Mo par défaut) : au-delà, le contenu
   n'est pas envoyé tout seul, passe par **Fichier**. Un envoi manuel n'a pas de limite.
 
@@ -55,9 +62,20 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
   Colle. Un fichier reçu par un ordinateur se colle aussi dans le gestionnaire de fichiers.
 - **iPhone** : touche **Copier** sur l'élément (iOS n'autorise pas l'écriture sans geste).
 - **Historique** : tout ce qui a été partagé reste disponible jusqu'à expiration, sur tous les
-  appareils : **Copier**, **Enregistrer**, **Partager**, ou supprimer (pour tous).
-- Un gros fichier apparaît dès le début de son envoi, avec sa progression et sa vitesse ; tu peux
-  lancer le téléchargement avant la fin, il suit l'envoi.
+  appareils : **Copier**, **Enregistrer**, **Partager**, ou **Supprimer** (pour tous : la
+  confirmation dit « Supprimer partout »). **Tout supprimer** vide l'historique et la note.
+- **Envoi en cours** : une ligne « ↑ nom » au-dessus de l'historique montre sa progression et sa
+  vitesse, sur tous les appareils, et disparaît à la fin. L'élément apparaît dès le début :
+  **Enregistrer** est possible avant la fin, le téléchargement suit l'envoi ; **Copier** arrive une
+  fois l'envoi terminé (les applis le copient alors d'elles-mêmes). Sans nouvelles de l'expéditeur
+  pendant 5 minutes, l'élément est marqué « envoi interrompu ».
+- **Téléchargement** : sa progression s'affiche dans l'élément, à la place des boutons.
+
+![Pas besoin d'attendre la fin d'un envoi : pendant que le téléphone envoie une vidéo, le Mac et le PC la téléchargent déjà](images/envoi-en-cours.png)
+
+- **Confirmations** : **Demander confirmation avant de supprimer** (réglage de l'appareil) vaut pour
+  les éléments et pour **Effacer** la note ; un bouton de confirmation revient à la normale au
+  bout de quelques secondes.
 - **Notifications** (ordinateurs) : quand la fenêtre est fermée, « Texte reçu de Pixel », jamais
   le contenu. Réglage **Notification à la réception**.
 - **Ouvrir à l'ouverture de session** (ordinateurs) : l'appli démarre avec la session, directement
@@ -68,6 +86,8 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 ## 5. Réglages du groupe
 
 Modifiables par n'importe quel appareil du groupe :
+
+![Réglages de l'appareil et du groupe sur le Mac ; les appareils du groupe sur le téléphone](images/reglages.png)
 
 | Réglage | Choix |
 |---|---|
@@ -91,3 +111,4 @@ Voir [deploiement.md](deploiement.md) pour héberger un serveur relais.
 **Réglages → Appareils → Retirer**, depuis n'importe quel autre appareil du groupe. Les clés de
 chiffrement sont renouvelées : l'appareil retiré perd l'accès à tout ce que tu partages, historique
 compris ; les autres le gardent. **Quitter** fait la même chose pour l'appareil sur lequel tu es.
+Un groupe qui n'a plus qu'un appareil est dissous : celui qui reste repart sans groupe.

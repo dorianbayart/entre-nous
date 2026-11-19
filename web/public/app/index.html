@@ -43,23 +43,17 @@
     <div class="logo"></div>
     <h1>Entre Nous</h1>
     <p class="muted">Un presse-papier commun à tous tes appareils.<br>Chiffré de bout en bout : le serveur ne peut rien lire.</p>
-    <template x-if="mobile">
-      <div class="welcome">
-        <button class="primary wide" @click="startScan" :disabled="busy">Scanner un QR code</button>
-        <p class="muted small">Sur un appareil déjà associé, ouvre Réglages → Inviter un appareil pour afficher le QR code.</p>
-        <button class="ghost" @click="createGroup">Ou créer un nouveau groupe</button>
+    <div class="welcome">
+      <button class="primary wide" x-show="mobile" @click="startScan" :disabled="busy">Scanner un QR code</button>
+      <button class="primary wide" x-show="!mobile" @click="createGroup">Créer un groupe</button>
+      <p class="muted small">Pour rejoindre un groupe : sur un appareil déjà associé, Réglages → Inviter un appareil
+        affiche un QR code et son lien, à coller ici.</p>
+      <div class="inline">
+        <input type="url" placeholder="Lien d’invitation" x-model="joinLink">
+        <button class="secondary" @click="joinFromLink" :disabled="busy">Rejoindre</button>
       </div>
-    </template>
-    <template x-if="!mobile">
-      <div class="welcome">
-        <button class="primary wide" @click="createGroup">Créer un groupe</button>
-        <p class="muted small">Ou colle le lien d’invitation affiché par un appareil déjà associé (Réglages → Inviter un appareil).</p>
-        <div class="inline">
-          <input type="url" placeholder="Lien d’invitation" x-model="joinLink">
-          <button class="secondary" @click="joinFromLink" :disabled="busy">Rejoindre</button>
-        </div>
-      </div>
-    </template>
+      <button class="ghost" x-show="mobile" @click="createGroup">Ou créer un nouveau groupe</button>
+    </div>
     <button class="ghost" x-show="canInstall" @click="install">Installer l’appli</button>
   </section>
 

@@ -200,8 +200,11 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   await c.page.goto(APP);
   await c.page.locator('section.center', { hasText: 'Scanner un QR code' }).waitFor();
   assert.ok(await c.page.getByRole('button', { name: 'Créer un groupe' }).isHidden(), 'the phone welcome scans first');
-  // invited by Bob (not the creator of the group); the camera opens the link
-  await pair(b, c, (link) => c.page.goto(link));
+  // invited by Bob (not the creator of the group); the phone pastes the link on its first screen
+  await pair(b, c, async (link) => {
+    await c.page.locator('.welcome input').fill(link);
+    await c.page.locator('.welcome').getByRole('button', { name: 'Rejoindre' }).click();
+  });
   await rename(c, 'Carla');
   for (const d of [a, b]) {
     await until(`${d.name} sees Carla`, async () => (await d.page.locator('.status').textContent()).includes('Carla'));

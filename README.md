@@ -5,6 +5,13 @@
 Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte,
 sans pistage.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/apercu-sombre.png">
+    <img src="docs/images/apercu.png" width="840" alt="Entre Nous sur un Mac (barre des menus) et sur un téléphone Android : le même historique, chiffré de bout en bout">
+  </picture>
+</p>
+
 - **Confidentiel** : tout est chiffré sur ton appareil ; le serveur relais ne transporte que des
   données qu'il ne peut pas lire.
 - **Éphémère** : tout s'efface automatiquement, au bout de 10 minutes à 7 jours selon ton réglage.
@@ -14,6 +21,12 @@ sans pistage.
 - **Textes, images, fichiers**, de n'importe quelle taille, et une note partagée en direct.
 
 Essayer : <https://entrenous.0xdba.dev>
+
+## En action
+
+<p align="center">
+  <img src="docs/images/demo.gif" width="840" alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; une note partagée s'écrit en direct sur les trois appareils">
+</p>
 
 ## Plateformes
 
@@ -48,12 +61,12 @@ Détails, proxy et réglages : [docs/deploiement.md](docs/deploiement.md).
 
 ## Comment ça marche, en bref
 
-```mermaid
-flowchart LR
-  A["Appareil A<br/>chiffre"] -- "blocs chiffrés" --> R[("Serveur relais<br/>en RAM, ne peut rien lire")]
-  R -- "blocs chiffrés" --> B["Appareil B<br/>déchiffre"]
-  A <-. "en direct, même réseau (WebRTC)" .-> B
-```
+<p align="center">
+  <img src="docs/images/chiffrement.svg" width="840" alt="Le contenu est chiffré sur le Mac ; le relais ne transporte que des données illisibles ; le téléphone le déchiffre">
+</p>
+<p align="center">
+  <img src="docs/images/reseau.svg" width="840" alt="Sur le même Wi-Fi, le contenu passe en direct (WebRTC) ; ailleurs, par le relais, toujours chiffré">
+</p>
 
 - Échange de clés hybride post-quantique (X25519 + ML-KEM-768), XChaCha20-Poly1305, Ed25519.
 - Une clé par élément, enveloppée pour chaque appareil ; pré-clés renouvelées chaque jour.

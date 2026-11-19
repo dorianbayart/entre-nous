@@ -47,6 +47,11 @@ Les tests lancent de vrais appareils (moteurs) contre le relais : association, e
 coupure, suppression pendant un envoi, retrait d'un appareil, mode local (avec une liaison en mémoire
 à la place de WebRTC, absent de Node).
 
+Les images de la documentation (`docs/images/`) se refont avec `npm run screenshots` (relais lancé,
+Chrome et ffmpeg) : trois appareils de démonstration dans Chrome, dont un Mac dont le pont natif est
+simulé ; captures, mises en scène et animation. Les schémas SVG (`chiffrement.svg`, `reseau.svg`)
+sont écrits à la main.
+
 Les tests d'interface (`test/ui/`) ouvrent l'appli servie par le relais dans plusieurs profils Chrome
 (un par appareil, dont un téléphone Android simulé) : note, confirmations, envoi en cours et
 téléchargements, invitations, retrait. Ils utilisent le Chrome installé (`playwright-core`, aucun

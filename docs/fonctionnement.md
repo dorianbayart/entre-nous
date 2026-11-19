@@ -81,8 +81,9 @@ sequenceDiagram
 
 - **Un élément** = une annonce signée par l'expéditeur, un en-tête chiffré (type, nom, taille,
   miniature, texte court), une enveloppe par appareil et les blocs du contenu.
-- **Pendant l'envoi**, l'élément est déjà visible partout avec sa progression ; un appareil peut
-  lancer le téléchargement avant la fin, il suit l'envoi.
+- **Pendant l'envoi**, l'élément est déjà visible partout, et la progression de l'envoi s'affiche
+  au-dessus de l'historique ; un appareil peut lancer le téléchargement avant la fin, il suit
+  l'envoi (sa progression s'affiche dans l'élément). La copie, elle, attend la fin de l'envoi.
 - **Coupure** (veille, réseau) : l'envoi reprend avec les blocs manquants dès le retour de la
   connexion, tant que l'appli reste ouverte et que l'élément n'a pas expiré.
 - **Appareil absent** : l'élément l'attend sur le relais jusqu'à son expiration (24 h par
@@ -93,6 +94,8 @@ sequenceDiagram
 
 Quand deux appareils du groupe sont sur le même réseau, le contenu passe **directement de l'un à
 l'autre**, en WebRTC, sans passer par internet. C'est transparent : rien à régler.
+
+![Sur le même Wi-Fi, le contenu passe en direct ; ailleurs, par le relais, toujours chiffré](images/reseau.svg)
 
 ```mermaid
 sequenceDiagram

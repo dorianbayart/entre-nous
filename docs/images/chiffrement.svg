@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" role="img" aria-labelledby="t d">
+  <title id="t">Chiffré de bout en bout</title>
+  <desc id="d">Le contenu est chiffré sur le Mac, le relais ne transporte que des données illisibles, le téléphone le déchiffre.</desc>
+  <style>
+    .bg { fill: #f6f5f2; } .card { fill: #fff; stroke: #e4e2dc; } .text { fill: #1b1b1a; } .muted { fill: #74726c; }
+    .accent { fill: #2f5d50; } .accent-stroke { stroke: #2f5d50; } .soft { fill: #e3ece8; } .cipher { fill: #9a988f; }
+    .relay { fill: #eceae4; stroke: #d6d3cb; } .pkt { fill: #2f5d50; } .pkt-text { fill: #fff; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #151515; } .card { fill: #1f1f1e; stroke: #34332f; } .text { fill: #ecebe7; } .muted { fill: #a9a69e; }
+      .accent { fill: #7fb8a3; } .accent-stroke { stroke: #7fb8a3; } .soft { fill: #233630; } .cipher { fill: #6f6d66; }
+      .relay { fill: #1a1a19; stroke: #3a3935; } .pkt { fill: #7fb8a3; } .pkt-text { fill: #10201b; }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .h { font-size: 15px; font-weight: 700; } .s { font-size: 12.5px; } .b { font-size: 13px; font-weight: 600; }
+    .scramble { animation: scramble 1.6s steps(1) infinite; } .scramble.b2 { animation-name: scramble2; }
+    @keyframes scramble { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    @keyframes scramble2 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+  </style>
+  <rect class="bg" width="960" height="380" rx="20"/>
+  <text class="text h" x="480" y="40" text-anchor="middle" style="font-size:19px">Le relais transporte, il ne lit pas</text>
+  <text class="muted s" x="480" y="62" text-anchor="middle">Le contenu n’existe en clair que sur tes appareils.</text>
+
+  <!-- Mac -->
+  <rect class="card" x="40" y="92" width="240" height="196" rx="16"/>
+  <g transform="translate(62 110)"><rect class="accent" x="0" y="0" width="22" height="15" rx="2.5"/><rect class="accent" x="-3" y="16" width="28" height="3" rx="1.5"/></g>
+  <text class="text h" x="94" y="124">Ton Mac</text>
+  <rect class="soft" x="58" y="144" width="204" height="74" rx="10"/>
+  <text class="text mono" x="72" y="174" style="font-size:14px">Code Wi-Fi :</text>
+  <text class="text mono" x="72" y="198" style="font-size:14px;font-weight:600">poney-violet-42</text>
+  <text class="accent b" x="58" y="246">✓ chiffré ici, avant l’envoi</text>
+  <text class="muted s" x="58" y="268">clé propre à chaque élément</text>
+
+  <!-- relay -->
+  <rect class="relay" x="360" y="92" width="240" height="196" rx="16"/>
+  <g transform="translate(382 108)"><rect class="muted" x="0" y="0" width="22" height="7" rx="2"/><rect class="muted" x="0" y="9" width="22" height="7" rx="2"/><circle class="bg" cx="17" cy="3.5" r="1.5"/><circle class="bg" cx="17" cy="12.5" r="1.5"/></g>
+  <text class="text h" x="414" y="124">Serveur relais</text>
+  <g class="cipher mono" style="font-size:13.5px">
+    <g class="scramble"><text x="380" y="164">8f3a c91e 07d2 4be6</text><text x="380" y="186">a1f0 9c37 e51b 2d88</text><text x="380" y="208">60c4 f7a9 13de b05f</text></g>
+    <g class="scramble b2"><text x="380" y="164">d72e 05b9 fa41 6c03</text><text x="380" y="186">3e8d b1c6 47f0 92aa</text><text x="380" y="208">c58b 0e7d a926 1f34</text></g>
+  </g>
+  <text class="text b" x="380" y="246">✕ ni le texte, ni le nom, ni le type</text>
+  <text class="muted s" x="380" y="268">taille arrondie, heure, adresse IP</text>
+
+  <!-- phone -->
+  <rect class="card" x="680" y="92" width="240" height="196" rx="16"/>
+  <g transform="translate(705 105)"><rect class="accent" x="0" y="0" width="14" height="24" rx="3.5"/><rect class="bg" x="5" y="2.5" width="4" height="1.6" rx=".8"/></g>
+  <text class="text h" x="734" y="124">Ton téléphone</text>
+  <rect class="soft" x="698" y="144" width="204" height="74" rx="10"/>
+  <text class="text mono" x="712" y="174" style="font-size:14px">Code Wi-Fi :</text>
+  <text class="text mono" x="712" y="198" style="font-size:14px;font-weight:600">poney-violet-42</text>
+  <text class="accent b" x="698" y="246">✓ déchiffré ici</text>
+  <text class="muted s" x="698" y="268">avec sa propre clé privée</text>
+
+  <!-- the way: packets go through the relay, closed -->
+  <path id="way1" d="M282 190 H358" fill="none"/>
+  <path id="way2" d="M602 190 H678" fill="none"/>
+  <line class="accent-stroke" x1="282" y1="190" x2="358" y2="190" stroke-width="2" stroke-dasharray="4 5" opacity=".5"/>
+  <line class="accent-stroke" x1="602" y1="190" x2="678" y2="190" stroke-width="2" stroke-dasharray="4 5" opacity=".5"/>
+  <g>
+    <g><rect class="pkt" x="-14" y="-11" width="28" height="22" rx="6"/><text class="pkt-text" x="0" y="4.5" text-anchor="middle" style="font-size:12px">🔒</text>
+      <animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#way1"/></animateMotion></g>
+    <g><rect class="pkt" x="-14" y="-11" width="28" height="22" rx="6"/><text class="pkt-text" x="0" y="4.5" text-anchor="middle" style="font-size:12px">🔒</text>
+      <animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#way2"/></animateMotion></g>
+  </g>
+
+  <text class="muted s" x="480" y="330" text-anchor="middle">XChaCha20-Poly1305 · clés échangées en X25519 + ML-KEM-768 (résiste à l’ordinateur quantique) · signatures Ed25519</text>
+  <text class="muted s" x="480" y="352" text-anchor="middle">Aucun compte : tes appareils partagent un secret de groupe transmis par le QR code, jamais par le serveur.</text>
+</svg>

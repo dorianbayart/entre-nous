@@ -15,6 +15,8 @@ données opaques, en mémoire, jusqu'à leur expiration.
 
 ## Ce que voit le serveur, ce qu'il ne voit pas
 
+![Le contenu est chiffré sur l'appareil qui envoie ; le relais ne transporte que des données illisibles](images/chiffrement.svg)
+
 | Le relais ne voit jamais | Le relais voit |
 |---|---|
 | le contenu : textes, images, fichiers, note | les adresses IP des appareils connectés |
