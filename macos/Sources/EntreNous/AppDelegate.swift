@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
         bridge.updateIconLabel = { [weak self] in self.map { $0.updateIcon(paused: $0.bridge.paused) } }
         bridge.isVisible = { [weak self] in self?.popover.isShown ?? false }
         bridge.onModal = { [weak self] active in self?.popover.behavior = active ? .applicationDefined : .transient }
+        bridge.show = { [weak self] in self?.toggle() }
         UNUserNotificationCenter.current().delegate = self
         bridge.load()
     }

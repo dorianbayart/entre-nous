@@ -21,6 +21,8 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
     var isVisible: () -> Bool = { false }
     /// A system panel (file picker) opens or closes: the popover must stay open meanwhile.
     var onModal: ((Bool) -> Void)?
+    /// Shows the popover (back from a video in picture-in-picture).
+    var show: (() -> Void)?
 
     static var relayURL: String {
         UserDefaults.standard.string(forKey: "relay") ?? "https://entrenous.0xdba.dev"
@@ -30,6 +32,9 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(BundleSchemeHandler(), forURLScheme: "entrenous")
         config.websiteDataStore = .nonPersistent() // nothing stored by WebKit: the Keychain holds it all
+        // Picture-in-picture of a video (the standard web API): WebKit offers it in an app only
+        // with this preference (not public on macOS). The video then plays on with the popover closed.
+        config.preferences.setValue(true, forKey: "allowsPictureInPictureMediaPlayback")
         let controller = WKUserContentController()
         let settings: [String: Any] = [
             "relay": WebBridge.relayURL, "name": Host.current().localizedName ?? "Mac", "lang": L10n.system,
@@ -153,6 +158,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             }
             return true
 
+        // back from picture-in-picture: the popover shows again, with the video
+        case "show":
+            if !isVisible() { show?() }
+            return true
+
         // the language of the UI, for the menu of the icon
         case "setLang":
             L10n.lang = a["lang"] as? String == "fr" ? "fr" : "en"
@@ -267,7 +277,7 @@ final class BundleSchemeHandler: NSObject, WKURLSchemeHandler {
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [
             "Content-Type": mime,
-            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src wss: ws: https: http://127.0.0.1:*; object-src 'none'; base-uri 'none'",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src wss: ws: https: http://127.0.0.1:*; object-src 'none'; base-uri 'none'",
         ])!
         task.didReceive(response)
         task.didReceive(data)

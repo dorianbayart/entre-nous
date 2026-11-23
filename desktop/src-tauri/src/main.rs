@@ -19,7 +19,9 @@ use std::time::Duration;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent, Wry};
+use tauri::{
+    AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder, WindowEvent, Wry,
+};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
@@ -45,6 +47,58 @@ pub struct Bridge {
     pub paused: AtomicBool,
     awake: Mutex<Option<Awake>>,
     menu: Mutex<Option<TrayMenu>>,
+    /// In picture-in-picture: the window's size and place before, to go back to.
+    pip: Mutex<Option<(PhysicalSize<u32>, PhysicalPosition<i32>)>>,
+}
+
+/// The window of the app, its normal minimum size.
+const MIN_SIZE: (f64, f64) = (340.0, 480.0);
+/// Picture-in-picture: the width of the small window, its gap to the screen's edges.
+const PIP_WIDTH: f64 = 400.0;
+const PIP_MARGIN: f64 = 24.0;
+
+/// Picture-in-picture, as the web views of Linux and Windows have none: the window shrinks to
+/// the video (`width` × `height`, its pixels) in the bottom right corner, above the others.
+/// It keeps its frame, to be moved, resized or closed like any window.
+fn pip_enter(app: &AppHandle, width: f64, height: f64) -> tauri::Result<()> {
+    let Some(w) = app.get_webview_window("main") else { return Ok(()) };
+    let b = app.state::<Bridge>();
+    let mut saved = b.pip.lock().unwrap();
+    if saved.is_none() {
+        *saved = Some((w.inner_size()?, w.outer_position()?));
+    }
+    let ratio = if width > 0.0 && height > 0.0 { height / width } else { 9.0 / 16.0 };
+    let size = LogicalSize::new(PIP_WIDTH, (PIP_WIDTH * ratio).round());
+    // the frame around the content, measured before resizing (X11 applies a new size later:
+    // the window's own size cannot be read back at once)
+    let (inner, outer) = (w.inner_size()?, w.outer_size()?);
+    let frame = (outer.width.saturating_sub(inner.width), outer.height.saturating_sub(inner.height));
+    w.set_min_size(None::<LogicalSize<f64>>)?;
+    w.set_size(size)?;
+    w.set_always_on_top(true)?;
+    if let Some(m) = w.current_monitor()? {
+        let scale = m.scale_factor();
+        let area = m.work_area();
+        let target = size.to_physical::<u32>(scale);
+        let margin = (PIP_MARGIN * scale) as i32;
+        let x = area.position.x + area.size.width as i32 - (target.width + frame.0) as i32 - margin;
+        let y = area.position.y + area.size.height as i32 - (target.height + frame.1) as i32 - margin;
+        w.set_position(PhysicalPosition::new(x.max(area.position.x), y.max(area.position.y)))?;
+    }
+    w.unminimize()?;
+    w.show()?;
+    Ok(())
+}
+
+/// Back to the full window, where it was.
+fn pip_exit(app: &AppHandle) -> tauri::Result<bool> {
+    let Some(w) = app.get_webview_window("main") else { return Ok(false) };
+    let Some((size, position)) = app.state::<Bridge>().pip.lock().unwrap().take() else { return Ok(false) };
+    w.set_always_on_top(false)?;
+    w.set_size(size)?;
+    w.set_position(position)?;
+    w.set_min_size(Some(LogicalSize::new(MIN_SIZE.0, MIN_SIZE.1)))?;
+    Ok(true)
 }
 
 /// The items of the tray menu, relabelled when the language or the pause changes.
@@ -235,6 +289,16 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
             });
             Ok(json!(true))
         }
+        "pipEnter" => {
+            let n = |k: &str| a.get(k).and_then(Value::as_f64).unwrap_or(0.0);
+            pip_enter(app, n("width"), n("height")).map_err(|e| e.to_string())?;
+            Ok(json!(true))
+        }
+        "pipExit" => {
+            pip_exit(app).map_err(|e| e.to_string())?;
+            Ok(json!(true))
+        }
+
         // open at login, with --hidden: straight to the tray
         "autostartGet" => Ok(json!(app.autolaunch().is_enabled().unwrap_or(false))),
         "autostartSet" => {
@@ -307,6 +371,7 @@ fn main() {
                 paused: AtomicBool::new(false),
                 awake: Mutex::new(None),
                 menu: Mutex::new(None),
+                pip: Mutex::new(None),
             });
 
             let name = gethostname::gethostname().to_string_lossy().to_string();
@@ -325,7 +390,7 @@ fn main() {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("Entre Nous")
                 .inner_size(400.0, 640.0)
-                .min_inner_size(340.0, 480.0)
+                .min_inner_size(MIN_SIZE.0, MIN_SIZE.1)
                 .visible(!hidden)
                 .initialization_script(script)
                 .incognito(true) // nothing stored by the web view: the secure store holds it all
@@ -343,9 +408,15 @@ fn main() {
                 .build()?;
             // closing the window keeps the app running (clipboard, relay): Quit is in the tray
             let w = window.clone();
+            let app_handle = handle.clone();
             window.on_window_event(move |event| {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
+                    // the small window of a video closed: the video stops, the window gets
+                    // its size back for the next time
+                    if pip_exit(&app_handle).unwrap_or(false) {
+                        emit(&app_handle, "pip", json!({ "active": false, "closed": true }));
+                    }
                     let _ = w.hide();
                 }
             });

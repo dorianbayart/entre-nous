@@ -76,12 +76,15 @@ export function desktopPlatform(): PlatformApi {
   let onDrop: (o: Outgoing) => void = () => {};
   let onPause: (paused: boolean) => void = () => {};
   let onWake: () => void = () => {};
+  let onPip: (active: boolean, closed: boolean) => void = () => {};
   let autoLimit = Infinity;
+  const mac = !config.platform;
 
   // Events pushed by Swift.
   window.__entrenous!.event = async (name, payload) => {
     if (name === 'pause') return onPause(!!payload.paused);
     if (name === 'wake') return onWake();
+    if (name === 'pip') return onPip(!!payload.active, !!payload.closed);
     if (name === 'drop') {
       // dropped on the menu bar icon (Mac): sent whatever the size limit or the pause
       for (const item of payload.items ?? []) onDrop((await fromNative(item, Infinity)) as Outgoing);
@@ -166,6 +169,25 @@ export function desktopPlatform(): PlatformApi {
     onLocalCopy(cb) {
       listeners.push(cb);
     },
+
+    // Mac: the web view's own picture-in-picture; back from it, the popover shows again
+    ...(mac
+      ? {
+          show() {
+            call('show').catch(() => {});
+          },
+        }
+      : {
+          // Linux and Windows: no picture-in-picture in their web views (WebKitGTK, WebView2):
+          // the window itself shrinks to the video, without its frame, above the others
+          pip: {
+            enter: (width: number, height: number) => call('pipEnter', { width, height }).then(() => {}),
+            exit: () => call('pipExit').then(() => {}),
+            onChange(cb: (active: boolean, closed: boolean) => void) {
+              onPip = cb;
+            },
+          },
+        }),
   };
 }
 
