@@ -35,7 +35,7 @@ for t in $TARGETS; do
       # Mac with Apple chip) they fail with "Exec format error" because of their magic bytes
       # (offset 8, "AI\2"); blanking them is harmless. Tauri downloads them at the first try.
       run 'fix() { for f in /root/.cache/tauri/*.AppImage; do [ -f "$f" ] && printf "\0\0\0" | dd of="$f" bs=1 seek=8 count=3 conv=notrunc 2>/dev/null; done; true; }
-        fix; { cargo tauri build --config "{\"version\":\"$APP_VERSION\"}" --bundles deb,appimage || { fix && cargo tauri build --config "{\"version\":\"$APP_VERSION\"}" --bundles appimage; }; } \
+        rm -rf target/release/bundle; fix; { cargo tauri build --config "{\"version\":\"$APP_VERSION\"}" --bundles deb,appimage || { fix && cargo tauri build --config "{\"version\":\"$APP_VERSION\"}" --bundles appimage; }; } \
         && cp target/release/bundle/deb/*.deb /repo/downloads/Entre-Nous-linux.deb \
         && cp target/release/bundle/appimage/*.AppImage /repo/downloads/Entre-Nous-linux.AppImage'
       echo "Built: downloads/Entre-Nous-linux.deb, downloads/Entre-Nous-linux.AppImage" ;;
