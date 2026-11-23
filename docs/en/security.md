@@ -21,7 +21,7 @@ carries and stores opaque data, in memory, until it expires.
 | The relay never sees | The relay sees |
 |---|---|
 | the content: text, images, files, note | the IP addresses of connected devices |
-| file names, thumbnails, types | when things are sent, and how many |
+| file names, types, previews (thumbnails, lengths, starts of texts) | when things are sent, and how many |
 | the group's name, the devices' names and types | an approximate size (rounded to 64 KiB, 256 B for the header) |
 | the group secret, the private keys | an opaque room identifier, pseudonymous device identifiers |
 | the local addresses exchanged for local mode | who is connected right now (for automatic sharing) |
@@ -84,7 +84,7 @@ flowchart TD
 flowchart LR
   Contenu["content"] --> Blocs["1 MiB chunks"]
   Blocs -->|"XChaCha20-Poly1305<br/>chunk key, nonce = (index, last)<br/>associated data = item id"| Scelles["sealed chunks<br/>(the last one padded to 64 KiB)"]
-  Entete["header: type, name, size,<br/>thumbnail, short text"] -->|"padded to 256 B, encrypted"| EnteteC["encrypted header"]
+  Entete["header: type, name, size,<br/>short text, preview"] -->|"padded to 256 B, encrypted"| EnteteC["encrypted header"]
   Cle["item key"] -->|"X-Wing + HKDF<br/>for each device"| Env["envelopes"]
   Meta["announcement: id, sender, date, size"] -->|"Ed25519 signed"| Ann["signed announcement"]
   Scelles & EnteteC & Env & Ann --> Relais[("relay")]
@@ -143,6 +143,11 @@ flowchart LR
 - **Apps not signed by a recognized developer**: Mac app not notarized, APK installed outside the
   Play Store, unsigned Windows app (SmartScreen warning). Make sure you download them from your
   relay or from the releases published on GitHub.
+- **Previews**: what another device of the group sends is shown, never run. The HTML in a Markdown
+  file is written as text, its images are not loaded (they would tell their server who reads the
+  file), only `https:`, `http:` and `mailto:` links stay; images and videos are decoded by the
+  browser or the system's web view, as on a web page. A thumbnail is re-encoded by the sender: it
+  keeps none of the photo's metadata.
 - **No independent audit** so far. The code is public: anyone can review it.
 
 ## Reporting a vulnerability

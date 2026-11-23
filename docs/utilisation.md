@@ -73,6 +73,37 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
   pendant 5 minutes, l'élément est marqué « envoi interrompu ».
 - **Téléchargement** : sa progression s'affiche dans l'élément, à la place des boutons.
 
+### Aperçus
+
+Une photo, une vidéo, un texte ou un fichier Markdown s'ouvrent dans l'appli, sans les enregistrer :
+touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Ouvrir** (texte, Markdown). Les flèches
+(ou un glissement sur téléphone, ← → au clavier) passent d'un élément à l'autre ; Échap ferme.
+
+- **Dans l'historique, avant tout téléchargement** : la vignette d'une photo, l'image et la durée
+  d'une vidéo, les premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
+  chiffrés, à l'élément ; le serveur n'en voit rien. Une vignette ne garde aucune métadonnée de la
+  photo (lieu, appareil) ; le fichier lui-même part tel quel. En mode « Réseau local uniquement »,
+  rien de tout ça ne passe par le serveur : l'élément s'affiche sans aperçu.
+- **Vidéo** : elle se lit pendant qu'elle arrive, sans être téléchargée en entier, et on peut avancer
+  ou reculer à tout moment (même pendant que l'autre appareil l'envoie encore). MP4 et MOV (ceux
+  des téléphones) ; les autres formats, ou un iPhone plus ancien qu'iOS 17.1, la téléchargent
+  d'abord. Un format que l'appareil ne sait pas lire (HEVC sur certains PC, par exemple) propose
+  **Enregistrer**.
+- **Regarder en incrustation** (picture-in-picture) : la vidéo continue dans une petite fenêtre
+  au-dessus des autres.
+  - **Mac** : celle du système, qui continue quand la fenêtre d'Entre Nous se ferme ; elle la
+    rouvre quand on en revient.
+  - **Android** : l'appli devient la petite fenêtre, avec un bouton lecture/pause ; quitter l'appli
+    pendant une lecture l'y met aussi (Android 8 et plus).
+  - **Linux, Windows** : la fenêtre se réduit à la vidéo, dans le coin de l'écran, au premier plan ;
+    le bouton en haut à gauche (au survol) la remet en grand.
+  - **Navigateurs** : Chrome, Edge et Safari (Mac, iPhone).
+- **Texte** : avec ses numéros de ligne, et **Retour à la ligne** ; jusqu'au premier Mo du fichier
+  (**Enregistrer** pour le reste). **Copier le texte** copie ce qui est affiché.
+- **Markdown** : **Mis en forme** ou **Texte brut**. Le fichier vient d'un autre appareil : le HTML
+  qu'il contient s'affiche comme du texte, ses images ne sont pas chargées (elles diraient à leur
+  serveur qui lit le fichier), et seuls les liens web et e-mail restent cliquables.
+
 ![Pas besoin d'attendre la fin d'un envoi : pendant que le téléphone envoie une vidéo, le Mac et le PC la téléchargent déjà](images/envoi-en-cours.png)
 
 - **Confirmations** : **Demander confirmation avant de supprimer** (réglage de l'appareil) vaut pour

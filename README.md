@@ -20,6 +20,8 @@ sans pistage.
 - **En direct** quand c'est possible : sur le même réseau, le contenu passe d'un appareil à l'autre
   sans passer par internet.
 - **Textes, images, fichiers**, de n'importe quelle taille, et une note partagée en direct.
+- **Aperçus** : photos, textes et Markdown s'ouvrent dans l'appli ; une vidéo se lit pendant
+  qu'elle arrive, et continue en incrustation (picture-in-picture).
 
 Essayer : <https://entrenous.0xdba.dev>
 

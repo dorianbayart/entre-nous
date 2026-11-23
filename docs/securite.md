@@ -21,7 +21,7 @@ données opaques, en mémoire, jusqu'à leur expiration.
 | Le relais ne voit jamais | Le relais voit |
 |---|---|
 | le contenu : textes, images, fichiers, note | les adresses IP des appareils connectés |
-| les noms de fichiers, les miniatures, les types | l'heure des envois, leur nombre |
+| les noms de fichiers, les types, les aperçus (miniatures, durées, débuts de textes) | l'heure des envois, leur nombre |
 | le nom du groupe, le nom et le type des appareils | une taille approximative (arrondie à 64 Kio, 256 o pour l'en-tête) |
 | le secret du groupe, les clés privées | un identifiant de salle opaque, des identifiants d'appareils pseudonymes |
 | les adresses locales échangées pour le mode local | qui est connecté en ce moment (pour le partage automatique) |
@@ -85,7 +85,7 @@ flowchart TD
 flowchart LR
   Contenu["contenu"] --> Blocs["blocs de 1 Mio"]
   Blocs -->|"XChaCha20-Poly1305<br/>clé de bloc, nonce = (n°, dernier)<br/>données associées = id de l'élément"| Scelles["blocs scellés<br/>(le dernier bourré à 64 Kio)"]
-  Entete["en-tête : type, nom, taille,<br/>miniature, texte court"] -->|"bourré à 256 o, chiffré"| EnteteC["en-tête chiffré"]
+  Entete["en-tête : type, nom, taille,<br/>texte court, aperçu"] -->|"bourré à 256 o, chiffré"| EnteteC["en-tête chiffré"]
   Cle["clé de l'élément"] -->|"X-Wing + HKDF<br/>pour chaque appareil"| Env["enveloppes"]
   Meta["annonce : id, expéditeur, date, taille"] -->|"signée Ed25519"| Ann["annonce signée"]
   Scelles & EnteteC & Env & Ann --> Relais[("relais")]
@@ -145,6 +145,11 @@ flowchart LR
 - **Applis non signées par un éditeur reconnu** : appli Mac non notariée, APK installé hors du Play Store,
   appli Windows non signée (avertissement SmartScreen). Vérifie que tu les télécharges depuis ton relais
   ou depuis les versions publiées sur GitHub.
+- **Aperçus** : ce qu'un autre appareil du groupe envoie s'affiche sans jamais s'exécuter. Le HTML
+  d'un Markdown est écrit comme du texte, ses images ne sont pas chargées (elles diraient à leur
+  serveur qui lit le fichier), seuls les liens `https:`, `http:` et `mailto:` restent ; images et
+  vidéos sont décodées par le navigateur ou la vue web du système, comme sur une page web. Une
+  miniature est ré-encodée par l'expéditeur : elle ne garde pas les métadonnées de la photo.
 - **Pas d'audit indépendant** à ce jour. Le code est public : chacun peut le vérifier.
 
 ## Signaler une faille

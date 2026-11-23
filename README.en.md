@@ -21,6 +21,8 @@ no tracking.
 - **Direct** whenever possible: on the same network, content goes straight from one device to
   the other, without going through the internet.
 - **Text, images, files** of any size, plus a live shared note.
+- **Previews**: photos, texts and Markdown open in the app; a video plays while it arrives, and
+  goes on in picture-in-picture.
 
 Try it: <https://entrenous.0xdba.dev>
 

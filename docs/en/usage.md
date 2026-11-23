@@ -73,6 +73,35 @@ You can create more groups (one for family, one for work): they're independent o
   sender for 5 minutes, the item is marked "upload interrupted".
 - **Download**: its progress shows in the item, in place of the buttons.
 
+### Previews
+
+A photo, a video, a text or a Markdown file opens in the app, without saving it: tap the
+thumbnail, or **View** (image), **Play** (video), **Open** (text, Markdown). The arrows (or a
+swipe on a phone, ← → on a keyboard) go from one item to the next; Escape closes.
+
+- **In the history, before any download**: a photo's thumbnail, a video's poster and length, the
+  first words of a text. The sending device makes them and attaches them, encrypted, to the item;
+  the server sees none of it. A thumbnail keeps none of the photo's metadata (place, camera); the
+  file itself is sent as it is. In "Local network only" mode none of this goes through the
+  server: the item shows without a preview.
+- **Video**: it plays while it arrives, without being downloaded whole, and you can jump forward
+  or back at any time (even while the other device is still sending it). MP4 and MOV (what phones
+  record); other formats, or an iPhone older than iOS 17.1, download it first. A format the device
+  cannot play (HEVC on some PCs, for instance) offers **Save**.
+- **Watch in picture-in-picture**: the video goes on in a small window above the others.
+  - **Mac**: the system's own, which goes on when the Entre Nous window closes; coming back from
+    it opens the window again.
+  - **Android**: the app becomes the small window, with a play/pause button; leaving the app while
+    a video plays does it too (Android 8 and later).
+  - **Linux, Windows**: the window shrinks to the video, in the corner of the screen, on top; the
+    button at the top left (on hover) brings it back to full size.
+  - **Browsers**: Chrome, Edge and Safari (Mac, iPhone).
+- **Text**: with line numbers, and **Wrap lines**; up to the first MB of the file (**Save** for the
+  rest). **Copy the text** copies what is shown.
+- **Markdown**: **Formatted** or **Plain text**. The file comes from another device: any HTML in it
+  shows as text, its images are not loaded (they would tell their server who reads the file), and
+  only web and e-mail links stay clickable.
+
 ![No need to wait for an upload to finish: while the phone is sending a video, the Mac and the PC are already downloading it](../images/envoi-en-cours-en.png)
 
 - **Confirmations**: **Ask before deleting** (a device setting) applies to items and to
