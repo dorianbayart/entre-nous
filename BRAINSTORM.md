@@ -205,6 +205,36 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   un groupe partagé reste sur son serveur (le lien d'invitation porte le serveur du groupe).
 - Appli web : toujours le relais qui la sert (sa CSP n'autorise pas d'autre serveur).
 
+## 8 quinquies. Ligne de commande (`cli/`)
+
+- **Pourquoi** : envoyer un fichier depuis un serveur ou une CI, récupérer une photo dans un script,
+  et donner aux agents d'IA (Claude Code et les autres, qui ont un shell) un moyen de remettre ce
+  qu'ils produisent ou de poser une question, sans configuration.
+- **Un appareil de plus** (plateforme `cli`, « Terminal »), sur le même cœur : rien de nouveau dans
+  le protocole ni dans la cryptographie. Un seul fichier (`dist/entrenous.mjs`, esbuild), sans
+  dépendance, Node 22 (WebSocket, `fs.openAsBlob`).
+- **CLI plutôt que serveur MCP** : un MCP local s'installe et se lance comme un CLI, avec en plus une
+  déclaration dans la configuration du client ; un MCP distant (hébergé par le relais) devrait
+  chiffrer et déchiffrer pour l'agent, donc voir le contenu : exclu. Un MCP pourra venir plus tard
+  comme surcouche du CLI, pour les clients sans shell.
+- **Association** : une invitation, comme pour tout appareil ; c'est l'étape humaine voulue (le
+  consentement). `invite` attend en premier plan : l'invitation n'existe que tant que son auteur
+  écoute le canal d'appairage.
+- **Clés dans des fichiers en clair** (`0600`, dossier `0700`), comme des clés SSH : le trousseau
+  du système n'est pas joignable partout où tourne un CLI (serveurs, conteneurs, CI). Aucun contenu
+  sur le disque, sauf les fichiers enregistrés à la demande.
+- **Plusieurs processus, une identité** : écritures sous verrou (un dossier `.lock`), liste des
+  groupes déduite des fichiers présents, et fusion des prékeys à l'écriture d'un groupe : une
+  prékey créée par un autre processus n'est jamais perdue.
+- **Relais seulement** : pas de WebRTC dans Node ; un groupe « Réseau local uniquement » est refusé.
+- **Sorties pour les scripts** : résultats sur stdout, messages sur stderr, `--json`, codes de sortie
+  stables (`124` pour un délai dépassé), rien d'interactif hors terminal (`--yes`).
+- **Sécurité des fichiers reçus** : le nom donné par l'expéditeur est réduit à son dernier élément,
+  sans point initial ; jamais de remplacement sans `--force`.
+- **Diffusion** : `entrenous-cli.tgz` dans chaque release, installable par `npm install -g <url>`.
+  Pas de publication sur le registre npm : double authentification matérielle obligatoire et jetons
+  à renouveler, trop lourd pour ce que ça apporte.
+
 ## 9. Relais
 
 - Un conteneur `node:lts-alpine` : Node (HTTP + WebSocket, fichiers statiques) et Redis

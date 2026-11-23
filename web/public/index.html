@@ -148,6 +148,17 @@
       <p>Rien à installer&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur
         récent. Colle (Ctrl+V) ou glisse un fichier pour l’envoyer.</p>
     </details>
+    <details data-platform="cli">
+      <summary>Terminal</summary>
+      <p>Pour les serveurs, les scripts et les agents d’IA&nbsp;: <strong>entrenous</strong>, en ligne
+        de commande, avec Node.js&nbsp;22 ou plus récent.</p>
+      <pre><code>npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
+entrenous join '<span class="ph">lien d’invitation</span>'
+entrenous send rapport.pdf
+entrenous wait</code></pre>
+      <p>Le lien d’invitation est sous le QR code, dans <strong>Réglages → Inviter un appareil</strong>.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/cli.md">Toutes les commandes</a></p>
+    </details>
   </section>
 
   <section>
@@ -226,6 +237,14 @@
     <details>
       <summary>Et si je perds un appareil&nbsp;?</summary>
       <p>Retire-le depuis un autre de tes appareils&nbsp;: il perd aussitôt l’accès à tout ce que tu partages.</p>
+    </details>
+    <details>
+      <summary>Puis-je l’utiliser dans un terminal, un script ou avec un agent d’IA&nbsp;?</summary>
+      <p>Oui&nbsp;: la commande <strong>entrenous</strong> est un appareil de plus dans ton groupe,
+        avec le même chiffrement. Un serveur t’envoie un fichier sur ton téléphone, un script attend
+        la photo que tu vas prendre, un agent d’IA te remet ce qu’il a produit ou te pose une question.</p>
+      <p>Donne à un agent un groupe à lui, jamais celui de ton presse-papier.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/cli.md">Le guide de la ligne de commande</a></p>
     </details>
     <details>
       <summary>Puis-je utiliser mon propre serveur&nbsp;?</summary>

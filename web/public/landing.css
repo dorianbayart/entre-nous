@@ -104,6 +104,12 @@ details {
 summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
 details p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
 details p strong { color: var(--text); }
+details pre {
+  margin: 0 0 12px; padding: 12px 14px; overflow-x: auto;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text);
+}
+details pre .ph { color: var(--muted); font-style: italic; }
 
 .facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .facts li { color: var(--muted); font-size: 15px; }

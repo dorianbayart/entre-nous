@@ -1,12 +1,13 @@
-# Type checking, end-to-end tests of the core and interface tests (Chrome) against a real relay.
+# Type checking, end-to-end tests of the core, of the command line and of the interface (Chrome)
+# against a real relay.
 name: Tests
 
 on:
   push:
     branches: [master]
-    paths: [web/**, relay/**, Dockerfile, docker-compose.yml, .github/workflows/tests.yml]
+    paths: [web/**, relay/**, cli/**, Dockerfile, docker-compose.yml, .github/workflows/tests.yml]
   pull_request:
-    paths: [web/**, relay/**, Dockerfile, docker-compose.yml]
+    paths: [web/**, relay/**, cli/**, Dockerfile, docker-compose.yml]
   workflow_dispatch:
 
 jobs:
@@ -18,7 +19,9 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            cli/package-lock.json
       - name: Relais
         run: |
           docker compose up -d --build
@@ -29,6 +32,10 @@ jobs:
         run: npm run typecheck
       - working-directory: web
         run: npm test
+      # the command line: two terminal devices; built before the interface tests, which use it too
+      - name: CLI
+        working-directory: cli
+        run: npm ci --no-audit --no-fund && npm run typecheck && npm run build && npm test
       # several browser devices (Chrome profiles) using the app served by the relay
       - working-directory: web
         run: npm run test:ui

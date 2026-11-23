@@ -1,0 +1,46 @@
+{
+  "name": "entrenous",
+  "version": "0.0.0",
+  "description": "Entre Nous in your terminal: a clipboard shared across all your devices, end-to-end encrypted and ephemeral.",
+  "keywords": [
+    "clipboard",
+    "end-to-end encryption",
+    "e2ee",
+    "file transfer",
+    "cli",
+    "pastebin",
+    "sync",
+    "ai agents"
+  ],
+  "homepage": "https://entrenous.0xdba.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dorianbayart/entre-nous.git",
+    "directory": "cli"
+  },
+  "bugs": "https://github.com/dorianbayart/entre-nous/issues",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "entrenous": "dist/entrenous.mjs"
+  },
+  "files": [
+    "dist/entrenous.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-force-exit test/",
+    "prepack": "node build.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "qrcode-generator": "^2.0.4",
+    "typescript": "^7.0.2"
+  }
+}

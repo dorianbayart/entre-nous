@@ -16,7 +16,7 @@ import {
   verify,
 } from './crypto.ts';
 
-export type Platform = 'mac' | 'linux' | 'windows' | 'android' | 'ios' | 'desktop';
+export type Platform = 'mac' | 'linux' | 'windows' | 'android' | 'ios' | 'desktop' | 'cli';
 
 export const DAY = 24 * 3600;
 export const DEFAULT_TTL = DAY;

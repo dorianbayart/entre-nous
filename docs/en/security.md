@@ -109,6 +109,7 @@ flowchart LR
 | Windows | encrypted file (XChaCha20-Poly1305) in `%APPDATA%`, key in Credential Manager |
 | Linux | encrypted file in `~/.local/share`, key in the Secret Service (GNOME Keyring, KWallet); failing that, in a file readable by the user only (weaker) |
 | Web app | the browser's IndexedDB, protected by the user's session |
+| Command line | plain files in `~/.local/share/entrenous` (`%LOCALAPPDATA%` on Windows), readable by the user only, like SSH keys (weaker than the apps); no content is ever written there |
 
 - What the desktop apps write to the clipboard is marked as "secret" (`ConcealedType` on Mac,
   exclusion formats on Windows, KDE hint on Linux): clipboard history tools ignore it. Conversely,

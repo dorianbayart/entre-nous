@@ -1158,7 +1158,7 @@ Alpine.data('app', () => ({
   },
 
   platformLabel(p: string) {
-    return { mac: 'Mac', linux: 'Linux', windows: 'Windows', android: 'Android', ios: 'iOS', desktop: this.t('device.browser') }[p] ?? p;
+    return { mac: 'Mac', linux: 'Linux', windows: 'Windows', android: 'Android', ios: 'iOS', cli: 'Terminal', desktop: this.t('device.browser') }[p] ?? p;
   },
 }));
 

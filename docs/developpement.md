@@ -12,6 +12,7 @@ Les choix de conception et leur historique sont dans [BRAINSTORM.md](../BRAINSTO
 | `macos/` | appli de barre des menus (Swift + WKWebView) |
 | `desktop/` | appli Linux et Windows (Rust + Tauri, WebKitGTK / WebView2) |
 | `android/` | appli Android (Capacitor 8), plugin natif `EntreNousPlugin.java` |
+| `cli/` | la ligne de commande `entrenous` (Node), sur le même cœur ; un seul fichier, `dist/entrenous.mjs` |
 | `downloads/` | applis compilées en local (non versionnées) |
 | `scripts/auto-update.sh` | mise à jour automatique d'un relais sur la dernière release |
 | `Dockerfile`, `docker-compose.yml` | le relais en un seul conteneur |
@@ -73,6 +74,26 @@ Les tests d'interface (`test/ui/`) ouvrent l'appli servie par le relais dans plu
 (un par appareil, dont un téléphone Android simulé) : note, confirmations, envoi en cours et
 téléchargements, invitations, retrait. Ils utilisent le Chrome installé (`playwright-core`, aucun
 navigateur téléchargé) ; le relais doit avoir été reconstruit avec l'appli à tester.
+
+## Ligne de commande
+
+```sh
+cd web && npm install                  # le cœur et ses paquets (@noble…)
+cd ../cli && npm install
+npm run build                          # dist/entrenous.mjs : un seul fichier, sans dépendance
+npm run typecheck
+npm test                               # deux terminaux contre le relais lancé (RELAY=… pour un autre)
+node dist/entrenous.mjs --help
+ENTRENOUS_RELAY=http://127.0.0.1:8080 ENTRENOUS_HOME=/tmp/en node dist/entrenous.mjs create
+```
+
+- Même cœur que les applis (`web/src/core`), regroupé par esbuild avec le CLI. La plateforme `cli`
+  s'affiche « Terminal » dans la liste des appareils.
+- Clés dans des fichiers (`src/store.ts`) : verrou pour les écritures, et fusion des prékeys quand
+  deux processus de la même identité écrivent le même groupe.
+- Textes en français et en anglais dans `src/i18n.ts` (le compilateur vérifie que les deux ont les
+  mêmes clés) ; la langue suit `LANG`.
+- `npm run test:ui` (dans `web/`) a aussi un test terminal + navigateur, quand le CLI est compilé.
 
 ## Appli Mac
 
@@ -137,7 +158,7 @@ android/build.sh          # APK signé → downloads/Entre-Nous-android.apk (Doc
   et les applis Tauri.
 - La CI publie la release `v0.1.N` avec des noms de fichiers fixes (`Entre-Nous-mac.zip`,
   `Entre-Nous-android.apk`, `Entre-Nous-windows.exe`, `Entre-Nous-linux.deb`,
-  `Entre-Nous-linux.AppImage`) et supprime les précédentes.
+  `Entre-Nous-linux.AppImage`, `entrenous-cli.tgz`) et supprime les précédentes.
 - L'APK est signé avec les secrets `ANDROID_KEYSTORE` (le `.jks` en base64) et
   `ANDROID_KEYSTORE_PASSWORD` ; sans eux, la release n'est pas publiée. L'appli Mac a une signature
   ad hoc.

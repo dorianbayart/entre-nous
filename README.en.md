@@ -40,6 +40,7 @@ Try it: <https://entrenous.0xdba.dev>
 | Linux | system tray, automatic sharing (Tauri): `.deb`, `.AppImage` | **new, not tested yet** |
 | Windows | system tray, automatic sharing (Tauri): `.exe` installer | **new, not tested yet** |
 | Browser | web app, nothing to install | works |
+| Terminal | `entrenous`, on the command line, for servers, scripts and AI agents (Node.js) | **new** |
 
 ## Documentation
 
@@ -49,8 +50,22 @@ Try it: <https://entrenous.0xdba.dev>
 | [How it works](docs/en/how-it-works.md) | relay, local mode, pairing, removing a device, protocol (diagrams) |
 | [Security](docs/en/security.md) | what the server sees, algorithms, keys, known limitations |
 | [Hosting your own relay](docs/en/deployment.md) | Docker, reverse proxy (Caddy, Traefik, nginx), relay at home |
+| [Command line](docs/en/cli.md) | `entrenous`: install, commands, scripts, AI agents |
 | [Development](docs/en/development.md) | code layout, building each app, tests |
 | [Design](BRAINSTORM.md) | decisions and the reasoning behind them (in French) |
+
+## In a terminal
+
+```sh
+npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
+entrenous join 'https://entrenous.0xdba.dev/app/#p=…'   # link from Settings → Invite a device
+entrenous send build/app.apk                            # lands on the phone
+entrenous wait --timeout 10m                            # waits for what the phone sends
+```
+
+One more device in the group, with the same end-to-end encryption: to send a file from a server,
+get a photo into a script, or let an AI agent hand you what it made. It's all in
+[docs/en/cli.md](docs/en/cli.md).
 
 ## Host your own relay in two commands
 

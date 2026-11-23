@@ -39,6 +39,7 @@ Essayer : <https://entrenous.0xdba.dev>
 | Linux | zone de notification, partage automatique (Tauri) : `.deb`, `.AppImage` | **nouvelle, pas encore testée** |
 | Windows | zone de notification, partage automatique (Tauri) : installeur `.exe` | **nouvelle, pas encore testée** |
 | Navigateur | appli web, rien à installer | fonctionne |
+| Terminal | `entrenous`, en ligne de commande, pour les serveurs, les scripts et les agents d'IA (Node.js) | **nouveau** |
 
 ## Documentation
 
@@ -48,8 +49,22 @@ Essayer : <https://entrenous.0xdba.dev>
 | [Comment ça marche](docs/fonctionnement.md) | relais, mode local, association, retrait d'un appareil, protocole (schémas) |
 | [Sécurité](docs/securite.md) | ce que voit le serveur, algorithmes, clés, limites connues |
 | [Héberger son relais](docs/deploiement.md) | Docker, reverse proxy (Caddy, Traefik, nginx), relais à la maison |
+| [En ligne de commande](docs/cli.md) | `entrenous` : installer, commandes, scripts, agents d'IA |
 | [Développement](docs/developpement.md) | structure du code, compiler chaque appli, tests |
 | [Conception](BRAINSTORM.md) | décisions et leur raison d'être |
+
+## Dans un terminal
+
+```sh
+npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
+entrenous join 'https://entrenous.0xdba.dev/app/#p=…'   # lien de Réglages → Inviter un appareil
+entrenous send build/app.apk                            # arrive sur le téléphone
+entrenous wait --timeout 10m                            # attend ce que le téléphone envoie
+```
+
+Un appareil de plus dans le groupe, avec le même chiffrement de bout en bout : pour envoyer un
+fichier depuis un serveur, récupérer une photo dans un script, ou laisser un agent d'IA te remettre
+ce qu'il a produit. Tout est dans [docs/cli.md](docs/cli.md).
 
 ## Héberger son relais en deux commandes
 

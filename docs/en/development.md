@@ -12,6 +12,7 @@ Design choices and their history are in [BRAINSTORM.md](../../BRAINSTORM.md) (in
 | `macos/` | menu bar app (Swift + WKWebView) |
 | `desktop/` | Linux and Windows app (Rust + Tauri, WebKitGTK / WebView2) |
 | `android/` | Android app (Capacitor 8), native plugin `EntreNousPlugin.java` |
+| `cli/` | the `entrenous` command line (Node), on the same core; one file, `dist/entrenous.mjs` |
 | `downloads/` | apps built locally (not versioned) |
 | `scripts/auto-update.sh` | automatic update of a relay to the latest release |
 | `Dockerfile`, `docker-compose.yml` | the relay in a single container |
@@ -73,6 +74,26 @@ The interface tests (`test/ui/`) open the app served by the relay in several Chr
 per device, including a simulated Android phone): note, confirmations, upload in progress and
 downloads, invitations, removal. They use the installed Chrome (`playwright-core`, no browser
 downloaded); the relay must have been rebuilt with the app under test.
+
+## Command line
+
+```sh
+cd web && npm install                  # the core and its packages (@noble…)
+cd ../cli && npm install
+npm run build                          # dist/entrenous.mjs: one file, no dependencies
+npm run typecheck
+npm test                               # two terminals against the running relay (RELAY=… for another)
+node dist/entrenous.mjs --help
+ENTRENOUS_RELAY=http://127.0.0.1:8080 ENTRENOUS_HOME=/tmp/en node dist/entrenous.mjs create
+```
+
+- Same core as the apps (`web/src/core`), bundled with the CLI by esbuild. The `cli` platform shows
+  as "Terminal" in the list of devices.
+- Keys in files (`src/store.ts`): a lock for writes, and prekeys merged when two processes of the
+  same identity write the same group.
+- English and French texts in `src/i18n.ts` (the compiler checks that both have the same keys);
+  the language follows `LANG`.
+- `npm run test:ui` (in `web/`) also has a terminal + browser test, when the CLI is built.
 
 ## Mac app
 
@@ -137,7 +158,7 @@ android/build.sh          # signed APK → downloads/Entre-Nous-android.apk (Doc
   the Tauri apps.
 - The CI publishes the `v0.1.N` release with fixed file names (`Entre-Nous-mac.zip`,
   `Entre-Nous-android.apk`, `Entre-Nous-windows.exe`, `Entre-Nous-linux.deb`,
-  `Entre-Nous-linux.AppImage`) and deletes the previous ones.
+  `Entre-Nous-linux.AppImage`, `entrenous-cli.tgz`) and deletes the previous ones.
 - The APK is signed using the `ANDROID_KEYSTORE` (the `.jks` in base64) and
   `ANDROID_KEYSTORE_PASSWORD` secrets; without them, the release isn't published. The Mac app has
   an ad hoc signature.

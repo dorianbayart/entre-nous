@@ -154,11 +154,44 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  cli:
+    name: CLI
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      APP_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            cli/package-lock.json
+      - name: Moteur (web/src/core)
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      # one file, no dependency: dist/entrenous.mjs, packed for npm (prepack builds it)
+      - name: Paquet
+        working-directory: cli
+        run: |
+          npm ci --no-audit --no-fund
+          npm version "$APP_VERSION" --no-git-tag-version
+          npm pack
+          mv "entrenous-$APP_VERSION.tgz" entrenous-cli.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Entre-Nous-cli
+          path: cli/entrenous-cli.tgz
+          if-no-files-found: error
+          retention-days: 1
+
   # The latest release: the files under fixed names (…/releases/latest/download/<name>), and the
   # previous releases deleted with their tags.
   release:
     name: Publication
-    needs: [version, desktop, android, mac]
+    needs: [version, desktop, android, mac, cli]
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -183,6 +216,7 @@ jobs:
           cp in/Entre-Nous-windows/*-setup.exe out/Entre-Nous-windows.exe
           cp in/Entre-Nous-linux/deb/*.deb out/Entre-Nous-linux.deb
           cp in/Entre-Nous-linux/appimage/*.AppImage out/Entre-Nous-linux.AppImage
+          cp in/Entre-Nous-cli/entrenous-cli.tgz out/entrenous-cli.tgz
           ls -l out
       - name: Release
         run: |

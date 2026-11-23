@@ -110,6 +110,7 @@ flowchart LR
 | Windows | fichier chiffré (XChaCha20-Poly1305) dans `%APPDATA%`, clé dans le Gestionnaire d'identification |
 | Linux | fichier chiffré dans `~/.local/share`, clé dans le Secret Service (GNOME Keyring, KWallet) ; à défaut, dans un fichier lisible par l'utilisateur seul (plus faible) |
 | Appli web | IndexedDB du navigateur, protégée par la session de l'utilisateur |
+| Ligne de commande | fichiers en clair dans `~/.local/share/entrenous` (`%LOCALAPPDATA%` sous Windows), lisibles par l'utilisateur seul, comme des clés SSH (plus faible que les applis) ; aucun contenu n'y est écrit |
 
 - Ce que les applis de bureau écrivent dans le presse-papier est marqué « secret » (`ConcealedType`
   sur Mac, formats d'exclusion sur Windows, indication KDE sur Linux) : les historiques de

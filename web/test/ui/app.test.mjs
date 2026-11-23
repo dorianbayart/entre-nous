@@ -5,7 +5,12 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomFillSync } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { chromium } from 'playwright-core';
 
 const APP = (process.env.RELAY ?? 'http://127.0.0.1:8080') + '/app/';
@@ -295,6 +300,38 @@ test('iPhone in Safari: an invitation offers to install, or to go on in Safari',
   await until('Dan sees Alice', async () => (await d.page.locator('.status').textContent()).includes('Alice'));
   await a.context.close();
   await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+const CLI = new URL('../../../cli/dist/entrenous.mjs', import.meta.url).pathname;
+
+test('the command line and the browser: one group, both ways', { timeout: 60_000, skip: !existsSync(CLI) && 'cli not built' }, async () => {
+  const home = await mkdtemp(join(tmpdir(), 'entrenous-ui-cli-'));
+  const cli = (...args) =>
+    promisify(execFile)(process.execPath, [CLI, '--home', home, ...args], { env: { ...process.env, LANG: 'en_US.UTF-8', NO_COLOR: '1' } });
+  const a = await device('Alice');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await rename(a, 'Alice');
+  // the browser invites, the terminal joins with the link shown under the QR code
+  await a.page.getByLabel('Réglages').click();
+  await button(a.page, 'Inviter un appareil').click();
+  const link = await until('invitation link', () => a.page.locator('input.link').inputValue());
+  await cli('join', '--name', 'serveur', link);
+  await a.page.locator('section.main').waitFor();
+  // the terminal sends, the browser receives
+  await cli('send', '-m', 'depuis le terminal');
+  await a.page.locator('.history .item', { hasText: 'depuis le terminal' }).waitFor();
+  // the browser sends, the terminal gets it
+  await a.page.locator('input[type=file]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('du navigateur') });
+  await a.page.locator('.history .item', { hasText: 'notes.txt' }).waitFor();
+  const { stdout } = await cli('get', '-o', '-');
+  assert.equal(stdout, 'du navigateur');
+  // listed as a terminal in the devices of the group
+  await a.page.getByLabel('Réglages').click();
+  await a.page.locator('.settings', { hasText: 'serveur' }).getByText('Terminal', { exact: true }).waitFor();
+  await a.context.close();
+  await rm(home, { recursive: true, force: true });
   assert.deepEqual(problems, []);
 });
 

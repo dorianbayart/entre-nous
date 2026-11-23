@@ -21,6 +21,7 @@ flowchart LR
 | Windows | `.exe` installer; icon in the system tray |
 | iPhone, iPad | open the web app in Safari, then **Share → Add to Home Screen**, and launch it from that icon |
 | Other | the web app, in any recent browser |
+| Terminal | `entrenous`, on the command line (Node.js 22): see [Entre Nous on the command line](cli.md) |
 
 On first launch, a computer creates a "My devices" group on its own.
 

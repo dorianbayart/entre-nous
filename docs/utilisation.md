@@ -21,6 +21,7 @@ flowchart LR
 | Windows | installeur `.exe` ; icône dans la zone de notification |
 | iPhone, iPad | ouvre l'appli web dans Safari, puis **Partager → Sur l'écran d'accueil**, et lance-la depuis cette icône |
 | Autre | l'appli web, dans tout navigateur récent |
+| Terminal | `entrenous`, en ligne de commande (Node.js 22) : voir [Entre Nous en ligne de commande](cli.md) |
 
 Au premier lancement, un ordinateur crée tout seul un groupe « Mes appareils ».
 

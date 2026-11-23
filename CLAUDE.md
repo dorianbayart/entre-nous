@@ -25,5 +25,7 @@ Android, relais Docker). `BRAINSTORM.md` fait référence pour les décisions de
   de la barre des menus).
 - Linux/Windows : `desktop/build.sh` (Docker), même pont que le Mac (`platform/desktop.ts`) ;
   non testées sur une vraie machine.
+- CLI (`cli/`) : `entrenous`, même cœur, un seul fichier (`npm run build`) ; textes dans `cli/src/i18n.ts`
+  (FR + EN), doc `docs/cli.md` + `docs/en/cli.md` ; tests `cd cli && npm test` (relais lancé).
 - Android : compiler avec `android/build.sh` (Docker), jamais d'outils installés sur le Mac.
   Ne jamais committer la clé de signature (`~/.config/entrenous/`).

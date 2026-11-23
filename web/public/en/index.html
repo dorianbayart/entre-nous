@@ -148,6 +148,17 @@
       <p>Nothing to install: <a href="/app/">the web app</a> works in any recent
         browser. Paste (Ctrl+V) or drop a file to send it.</p>
     </details>
+    <details data-platform="cli">
+      <summary>Terminal</summary>
+      <p>For servers, scripts and AI agents: <strong>entrenous</strong>, on the command line,
+        with Node.js&nbsp;22 or newer.</p>
+      <pre><code>npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
+entrenous join '<span class="ph">invitation link</span>'
+entrenous send report.pdf
+entrenous wait</code></pre>
+      <p>The invitation link is under the QR code, in <strong>Settings → Invite a device</strong>.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/en/cli.md">Every command</a></p>
+    </details>
   </section>
 
   <section>
@@ -226,6 +237,14 @@
     <details>
       <summary>What if I lose a device?</summary>
       <p>Remove it from another of your devices: it immediately loses access to everything you share.</p>
+    </details>
+    <details>
+      <summary>Can I use it in a terminal, a script or with an AI agent?</summary>
+      <p>Yes: the <strong>entrenous</strong> command is one more device in your group, with the same
+        encryption. A server sends a file to your phone, a script waits for the photo you are about
+        to take, an AI agent hands you what it made or asks you a question.</p>
+      <p>Give an agent a group of its own, never the one your clipboard goes through.
+        <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/en/cli.md">The command line guide</a></p>
     </details>
     <details>
       <summary>Can I use my own server?</summary>

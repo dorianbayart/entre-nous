@@ -264,11 +264,11 @@ export class Engine {
 
   // ------------------------------------------------------------ lifecycle
 
-  /** Connects every group (app in the foreground). */
-  start() {
+  /** Connects every group (app in the foreground), or only `only` (the command line). */
+  start(only?: string) {
     this.running = true;
     this.stopWhenIdle = false;
-    for (const rt of this.runtimes.values()) rt.conn.start().catch(() => {});
+    for (const rt of this.runtimes.values()) if (!only || rt.g.id === only) rt.conn.start().catch(() => {});
     if (!this.sweeper) {
       this.sweeper = setInterval(() => this.sweep(), 1000);
       (this.sweeper as any).unref?.();
@@ -1019,7 +1019,8 @@ export class Engine {
     return out;
   }
 
-  async sendText(groupId: string, text: string) {
+  /** Sends a text; resolves with the id of the item once the relay has it. */
+  async sendText(groupId: string, text: string): Promise<string> {
     if (utf8(text).length > INLINE_TEXT_MAX) {
       return this.sendBlob(groupId, new Blob([text], { type: 'text/plain' }), 'texte.txt', 'file');
     }
@@ -1039,9 +1040,11 @@ export class Engine {
       ttl: rt.g.state.ttl,
       max: maxItemsOf(rt.g.state),
     });
+    return sealed.id;
   }
 
-  async sendBlob(groupId: string, blob: Blob, name: string, kind: 'image' | 'file' | 'text', thumb?: string, text?: string) {
+  /** Sends a content; resolves with the id of the item once it is fully uploaded. */
+  async sendBlob(groupId: string, blob: Blob, name: string, kind: 'image' | 'file' | 'text', thumb?: string, text?: string): Promise<string> {
     const rt = this.rt(groupId);
     // shown at once, even while the connection is still being set up
     const key = `up-${++this.uploadSeq}`;
@@ -1074,12 +1077,13 @@ export class Engine {
       });
       if (local) {
         this.transfers.delete(key);
-        return;
+        return sealed.id;
       }
       const until: number = created.expiresAt;
       await this.upload(rt, sealed.id, sealed.key, sealed.chunks, blob, transfer, until);
       await this.retrying(rt, until, () => rt.conn.request('item.commit', { id: sealed.id }));
       this.transfers.delete(key);
+      return sealed.id;
     } catch (err: any) {
       if (err.message === 'unknown item') {
         // deleted (from this device or another) while being sent: nothing left to show
@@ -1341,6 +1345,16 @@ export class Engine {
     rt.noteDraft = text;
     this.changed();
     this.flushNote(rt);
+  }
+
+  /** Resolves once the note set here has reached the relay (or rejects after `ms`). */
+  async noteSent(groupId: string, ms = 30_000) {
+    const rt = this.rt(groupId);
+    const end = Date.now() + ms;
+    while (rt.noteDraft !== undefined || rt.noteSending) {
+      if (Date.now() > end) throw new Error('timeout');
+      await this.nextChange(1000);
+    }
   }
 
   private async flushNote(rt: Runtime) {
