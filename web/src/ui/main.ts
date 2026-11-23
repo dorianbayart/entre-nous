@@ -10,6 +10,10 @@ import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
 import { androidPlatform, isAndroidApp } from '../platform/android.ts';
 import { isIOS, isStandalone, webPlatform } from '../platform/web.ts';
 import { webrtcAvailable, webrtcLinks } from '../core/webrtc.ts';
+import { preview } from './previews.ts';
+import { NotStreamable, stream } from './player.ts';
+import { renderMarkdown } from './markdown.ts';
+import { TEXT_PREVIEW_MAX, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
 import { LANGS, duration, humanSize, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
 
@@ -104,18 +108,39 @@ const STALLED_AFTER = 30_000;
 const fingerprint = (o: Outgoing) =>
   o.kind === 'text' ? b64(hash(utf8(o.text))) : `${o.kind}:${o.name}:${o.blob.size}:${o.blob.type}`;
 
-async function thumbnail(blob: Blob): Promise<string | undefined> {
-  try {
-    const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, 240 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.7);
-  } catch {
-    return undefined;
-  }
+/** What the open preview holds outside Alpine: stopped and released when it closes. */
+let viewerSeq = 0; // each opening; an older one still loading gives up
+let stopVideo: (() => void) | undefined;
+let viewerUrl = ''; // object URL of an image or of a whole video
+let textShown = ''; // the text of a text preview, for "Copy the text"
+let swipeX: number | null = null;
+/** Lines of a text preview drawn at most (a megabyte of short lines would be heavy). */
+const TEXT_LINES_MAX = 20_000;
+
+/** A text with its line numbers: two cells per line, built as text nodes (never as HTML). */
+function drawLines(el: HTMLElement, text: string) {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  const frag = document.createDocumentFragment();
+  lines.slice(0, TEXT_LINES_MAX).forEach((line, i) => {
+    const n = document.createElement('span');
+    n.className = 'ln';
+    n.textContent = String(i + 1);
+    const tx = document.createElement('span');
+    tx.className = 'tx';
+    tx.textContent = line || ' ';
+    frag.append(n, tx);
+  });
+  el.replaceChildren(frag);
+  return lines.length > TEXT_LINES_MAX;
+}
+
+/** 0:42, 12:05, 1:02:03 */
+function clock(seconds: number) {
+  const s = Math.round(seconds);
+  const hms = [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60];
+  const [h, m, sec] = hms;
+  return (h ? `${h}:${String(m).padStart(2, '0')}` : String(m)) + ':' + String(sec).padStart(2, '0');
 }
 
 /** Toast text of a failed copy or save: a deleted item says so plainly. */
@@ -184,6 +209,21 @@ Alpine.data('app', () => ({
   now: Date.now(),
   dragging: false,
   relayInput: platform.defaultRelay,
+  /** The preview of an item, over the history (`open`). */
+  viewer: {
+    open: false,
+    id: '',
+    kind: '' as PreviewKind | '',
+    loading: false,
+    error: '',
+    src: '', // image: its object URL
+    note: '', // text: only its start is shown
+    source: false, // Markdown shown as plain text
+    wrap: true,
+    canPip: false,
+  },
+  /** Picture-in-picture by the app itself (Android, Linux, Windows): only the video shows. */
+  pipMode: false,
   /** Language of the interface: read by t(), so that the texts follow a change. */
   lang: currentLang() as Lang,
   langNames: { fr: 'Français', en: 'English' } as Record<Lang, string>,
@@ -227,6 +267,18 @@ Alpine.data('app', () => ({
       this.canInstall = true;
     });
     document.addEventListener('paste', (e) => this.onPaste(e as ClipboardEvent));
+    document.addEventListener('keydown', (e) => this.onKey(e));
+    // the app's own picture-in-picture (Android, Linux, Windows)
+    platform.pip?.onChange((active, closed) => {
+      this.pipMode = active;
+      document.documentElement.classList.toggle('pip', active);
+      // the small window dismissed: the video stops, its connection too
+      if (closed) this.closeViewer();
+    });
+    platform.pip?.onToggle?.(() => {
+      const v = this.videoEl();
+      if (v) v.paused ? v.play().catch(() => {}) : v.pause();
+    });
     // An invitation link opened while the app is already loaded only changes the fragment.
     window.addEventListener('hashchange', () => {
       if (!location.hash.includes('p=')) return;
@@ -296,6 +348,8 @@ Alpine.data('app', () => ({
     }
     if (this.group) platform.setAutoLimit?.(this.group.autoMax);
     if (this.view === 'main' && !this.groups.length) this.view = 'welcome';
+    // the item shown was deleted (here or elsewhere) or expired
+    if (this.viewer.open && !this.items.some((i) => i.id === this.viewer.id)) this.closeViewer();
     this.latest = engine.latest;
     this.announceUpdate();
     this.showNote();
@@ -705,6 +759,375 @@ Alpine.data('app', () => ({
     platform.notify('Entre Nous', this.t(what, { name: item.fromName }));
   },
 
+  // ---------------------------------------------------------------- previews
+
+  /** How an item opens in the preview, or undefined (saved only). */
+  previewOf(item: ItemView): PreviewKind | undefined {
+    if (item.error || item.unavailable || item.kind === 'text' || this.interrupted(item)) return undefined;
+    return previewKind(item.name, item.mime);
+  },
+
+  isVideo(item: ItemView) {
+    return this.previewOf(item) === 'video';
+  },
+
+  /** The button that opens it: Play, Open or View. */
+  openLabel(item: ItemView) {
+    const k = this.previewOf(item);
+    return this.t(k === 'video' ? 'open.video' : k === 'image' ? 'open.image' : 'open.doc');
+  },
+
+  openTitle(item: ItemView) {
+    return this.t('open.title', { name: this.label(item) });
+  },
+
+  /** Videos and documents open first; an image is copied first, then viewed. */
+  opensFirst(item: ItemView) {
+    const k = this.previewOf(item);
+    return !!k && k !== 'image';
+  },
+
+  copyClass(item: ItemView) {
+    return this.opensFirst(item) ? 'small secondary' : 'small primary';
+  },
+
+  openClass(item: ItemView) {
+    return this.opensFirst(item) ? 'small primary' : 'small secondary';
+  },
+
+  /** A tile at the left of the item: its thumbnail, or a drawn page for a document. */
+  hasTile(item: ItemView) {
+    return !!item.thumb || !!this.previewOf(item);
+  },
+
+  tileClass(item: ItemView) {
+    return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (this.isVideo(item) ? ' video' : '');
+  },
+
+  /** On the tile: a video's length, a document's extension. */
+  badge(item: ItemView) {
+    if (this.isVideo(item)) return item.duration ? clock(item.duration) : '';
+    if (item.thumb) return '';
+    const ext = /\.([a-z0-9]{1,5})$/i.exec(item.name ?? '')?.[1];
+    return ext ? ext.toUpperCase() : '';
+  },
+
+  get previewable(): ItemView[] {
+    return this.items.filter((i) => this.previewOf(i));
+  },
+
+  get viewerItem(): ItemView | undefined {
+    return this.viewer.open ? this.items.find((i) => i.id === this.viewer.id) : undefined;
+  },
+
+  get viewerName() {
+    const item = this.viewerItem;
+    return item ? this.label(item) : '';
+  },
+
+  /** Who sent it, when, its size (and its pixels). */
+  get viewerMeta() {
+    const item = this.viewerItem;
+    if (!item) return '';
+    const parts = [item.mine ? this.t('me') : item.fromName, this.ago(item), this.sizeOf(item)];
+    if (item.w && item.h && this.viewer.kind === 'image') parts.push(this.t('viewer.size', { w: item.w, h: item.h }));
+    if (item.duration) parts.push(clock(item.duration));
+    return parts.filter(Boolean).join(' · ');
+  },
+
+  get viewerIndex() {
+    return this.previewable.findIndex((i) => i.id === this.viewer.id);
+  },
+
+  get viewerTotal() {
+    return this.previewable.length;
+  },
+
+  get viewerCount() {
+    return this.t('viewer.count', { n: this.viewerIndex + 1, total: this.viewerTotal });
+  },
+
+  get viewerClass() {
+    return 'viewer kind-' + (this.viewer.kind || 'none') + (this.viewer.wrap ? ' wrap' : '');
+  },
+
+  /** While the full image or the video loads: its thumbnail, blurred. */
+  get viewerThumb() {
+    return this.viewer.loading ? (this.viewerItem?.thumb ?? '') : '';
+  },
+
+  get viewerProgress() {
+    const d = this.downloads[this.viewer.id];
+    return d ? this.progress(d) : '';
+  },
+
+  viewerIs(kind: string) {
+    return this.viewer.open && this.viewer.kind === kind;
+  },
+
+  /** Text and Markdown as plain text: the numbered lines. */
+  get viewerLines() {
+    return this.viewerIs('text') || (this.viewerIs('markdown') && this.viewer.source);
+  },
+
+  get viewerRendered() {
+    return this.viewerIs('markdown') && !this.viewer.source;
+  },
+
+  /** Android's small window takes no taps: its own buttons (play/pause, back) replace them. */
+  get videoControls() {
+    return !(this.pipMode && this.platform === 'android');
+  },
+
+  videoEl(): HTMLVideoElement | undefined {
+    return (this as any).$refs?.player;
+  },
+
+  /** Opens `item` in the preview; the previous one (if any) is released. */
+  async openPreview(item: ItemView) {
+    const kind = this.previewOf(item);
+    if (!kind || !this.groupId) return;
+    this.releaseViewer();
+    const seq = ++viewerSeq;
+    const groupId = this.groupId;
+    this.confirming = '';
+    this.viewer = { open: true, id: item.id, kind, loading: true, error: '', src: '', note: '', source: false, wrap: this.viewer.wrap, canPip: false };
+    await (this as any).$nextTick();
+    const stale = () => seq !== viewerSeq;
+    try {
+      if (kind === 'image') {
+        const c = await engine.content(groupId, item.id);
+        if (stale()) return;
+        viewerUrl = URL.createObjectURL(c.blob!);
+        this.viewer.src = viewerUrl;
+      } else if (kind === 'video') {
+        await this.playVideo(groupId, item, stale);
+      } else {
+        // a text: its start (the first chunk at most)
+        const reader = engine.reader(groupId, item.id, { ahead: 0 });
+        let bytes: Uint8Array;
+        try {
+          bytes = await reader.read(0, TEXT_PREVIEW_MAX);
+        } finally {
+          reader.close();
+        }
+        if (stale()) return;
+        const whole = (item.size ?? 0) <= TEXT_PREVIEW_MAX;
+        const text = decodeStart(bytes, whole);
+        textShown = text;
+        const cut = drawLines((this as any).$refs.lines, text);
+        if (!whole || cut) this.viewer.note = this.t('viewer.truncated', { size: humanSize(item.size) });
+        if (kind === 'markdown') await renderMarkdown((this as any).$refs.md, text);
+      }
+    } catch (err: any) {
+      if (stale()) return;
+      this.viewer.error = err instanceof ItemGoneError ? err.message : this.t('toast.error', { msg: err?.message ?? err });
+    } finally {
+      if (!stale()) this.viewer.loading = false;
+    }
+  },
+
+  /**
+   * Streams the video (it plays while it arrives); where it cannot be streamed (an older
+   * iPhone, a WebM…), downloads it whole first, if this device can play it at all.
+   */
+  async playVideo(groupId: string, item: ItemView, stale: () => boolean) {
+    const video = this.videoEl()!;
+    video.poster = item.thumb ?? '';
+    const onError = () => {
+      if (!stale()) this.viewer.error = this.t('viewer.unreadable');
+    };
+    video.onerror = onError;
+    video.addEventListener('streamerror', onError);
+    // Android: leaving the app while it plays turns it into the small window
+    const playing = () => platform.pip?.playing?.(!video.paused, video.videoWidth || item.w || 16, video.videoHeight || item.h || 9);
+    video.onplay = playing;
+    video.onpause = playing;
+    // Mac: back from the picture-in-picture window, the popover shows again
+    video.onleavepictureinpicture = () => platform.show?.();
+    try {
+      stopVideo = await stream(video, engine.reader(groupId, item.id, { keep: 8, ahead: 3 }));
+    } catch (err) {
+      if (stale()) return;
+      if (!(err instanceof NotStreamable)) throw err;
+      if (!video.canPlayType(item.mime || 'video/mp4')) {
+        this.viewer.error = this.t('viewer.unreadable');
+        return;
+      }
+      const c = await engine.content(groupId, item.id);
+      if (stale()) return;
+      viewerUrl = URL.createObjectURL(c.blob!);
+      video.src = viewerUrl;
+    }
+    if (stale()) return;
+    this.viewer.canPip = !!platform.pip || (document as any).pictureInPictureEnabled === true || typeof (video as any).webkitSetPresentationMode === 'function';
+    video.play().catch(() => {}); // may wait for a tap (no sound without a gesture)
+  },
+
+  /** Stops what the preview holds: video, object URL, picture-in-picture. */
+  releaseViewer() {
+    viewerSeq++;
+    stopVideo?.();
+    stopVideo = undefined;
+    const video = this.videoEl();
+    if (video) {
+      if ((document as any).pictureInPictureElement === video) (document as any).exitPictureInPicture().catch(() => {});
+      video.onplay = video.onpause = video.onerror = video.onleavepictureinpicture = null;
+      video.pause();
+      video.removeAttribute('src');
+      video.removeAttribute('poster');
+      video.load();
+      platform.pip?.playing?.(false, 16, 9);
+    }
+    if (this.pipMode) this.exitPip();
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = '';
+    textShown = '';
+    const refs = (this as any).$refs ?? {};
+    refs.lines?.replaceChildren();
+    refs.md?.replaceChildren();
+  },
+
+  closeViewer() {
+    this.releaseViewer();
+    this.viewer.open = false;
+    this.viewer.kind = '';
+    this.viewer.id = '';
+  },
+
+  /** The previous (-1) or next (1) item that has a preview. */
+  viewerStep(delta: number) {
+    const list = this.previewable;
+    const next = list[this.viewerIndex + delta];
+    if (next) this.openPreview(next);
+  },
+
+  viewerPrev() {
+    this.viewerStep(-1);
+  },
+
+  viewerNext() {
+    this.viewerStep(1);
+  },
+
+  onKey(e: KeyboardEvent) {
+    if (!this.viewer.open) return;
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'Escape') this.closeViewer();
+    else if (e.key === 'ArrowLeft' && !this.viewerIs('video')) this.viewerPrev();
+    else if (e.key === 'ArrowRight' && !this.viewerIs('video')) this.viewerNext();
+  },
+
+  /** Phones: a swipe on an image goes to the next or previous item. */
+  onSwipeStart(e: TouchEvent) {
+    swipeX = this.viewerIs('image') && e.touches.length === 1 ? e.touches[0].clientX : null;
+  },
+
+  onSwipeEnd(e: TouchEvent) {
+    if (swipeX === null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? swipeX) - swipeX;
+    swipeX = null;
+    if (Math.abs(dx) > 60) this.viewerStep(dx < 0 ? 1 : -1);
+  },
+
+  toggleWrap() {
+    this.viewer.wrap = !this.viewer.wrap;
+  },
+
+  showRendered() {
+    this.viewer.source = false;
+  },
+
+  showSource() {
+    this.viewer.source = true;
+  },
+
+  isRendered() {
+    return !this.viewer.source;
+  },
+
+  /** Copy from the preview: the text shown, or the item itself (an image). */
+  viewerCopy() {
+    const item = this.viewerItem;
+    if (!item) return;
+    if (this.viewer.kind === 'text' || this.viewer.kind === 'markdown') {
+      const text = textShown;
+      platform
+        .copy('text/plain', Promise.resolve({ text }))
+        .then(() => this.toast(this.t('toast.copied')))
+        .catch((err) => this.toast(failure('toast.copyFailed', err)));
+    } else this.copy(item);
+  },
+
+  get viewerCanCopy() {
+    const item = this.viewerItem;
+    if (!item || this.viewer.loading || this.viewer.error) return false;
+    return this.viewer.kind === 'image' ? this.canCopy(item) : this.viewer.kind !== 'video';
+  },
+
+  get viewerCopyLabel() {
+    return this.t(this.viewer.kind === 'image' ? 'copy' : 'viewer.copyText');
+  },
+
+  viewerSave() {
+    const item = this.viewerItem;
+    if (item) this.save(item);
+  },
+
+  viewerRemove() {
+    const item = this.viewerItem;
+    if (item) this.remove(item);
+  },
+
+  get viewerRemoving() {
+    return this.isConfirming(this.itemKey({ id: this.viewer.id }));
+  },
+
+  get pipHint() {
+    return this.t(this.mac || this.platform === 'desktop' || this.platform === 'ios' ? 'viewer.pipHint' : 'viewer.pipHintApp');
+  },
+
+  /**
+   * Picture-in-picture. Called straight from the tap: the browser's own needs the gesture,
+   * so nothing is awaited before asking for it.
+   */
+  startPip() {
+    const video = this.videoEl();
+    if (!video) return;
+    if (video.paused) video.play().catch(() => {});
+    if (platform.pip) {
+      this.pipMode = true;
+      document.documentElement.classList.add('pip');
+      platform.pip.enter(video.videoWidth || 16, video.videoHeight || 9).catch((err) => {
+        this.pipMode = false;
+        document.documentElement.classList.remove('pip');
+        this.toast(this.t('toast.error', { msg: err?.message ?? err }));
+      });
+      return;
+    }
+    const v = video as any;
+    if ((document as any).pictureInPictureEnabled && v.requestPictureInPicture) {
+      v.requestPictureInPicture().catch((err: any) => this.toast(this.t('toast.error', { msg: err?.message ?? err })));
+    } else if (typeof v.webkitSetPresentationMode === 'function') {
+      v.webkitSetPresentationMode('picture-in-picture');
+    }
+  },
+
+  /** Linux and Windows: back from the small window. */
+  exitPip() {
+    platform.pip?.exit().catch(() => {});
+    this.pipMode = false;
+    document.documentElement.classList.remove('pip');
+  },
+
+  fullscreen() {
+    const v = this.videoEl() as any;
+    if (!v) return;
+    if (v.requestFullscreen) v.requestFullscreen().catch(() => v.webkitEnterFullscreen?.());
+    else v.webkitEnterFullscreen?.(); // iPhone
+  },
+
   // ---------------------------------------------------------------- sending
 
   async send(o: Outgoing) {
@@ -713,9 +1136,8 @@ Alpine.data('app', () => ({
       if (o.kind === 'text') {
         await engine.sendText(this.groupId, o.text);
       } else {
-        const isImage = o.blob.type.startsWith('image/') && o.blob.size < 50 * 1024 * 1024;
-        const thumb = isImage ? await thumbnail(o.blob) : undefined;
-        await engine.sendBlob(this.groupId, o.blob, o.name, isImage ? 'image' : 'file', { thumb });
+        const { kind, extra } = await preview(o.blob, o.name);
+        await engine.sendBlob(this.groupId, o.blob, o.name, kind, extra);
       }
       this.toast(this.t('toast.sent'));
     } catch (err: any) {
@@ -958,7 +1380,8 @@ Alpine.data('app', () => ({
 
   /** Android back button: back to the main screen, then to the background. */
   onBack() {
-    if (this.view === 'scan') this.stopScan();
+    if (this.viewer.open) this.closeViewer();
+    else if (this.view === 'scan') this.stopScan();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
     else platform.background?.();
   },

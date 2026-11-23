@@ -65,4 +65,22 @@ export interface PlatformApi {
   setPaused?(paused: boolean): void;
   /** Desktop apps: pause toggled from the menu bar or tray icon's menu. */
   onPauseRequest?(cb: (paused: boolean) => void): void;
+
+  /**
+   * Picture-in-picture where the web view has none (otherwise the browser's own is used):
+   * the Android app becomes the small window itself; the Linux and Windows apps shrink their
+   * window to the video and keep it above the others. The page then shows only the video.
+   */
+  pip?: {
+    enter(width: number, height: number): Promise<void>;
+    exit(): Promise<void>;
+    /** In or out (the system's buttons too); `closed`: the small window was dismissed. */
+    onChange(cb: (active: boolean, closed: boolean) => void): void;
+    /** Android: a video plays (or not): leaving the app then turns it into the small window. */
+    playing?(on: boolean, width: number, height: number): void;
+    /** Android: the play/pause button of the small window. */
+    onToggle?(cb: () => void): void;
+  };
+  /** Mac: shows the window (popover) again: back from the browser's picture-in-picture. */
+  show?(): void;
 }

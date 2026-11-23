@@ -36,6 +36,9 @@ const options = {
   ],
   bundle: true,
   format: 'esm',
+  // loaded when needed (the video player, Markdown): under app/, which the apps bundle
+  splitting: true,
+  chunkNames: 'app/chunks/[name]-[hash]',
   target: ['es2022', 'safari16', 'chrome110'],
   outdir,
   minify: !watch,

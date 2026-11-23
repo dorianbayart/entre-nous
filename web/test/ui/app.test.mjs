@@ -89,7 +89,7 @@ async function rename(d, name) {
   const field = d.page.getByLabel('Nom', { exact: true });
   await field.fill(name);
   await field.blur();
-  await d.page.getByLabel('Retour').click();
+  await d.page.locator('section.settings').getByLabel('Retour', { exact: true }).click();
 }
 
 /** `host` shows its invitation, `guest` opens the link: both end on the main screen. */
@@ -276,7 +276,7 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   await c.page.locator('.toast', { hasText: 'retiré' }).waitFor();
   await c.page.locator('section.center', { hasText: 'Scanner un QR code' }).waitFor();
   await until('Carla gone from the list', async () => (await a.page.locator('.members li').count()) === 2);
-  await a.page.getByLabel('Retour').click();
+  await a.page.locator('section.settings').getByLabel('Retour', { exact: true }).click();
   await b.page.locator('.note textarea').fill('sans Carla');
   await until('Alice still with Bob', async () => (await a.page.locator('.note textarea').inputValue()) === 'sans Carla');
 
@@ -347,7 +347,7 @@ test('languages: English by the browser, French by the settings, the landing pag
   await d.page.getByLabel('Settings').click();
   await d.page.getByLabel('Language').selectOption('fr');
   await d.page.getByText('Cet appareil', { exact: true }).waitFor();
-  await d.page.getByLabel('Retour').click();
+  await d.page.locator('section.settings').getByLabel('Retour', { exact: true }).click();
   await button(d.page, 'Fichier').waitFor(); // French main screen
   await d.page.reload();
   await d.page.locator('section.main').waitFor();
@@ -371,5 +371,101 @@ test('languages: English by the browser, French by the settings, the landing pag
   assert.equal(await page('fr/', 'en-US'), 'fr');
   assert.equal(await page('en/', 'fr-FR'), 'en');
   await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+const FIXTURES = new URL('./fixtures/', import.meta.url).pathname;
+
+test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob', { phone: true });
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  const md = [
+    '# Réunion produit',
+    '',
+    'Décisions : **sortir le CLI**.',
+    '',
+    '- [x] tester',
+    '- [ ] publier',
+    '',
+    "<script>window.__ran = true</script> [piège](javascript:window.__ran=true) https://example.com",
+  ].join('\n');
+  const log = Array.from({ length: 300 }, (_, i) => `ligne ${i + 1}`).join('\n');
+  // the video (H.264 + AAC, its index at the end, two chunks) first, so that it is the oldest
+  for (const f of [
+    `${FIXTURES}clip.mp4`,
+    `${FIXTURES}photo.jpg`,
+    { name: 'notes.md', mimeType: '', buffer: Buffer.from(md) },
+    { name: 'journal.log', mimeType: 'text/plain', buffer: Buffer.from(log) },
+  ]) {
+    await a.page.locator('input[type=file]').setInputFiles(f);
+    await b.page.locator('.history .item', { hasText: typeof f === 'string' ? f.split('/').pop() : f.name }).waitFor();
+  }
+  await until('uploads over', async () => (await b.page.locator('.transfer').count()) === 0, 20_000);
+
+  // ---- the history: made by the sender, shown before any download
+  const item = (name) => b.page.locator('.history .item', { hasText: name });
+  await item('clip.mp4').locator('.thumb.pic.video').waitFor();
+  assert.equal(await item('clip.mp4').locator('.badge').textContent(), '0:08');
+  assert.ok(await button(item('clip.mp4'), 'Lire').isVisible(), 'a video plays');
+  assert.equal(await item('notes.md').locator('.thumb.doc .badge').textContent(), 'MD');
+  assert.match(await item('notes.md').locator('.excerpt').textContent(), /^# Réunion produit Décisions/);
+  assert.ok(await button(item('notes.md'), 'Ouvrir').isVisible(), 'a document opens');
+  assert.ok(await button(item('photo.jpg'), 'Voir').isVisible(), 'an image is viewed');
+  const thumb = await item('photo.jpg').locator('.thumb img').getAttribute('src');
+  assert.match(thumb, /^data:image\/webp;base64,/, 'thumbnail in WebP');
+
+  // ---- Markdown: formatted, nothing of the file's own markup, no javascript: link
+  await button(item('notes.md'), 'Ouvrir').click();
+  const viewer = b.page.locator('section.viewer');
+  await viewer.locator('.markdown h1', { hasText: 'Réunion produit' }).waitFor();
+  assert.equal(await viewer.locator('.markdown script').count(), 0);
+  assert.equal(await viewer.locator('.markdown input[type=checkbox]').count(), 2);
+  const links = await viewer.locator('.markdown a').evaluateAll((all) => all.map((x) => x.getAttribute('href')));
+  assert.deepEqual(links, ['https://example.com']);
+  assert.equal(await b.page.evaluate(() => window.__ran), undefined);
+  await button(viewer, 'Texte brut').click();
+  await until('Markdown as plain text', async () => (await viewer.locator('.lines .ln').count()) === 8);
+  await viewer.getByLabel('Retour', { exact: true }).click();
+  await viewer.waitFor({ state: 'hidden' });
+
+  // ---- text: numbered lines; the next items with the arrows
+  await button(item('journal.log'), 'Ouvrir').click();
+  await until('300 lines', async () => (await viewer.locator('.lines .ln').count()) === 300);
+  assert.equal(await viewer.locator('.viewer-count').textContent(), '1 / 4');
+  await b.page.keyboard.press('Escape');
+  await viewer.waitFor({ state: 'hidden' });
+
+  // ---- image: the original, decrypted, with its size in pixels
+  await button(item('photo.jpg'), 'Voir').click();
+  await until('image shown', () => viewer.locator('.viewer-image').evaluate((i) => i.complete && i.naturalWidth === 800));
+  assert.match(await viewer.locator('.viewer-title span').textContent(), /800 × 600/);
+  await viewer.getByLabel('Élément précédent').click();
+  await viewer.locator('.markdown h1').waitFor(); // the Markdown, newer
+
+  // ---- video: streamed (MediaSource), it plays, a jump forward plays to the end
+  await viewer.getByLabel('Retour', { exact: true }).click();
+  await button(item('clip.mp4'), 'Lire').click();
+  const video = viewer.locator('video');
+  await video.evaluate((v) => {
+    v.muted = true;
+    return v.play().catch(() => {});
+  });
+  await until('video plays', () => video.evaluate((v) => v.currentTime > 0.5), 20_000);
+  assert.ok(await video.evaluate((v) => v.src.startsWith('blob:') && v.duration > 7.9 && v.duration < 8.2), 'a MediaSource of 8 s');
+  assert.equal(await b.page.evaluate(() => document.querySelectorAll('.transfer').length), 0, 'not downloaded as a whole');
+  await video.evaluate((v) => (v.currentTime = 6.5));
+  await until('video ends', () => video.evaluate((v) => v.ended), 20_000);
+  assert.ok(await viewer.locator('.viewer-actions').getByText('Plein écran').isVisible());
+
+  // ---- deleted from the preview: gone everywhere, the preview closes
+  await viewer.getByLabel('Supprime l’élément sur tous les appareils').click();
+  await viewer.getByText('Supprimer partout').click();
+  await viewer.waitFor({ state: 'hidden' });
+  await a.page.locator('.history .item', { hasText: 'clip.mp4' }).waitFor({ state: 'detached' });
+  await a.context.close();
+  await b.context.close();
   assert.deepEqual(problems, []);
 });

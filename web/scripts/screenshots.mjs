@@ -158,7 +158,7 @@ async function rename(page, name) {
   const field = page.getByLabel(S.name, { exact: true });
   await field.fill(name);
   await field.blur();
-  await page.getByLabel(S.back).click();
+  await page.locator('section.settings').getByLabel(S.back, { exact: true }).click();
 }
 
 async function invite(host, open) {
