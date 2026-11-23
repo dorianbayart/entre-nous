@@ -173,8 +173,9 @@ sequenceDiagram
 - An invitation is valid for **3 minutes, for a single device**. Any member can invite.
 - No account: a group is nothing more than a secret shared by its devices. A device can belong
   to several independent groups.
-- On iPhone, the web app must first be added to the Home Screen (its storage is separate from
-  Safari's), and then you scan from the app.
+- On iPhone, an invitation opened in Safari first offers to add the web app to the Home Screen
+  (its storage is separate from Safari's, so you then scan from the app), or to go on in Safari
+  without installing it.
 
 ## Removing a device
 

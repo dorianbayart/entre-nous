@@ -37,13 +37,20 @@ after(() => browser?.close());
 
 const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
 
-/** A device: its own browser profile (storage). `phone`: seen as an Android phone; `locale`: its language. */
+/**
+ * A device: its own browser profile (storage). `phone`: seen as an Android phone, or as an
+ * iPhone in Safari with `phone: 'iphone'`; `locale`: its language.
+ */
 async function device(name, { phone = false, locale = 'fr-FR' } = {}) {
   const context = await browser.newContext({
     acceptDownloads: true,
     locale, // the interface follows the browser's language
-    ...(phone ? { userAgent: ANDROID_UA, viewport: { width: 412, height: 860 }, isMobile: true, hasTouch: true } : {}),
+    ...(phone
+      ? { userAgent: phone === 'iphone' ? IPHONE_UA : ANDROID_UA, viewport: { width: 412, height: 860 }, isMobile: true, hasTouch: true }
+      : {}),
   });
   await context.addInitScript(INIT);
   // a phone saves through the share sheet: the shared file is kept, to be checked
@@ -269,6 +276,25 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   await until('Alice still with Bob', async () => (await a.page.locator('.note textarea').inputValue()) === 'sans Carla');
 
   for (const d of [a, b, c]) await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+test('iPhone in Safari: an invitation offers to install, or to go on in Safari', { timeout: 60_000 }, async () => {
+  const a = await device('Alice');
+  const d = await device('Dan', { phone: 'iphone' });
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await rename(a, 'Alice');
+  await pair(a, d, async (link) => {
+    await d.page.goto(link);
+    const install = d.page.locator('section.page', { hasText: 'Installe Entre Nous' });
+    await install.waitFor();
+    assert.equal(new URL(d.page.url()).hash, '', 'the invitation leaves the address bar');
+    await button(install, 'Utiliser dans Safari sans installer').click();
+  });
+  await until('Dan sees Alice', async () => (await d.page.locator('.status').textContent()).includes('Alice'));
+  await a.context.close();
+  await d.context.close();
   assert.deepEqual(problems, []);
 });
 

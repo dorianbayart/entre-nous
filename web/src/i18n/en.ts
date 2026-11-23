@@ -38,6 +38,8 @@ export const en: Strings = {
   'install.step2': 'Choose **Add to Home Screen**.',
   'install.step3': 'Open the app from your Home Screen and **scan the QR code again**.',
   'install.why': 'On iPhone, the installed app cannot see Safari’s data, so pairing happens from the app.',
+  'install.inBrowser': 'Use in Safari without installing',
+  'install.inBrowserHint': 'Safari then uses the invitation: if you install the app later, it will need a new one.',
 
   // ---------------------------------------------------------------- welcome
   'welcome.lead': 'A clipboard shared across all your devices.\nEnd-to-end encrypted: the server can’t read a thing.',

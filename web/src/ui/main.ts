@@ -86,6 +86,8 @@ let engine: Engine;
 let invite: Invite | null = null;
 let scanStream: MediaStream | null = null;
 let installPrompt: any = null;
+/** iPhone, in Safari: the invitation waits while the install screen is shown, for "Use in Safari". */
+let installInvite: string | null = null;
 let lastShared = '';
 let pendingLocal: Outgoing | undefined;
 let noteTypedAt = 0;
@@ -230,8 +232,10 @@ Alpine.data('app', () => ({
       if (!location.hash.includes('p=')) return;
       const link = location.href;
       history.replaceState(null, '', location.pathname);
-      if (isIOS && !isStandalone) this.view = 'install';
-      else this.join(link);
+      if (isIOS && !isStandalone) {
+        installInvite = link;
+        this.view = 'install';
+      } else this.join(link);
     });
     setInterval(() => (this.now = Date.now()), 15_000);
 
@@ -254,6 +258,7 @@ Alpine.data('app', () => ({
 
     if (pendingInvite) {
       if (isIOS && !isStandalone) {
+        installInvite = pendingInvite;
         this.view = 'install';
         return;
       }
@@ -881,6 +886,14 @@ Alpine.data('app', () => ({
     } finally {
       this.busy = false;
     }
+  },
+
+  /** iPhone: the invitation is used by Safari, without installing the app. */
+  async joinInBrowser() {
+    const link = installInvite;
+    installInvite = null;
+    if (link) await this.join(link);
+    if (this.view === 'install') this.view = engine.groups.length ? 'main' : 'welcome';
   },
 
   joinFromLink() {

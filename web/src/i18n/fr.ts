@@ -38,6 +38,8 @@ export const fr = {
   'install.step2': 'Choisis **Sur l’écran d’accueil**.',
   'install.step3': 'Ouvre l’appli depuis l’écran d’accueil et **scanne à nouveau le QR code**.',
   'install.why': 'Sur iPhone, l’appli installée ne voit pas les données de Safari : l’association se fait donc depuis l’appli.',
+  'install.inBrowser': 'Utiliser dans Safari sans installer',
+  'install.inBrowserHint': 'L’invitation servira alors à Safari : l’appli, si tu l’installes plus tard, en demandera une nouvelle.',
 
   // ---------------------------------------------------------------- accueil
   'welcome.lead': 'Un presse-papier commun à tous tes appareils.\nChiffré de bout en bout : le serveur ne peut rien lire.',

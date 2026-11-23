@@ -36,6 +36,8 @@
       <li x-rich="t('install.step3')"></li>
     </ol>
     <p class="muted" x-text="t('install.why')"></p>
+    <button class="secondary" @click="joinInBrowser" :disabled="busy" x-text="t('install.inBrowser')"></button>
+    <p class="muted small" x-text="t('install.inBrowserHint')"></p>
   </section>
 
   <!-- No group: first launch on a phone, or the last group left -->

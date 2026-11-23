@@ -173,8 +173,9 @@ sequenceDiagram
 - L'invitation vaut **3 minutes, pour un seul appareil**. N'importe quel membre peut inviter.
 - Aucun compte : un groupe n'est qu'un secret partagé par ses appareils. Un appareil peut être
   dans plusieurs groupes indépendants.
-- Sur iPhone, l'appli web doit d'abord être ajoutée à l'écran d'accueil (son stockage est séparé de
-  celui de Safari), puis on scanne depuis l'appli.
+- Sur iPhone, une invitation ouverte dans Safari propose d'abord d'installer l'appli web sur l'écran
+  d'accueil (son stockage est séparé de celui de Safari : on scanne alors depuis l'appli), ou de
+  continuer dans Safari sans l'installer.
 
 ## Retirer un appareil
 
