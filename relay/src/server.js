@@ -26,7 +26,7 @@ const PAIR_TTL = 5 * 60 * 1000;
 const MAX_CONN_PER_IP = 32;
 const IDLE_AFTER = parseDuration(env.IDLE_AFTER || '10m') * 1000; // no activity for this long: may restart
 // Requests that do not count as activity: devices make them by themselves while connected.
-const PASSIVE_OPS = new Set(['hello', 'ping', 'storage', 'items.list', 'state.put', 'prekey.put']);
+const PASSIVE_OPS = new Set(['hello', 'ping', 'storage', 'items.list', 'state.put', 'prekey.put', 'changelog']);
 let lastActivity = Date.now();
 
 function parseSize(s) {
@@ -61,13 +61,56 @@ async function checkRelease() {
     const version = String(r.tag_name).replace(/^v/, '');
     if (version !== release?.version) log('release', version);
     release = { version, files: Object.fromEntries(r.assets.map((a) => [a.name, a.size])) };
+    const asset = r.assets.find((a) => a.name === 'changelog.json');
+    if (asset && !(changelog[0] && changelog[0].version === version)) await fetchChangelog(asset.browser_download_url);
   } catch (err) {
     log('release check failed:', err.message);
   }
 }
 
+// The changelog of the apps (CHANGELOG.md, as changelog.json): what each version brings, in
+// French and English. An app about to update shows the entries it does not have yet. The relay
+// takes it from the latest release; until then (or without releases), from its own web app.
+let changelog = []; // [{ version, date, fr: [...], en: [...] }], newest first
+
+const newer = (a, b) => {
+  const x = String(a).split('.').map(Number);
+  const y = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+
+/** Keeps a well-formed changelog only (it comes from a download). */
+function validChangelog(list) {
+  const texts = (v) => Array.isArray(v) && v.every((t) => typeof t === 'string' && t.length < 2000);
+  if (!Array.isArray(list)) return null;
+  const ok = list.every((e) => e && /^\d+\.\d+\.\d+$/.test(e.version) && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && texts(e.fr) && texts(e.en));
+  return ok ? list.slice(0, 500) : null;
+}
+
+async function fetchChangelog(url) {
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'entrenous-relay' }, signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = validChangelog(await res.json());
+    if (!list) throw new Error('bad changelog');
+    if (!changelog[0] || !list[0] || newer(list[0].version, changelog[0].version) || list[0].version === changelog[0].version) changelog = list;
+  } catch (err) {
+    log('changelog fetch failed:', err.message);
+  }
+}
+
+async function loadOwnChangelog() {
+  try {
+    const list = validChangelog(JSON.parse(await readFile(join(PUBLIC_DIR, 'app', 'changelog.json'), 'utf8')));
+    if (list && (!changelog[0] || (list[0] && newer(list[0].version, changelog[0].version)))) changelog = list;
+  } catch {
+    // no web app built with it: the release's only
+  }
+}
+
+loadOwnChangelog().then(() => RELEASES !== 'off' && checkRelease());
 if (RELEASES !== 'off') {
-  checkRelease();
   setInterval(checkRelease, 3600_000).unref();
 }
 
@@ -169,7 +212,7 @@ async function serveStatic(req, res) {
     res.writeHead(302, { Location: `https://github.com/${RELEASES}/releases/latest/download/${download[1]}` }).end();
     return;
   }
-  if (url.pathname === '/app' || url.pathname === '/fr' || url.pathname === '/en') {
+  if (['/app', '/fr', '/en', '/nouveautes', '/en/changelog'].includes(url.pathname)) {
     res.writeHead(301, { Location: url.pathname + '/' }).end();
     return;
   }
@@ -286,6 +329,12 @@ function requireRoom(ws) {
 }
 
 const handlers = {
+  /** What the versions after `since` bring (an app about to update shows it). */
+  async changelog(ws, msg) {
+    const since = typeof msg.since === 'string' ? msg.since : '0.0.0';
+    return { entries: changelog.filter((e) => newer(e.version, since)).slice(0, 100) };
+  },
+
   async hello(ws, msg) {
     if (!b64(msg.roomKey, 64)) throw new Error('bad room key');
     leaveRoom(ws);

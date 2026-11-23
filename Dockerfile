@@ -6,6 +6,9 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web/ ./
 COPY docs/images/chiffrement.svg docs/images/reseau.svg docs/images/chiffrement-en.svg docs/images/reseau-en.svg /docs/images/
+# the changelog: what's new in the apps, the site's "What's new" pages
+COPY CHANGELOG.md CHANGELOG.en.md /
+COPY scripts/changelog.mjs /scripts/
 # the release built (0.1.42), given by scripts/auto-update.sh: no git history in the image
 ARG APP_VERSION=
 RUN npm run build

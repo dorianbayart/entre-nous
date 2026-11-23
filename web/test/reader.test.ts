@@ -37,6 +37,11 @@ test('reader: ranges on demand, during the upload, own copy, preview', { timeout
   const version = mac.groups[0].relayVersion;
   if (process.env.RELAY_VERSION) assert.equal(version, process.env.RELAY_VERSION);
   else assert.ok(version === null || /^\d+\.\d+\.\d+$/.test(version!), String(version));
+  // what the versions after 0.1.20 bring (the relay's copy of CHANGELOG.md): newest first
+  const changes = await mac.changelog('0.1.20');
+  assert.ok(changes.length > 0, 'changelog from the relay');
+  assert.ok(changes.every((e) => e.version !== '0.1.20' && e.fr.length === e.en.length));
+  assert.ok(changes.some((e) => e.version === '0.1.27'));
   const inv = mac.invite(gid, () => {});
   await new Promise((r) => setTimeout(r, 300));
   await phone.join(inv.url);

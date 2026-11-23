@@ -3,5 +3,7 @@ web/dist
 macos
 .git
 *.md
+!CHANGELOG.md
+!CHANGELOG.en.md
 downloads
 desktop

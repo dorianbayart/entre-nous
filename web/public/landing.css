@@ -153,3 +153,11 @@ img.wide { height: auto; }
   border-radius: 999px;
 }
 .lang-switch:hover { color: var(--text); border-color: var(--muted); }
+
+/* "What's new" pages (built from CHANGELOG.md) */
+.changelog .hero { margin-bottom: 8px; }
+.changelog .version h2 { font-size: 18px; text-align: left; margin: 32px 0 8px; }
+.changelog .version h2 span { color: var(--muted); font-weight: 400; font-size: 14px; margin-left: 8px; }
+.changelog .version ul { margin: 0; padding-left: 20px; }
+.changelog .version li { margin: 6px 0; }
+.changelog code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; }

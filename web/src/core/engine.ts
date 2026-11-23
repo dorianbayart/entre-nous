@@ -105,6 +105,14 @@ export class SendCancelledError extends Error {
   }
 }
 
+/** A version of the apps and what it brings (CHANGELOG.md), in both languages. */
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  fr: string[];
+  en: string[];
+}
+
 /** What the sender adds to a content: its preview (see `Header`), or a local text. */
 export interface SendExtra {
   thumb?: string;
@@ -819,6 +827,23 @@ export class Engine {
     const res = await rt.conn.request('storage');
     rt.storage = res.storage;
     this.changed();
+  }
+
+  /**
+   * What the versions after `since` bring, as the relay knows it (from the latest release):
+   * shown before an update. Empty when no group is connected, or the relay is older.
+   */
+  async changelog(since: string): Promise<ChangelogEntry[]> {
+    for (const rt of this.runtimes.values()) {
+      if (rt.conn.status !== 'online') continue;
+      try {
+        const res = await rt.conn.request('changelog', { since });
+        return Array.isArray(res.entries) ? res.entries : [];
+      } catch {
+        // an older relay: "unknown op"
+      }
+    }
+    return [];
   }
 
   private async wipeGroup(rt: Runtime, notify: boolean) {
