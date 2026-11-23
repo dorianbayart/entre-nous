@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ItemView, NoteView } from '../../web/src/core/engine.ts';
 import { duration, t } from '../../web/src/i18n/index.ts';
+import { decodeStart, excerptOf, isText } from '../../web/src/core/media.ts';
 import { readClipboard, writeClipboard } from './clipboard.ts';
 import { type Context, DEFAULT_RELAY, type GroupView, relayUrl } from './context.ts';
 import { CliError, EXIT, usageError } from './errors.ts';
@@ -89,7 +90,8 @@ const MIME: Record<string, string> = {
   '.heic': 'image/heic', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.bmp': 'image/bmp',
   '.pdf': 'application/pdf', '.zip': 'application/zip', '.gz': 'application/gzip', '.tar': 'application/x-tar',
   '.txt': 'text/plain', '.md': 'text/markdown', '.csv': 'text/csv', '.json': 'application/json', '.html': 'text/html',
-  '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4',
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4',
+  '.markdown': 'text/markdown', '.log': 'text/plain', '.yaml': 'application/yaml', '.yml': 'application/yaml', '.xml': 'application/xml',
   '.wav': 'audio/wav', '.apk': 'application/vnd.android.package-archive', '.dmg': 'application/x-apple-diskimage',
   '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.odt': 'application/vnd.oasis.opendocument.text',
@@ -210,7 +212,10 @@ const send: Command = {
         if (up) progress.update(up.done, up.total, up.rate);
       });
       try {
-        const id = await engine.sendBlob(group.id, blob, name, IMAGE.has(mime) ? 'image' : 'file');
+        // a text file: its first characters, shown under its name in the apps (no image is
+        // decoded here: no thumbnail, the apps show an icon)
+        const extra = isText(name, mime) ? { excerpt: excerptOf(decodeStart(new Uint8Array(await blob.slice(0, 4096).arrayBuffer()), blob.size <= 4096)) || undefined } : {};
+        const id = await engine.sendBlob(group.id, blob, name, IMAGE.has(mime) ? 'image' : 'file', extra);
         progress.end();
         await done(id, `${name} (${humanSize(blob.size)})`, { kind: IMAGE.has(mime) ? 'image' : 'file', name, size: blob.size });
       } finally {
