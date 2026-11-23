@@ -15,7 +15,7 @@ import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
 import { TEXT_PREVIEW_MAX, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
-import { LANGS, duration, humanSize, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
+import { LANGS, duration, humanSize, storageSpace, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
 
 const platform: PlatformApi = isDesktopApp() ? desktopPlatform() : isAndroidApp() ? androidPlatform() : webPlatform();
 
@@ -1501,7 +1501,15 @@ Alpine.data('app', () => ({
   get storageText() {
     const st = this.group?.storage;
     if (!st) return '';
-    return this.t('storage.space', { free: humanSize(Math.max(0, st.limit - st.used)), total: humanSize(st.limit) });
+    return storageSpace(st.used, st.limit);
+  },
+
+  /** The width of the space bar; a sliver as soon as something is stored. */
+  get storageBar() {
+    const st = this.group?.storage;
+    if (!st?.limit) return { width: '0%' };
+    const pct = Math.min(100, (st.used / st.limit) * 100);
+    return { width: (st.used > 0 ? Math.max(1, pct) : 0) + '%' };
   },
 
   get storageLow() {

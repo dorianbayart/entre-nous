@@ -1,6 +1,10 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.35 — 2026-11-23
+- Les réglages montrent l'espace utilisé sur le serveur, avec une jauge.
+- Les tailles sont plus lisibles : 1 Go au lieu de 1022,9 Mo.
+
 ## 0.1.33 — 2026-11-23
 - Affiche un changelog des modifications de la mise à jour disponible.
 

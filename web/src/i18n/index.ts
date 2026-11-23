@@ -51,13 +51,20 @@ function num(x: number, digits: number) {
   return current === 'fr' ? s.replace('.', ',') : s;
 }
 
-/** 512 o / 12 Ko / 1,5 Mo… in French, 512 B / 12 KB / 1.5 MB… in English. */
+/** 512 o / 12 Ko / 1,5 Mo… in French, 512 B / 12 KB / 1.5 MB… in English. Above 999, the next
+ *  unit: 1023 Mo is 1 Go. */
 export function humanSize(n = 0) {
   const u = current === 'fr' ? ['o', 'Ko', 'Mo', 'Go'] : ['B', 'KB', 'MB', 'GB'];
-  if (n < 1024) return `${n} ${u[0]}`;
-  if (n < 1024 ** 2) return `${num(n / 1024, 0)} ${u[1]}`;
-  if (n < 1024 ** 3) return `${num(n / 1024 ** 2, 1)} ${u[2]}`;
+  if (n <= 999) return `${n} ${u[0]}`;
+  if (n / 1024 <= 999) return `${num(n / 1024, 0)} ${u[1]}`;
+  if (n / 1024 ** 2 <= 999) return `${num(n / 1024 ** 2, 1)} ${u[2]}`;
   return `${num(n / 1024 ** 3, 1)} ${u[3]}`;
+}
+
+/** The relay's space: "1,1 Mo utilisés sur 1 Go". */
+export function storageSpace(used: number, limit: number) {
+  const size = humanSize(used);
+  return tn('storage.space', parseFloat(size.replace(',', '.')), { used: size, total: humanSize(limit) });
 }
 
 /** 42 s, 5 min, 3 h, 2 j (French) or 2 d (English). */

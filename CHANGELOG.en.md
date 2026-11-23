@@ -1,6 +1,10 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.35 — 2026-11-23
+- The settings show the space used on the server, with a gauge.
+- Sizes are easier to read: 1 GB instead of 1022.9 MB.
+
 ## 0.1.33 — 2026-11-23
 - Shows a changelog of what the available update changes.
 

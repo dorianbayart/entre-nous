@@ -6,7 +6,7 @@ import { basename, extname, join as joinPath } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ItemView, NoteView } from '../../web/src/core/engine.ts';
-import { duration, t } from '../../web/src/i18n/index.ts';
+import { duration, storageSpace, t } from '../../web/src/i18n/index.ts';
 import { decodeStart, excerptOf, isText } from '../../web/src/core/media.ts';
 import { readClipboard, writeClipboard } from './clipboard.ts';
 import { type Context, DEFAULT_RELAY, type GroupView, relayUrl } from './context.ts';
@@ -636,7 +636,7 @@ const status: Command = {
         [out.dim(tr('msg.relay')), g.relay],
         [out.dim(tr('msg.keep')), duration(g.ttl * 1000)],
       ];
-      if (g.storage?.limit) rows.push([out.dim(tr('msg.space')), t('storage.space', { free: humanSize(Math.max(0, g.storage.limit - g.storage.used)), total: humanSize(g.storage.limit) })]);
+      if (g.storage?.limit) rows.push([out.dim(tr('msg.space')), storageSpace(g.storage.used, g.storage.limit)]);
       s += table(rows).replace(/^(?=.)/gm, '  ');
       s += `  ${out.dim(tr('msg.members'))}\n`;
       s += table(
