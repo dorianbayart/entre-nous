@@ -165,6 +165,27 @@ android/build.sh          # APK signé → downloads/Entre-Nous-android.apk (Doc
 - Les relais annoncent la dernière release aux applis (champ `latest` de la réponse à `hello`) ;
   une appli plus ancienne affiche « Nouvelle version disponible ».
 
+### Nouveautés (changelog)
+
+- `CHANGELOG.md` (français) et `CHANGELOG.en.md` (anglais), à la main : une section
+  `## 0.1.N — AAAA-MM-JJ` par version qui change quelque chose pour l'utilisateur, une ligne `- `
+  par changement (suite indentée, `**gras**` et `` `code` `` permis). Les versions sans changement
+  visible n'y sont pas ; rien sur l'infrastructure.
+- **Une phrase courte, en français courant, qui dit ce que l'utilisateur y gagne**, pas comment la
+  fonction marche : « Les vidéos démarrent sans attendre la fin du téléchargement. »
+- **L'entrée s'écrit dans le commit de l'évolution**, avec la version de ce commit :
+  `node scripts/changelog.mjs next`. `node scripts/changelog.mjs check` (aussi en CI) vérifie les deux
+  fichiers : mêmes versions, mêmes dates, même nombre de lignes, aucune version au-delà du prochain
+  commit.
+- Où ça se lit :
+  - **dans les applis** : le build (`web/build.mjs`) intègre le changelog au code ; après une mise à
+    jour, l'appli affiche une fois ce qu'apportent les versions depuis la dernière utilisée ;
+  - **avant une mise à jour** : la CI joint `changelog.json` à la release ; le relais le récupère avec
+    la release (sinon il garde sa propre copie, `app/changelog.json`) et répond à l'opération
+    `changelog { since }` ; le bandeau « Nouvelle version » propose « Nouveautés » ;
+  - **sur le site** : `/nouveautes/` et `/en/changelog/`, générées au build ;
+  - **sur GitHub** : les fichiers, et les notes de chaque release (les versions depuis la précédente).
+
 ## Règles du code
 
 - Le cœur (`web/src/core/`) ne touche pas au DOM.

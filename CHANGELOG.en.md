@@ -1,0 +1,48 @@
+# What's new
+[Français](CHANGELOG.md)
+
+## 0.1.28 — 2026-11-23
+- The server's version is shown in the settings.
+
+## 0.1.27 — 2026-11-23
+- Preview of some formats (photos, texts, Markdown, videos).
+- Videos can be watched in Picture-in-Picture mode.
+- The history shows thumbnails.
+
+## 0.1.20 — 2026-11-23
+- New command-line tool (CLI), to send or receive from a server, a script or an AI agent.
+
+## 0.1.19 — 2026-11-23
+- On iPhone, the invitation link works right in Safari, nothing to install.
+
+## 0.1.18 — 2026-11-19
+- The app is available in English.
+
+## 0.1.17 — 2026-11-19
+- Fixed: items could get lost or stuck while a device was connecting.
+
+## 0.1.15 — 2026-11-19
+- Fixed: a newly added device sometimes couldn't read the shared note.
+
+## 0.1.12 — 2026-11-19
+- On a phone, you can paste an invitation link instead of scanning the QR code.
+
+## 0.1.11 — 2026-11-19
+- Uploads and downloads are shown separately.
+- You're asked to confirm before deleting.
+
+## 0.1.10 — 2026-11-14
+- On a computer, the app can start when you log in.
+
+## 0.1.9 — 2026-11-13
+- The app tells you when a new version is available.
+
+## 0.1.7 — 2026-11-11
+- Fixed: the shared note could lose text when several devices typed at the same time.
+
+## 0.1.4 — 2026-11-11
+- You can self-host your own relay server.
+
+## 0.1.1 — 2026-11-11
+- First version: a clipboard shared across all your devices, end-to-end encrypted, ephemeral, no
+  account.

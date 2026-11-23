@@ -54,6 +54,7 @@ Essayer : <https://entrenous.0xdba.dev>
 | [En ligne de commande](docs/cli.md) | `entrenous` : installer, commandes, scripts, agents d'IA |
 | [Développement](docs/developpement.md) | structure du code, compiler chaque appli, tests |
 | [Conception](BRAINSTORM.md) | décisions et leur raison d'être |
+| [Nouveautés](CHANGELOG.md) | ce que chaque version apporte |
 
 ## Dans un terminal
 

@@ -27,5 +27,8 @@ Android, relais Docker). `BRAINSTORM.md` fait référence pour les décisions de
   non testées sur une vraie machine.
 - CLI (`cli/`) : `entrenous`, même cœur, un seul fichier (`npm run build`) ; textes dans `cli/src/i18n.ts`
   (FR + EN), doc `docs/cli.md` + `docs/en/cli.md` ; tests `cd cli && npm test` (relais lancé).
+- Nouveautés : toute évolution visible ajoute une entrée à `CHANGELOG.md` + `CHANGELOG.en.md` dans
+  son commit, version = `node scripts/changelog.mjs next` ; une phrase courte et naturelle par ligne, qui dit
+  ce que l'utilisateur y gagne, jamais comment la fonction marche ; `node scripts/changelog.mjs check`.
 - Android : compiler avec `android/build.sh` (Docker), jamais d'outils installés sur le Mac.
   Ne jamais committer la clé de signature (`~/.config/entrenous/`).

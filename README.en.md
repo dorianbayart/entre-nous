@@ -55,6 +55,7 @@ Try it: <https://entrenous.0xdba.dev>
 | [Command line](docs/en/cli.md) | `entrenous`: install, commands, scripts, AI agents |
 | [Development](docs/en/development.md) | code layout, building each app, tests |
 | [Design](BRAINSTORM.md) | decisions and the reasoning behind them (in French) |
+| [What's new](CHANGELOG.en.md) | what each version brings |
 
 ## In a terminal
 

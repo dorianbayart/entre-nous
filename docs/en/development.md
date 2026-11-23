@@ -165,6 +165,26 @@ android/build.sh          # signed APK → downloads/Entre-Nous-android.apk (Doc
 - Relays announce the latest release to the apps (the `latest` field in the `hello` response);
   an older app shows "New version available".
 
+### What's new (changelog)
+
+- `CHANGELOG.md` (French) and `CHANGELOG.en.md` (English), by hand: one `## 0.1.N — YYYY-MM-DD`
+  section per version that changes something for the users, one `- ` line per change (indented
+  continuation, `**bold**` and `` `code` `` allowed). Versions without a visible change are left out;
+  nothing about the infrastructure.
+- **One short, plain sentence saying what the users gain**, not how the feature works: "Videos start
+  playing without waiting for the download to finish."
+- **The entry is written in the commit of the change**, with that commit's version:
+  `node scripts/changelog.mjs next`. `node scripts/changelog.mjs check` (in CI too) checks both
+  files: same versions, same dates, same number of lines, no version beyond the next commit.
+- Where it is read:
+  - **in the apps**: the build (`web/build.mjs`) puts the changelog in the code; after an update, the
+    app shows once what the versions since the last one used brought;
+  - **before an update**: the CI attaches `changelog.json` to the release; the relay fetches it with
+    the release (otherwise it keeps its own copy, `app/changelog.json`) and answers the
+    `changelog { since }` operation; the "New version" banner offers "What's new";
+  - **on the site**: `/nouveautes/` and `/en/changelog/`, built with the site;
+  - **on GitHub**: the files, and each release's notes (the versions since the previous one).
+
 ## Code rules
 
 - The core (`web/src/core/`) never touches the DOM.
