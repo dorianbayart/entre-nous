@@ -715,7 +715,7 @@ Alpine.data('app', () => ({
       } else {
         const isImage = o.blob.type.startsWith('image/') && o.blob.size < 50 * 1024 * 1024;
         const thumb = isImage ? await thumbnail(o.blob) : undefined;
-        await engine.sendBlob(this.groupId, o.blob, o.name, isImage ? 'image' : 'file', thumb);
+        await engine.sendBlob(this.groupId, o.blob, o.name, isImage ? 'image' : 'file', { thumb });
       }
       this.toast(this.t('toast.sent'));
     } catch (err: any) {

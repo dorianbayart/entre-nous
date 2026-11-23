@@ -29,7 +29,11 @@ export interface Header {
   name?: string;
   mime?: string;
   size?: number;
-  thumb?: string; // small JPEG data URL for images
+  thumb?: string; // small WebP or JPEG data URL: an image, the poster of a video
+  w?: number; // pixels of an image or a video
+  h?: number;
+  duration?: number; // seconds, a video
+  excerpt?: string; // the first characters of a text file
   local?: boolean; // content only served directly by the sender (never uploaded to the relay)
   rekey?: { secret: string; state: string }; // key rotation after a removal
 }

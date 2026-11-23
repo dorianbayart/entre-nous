@@ -40,6 +40,7 @@ import {
   sealedSize,
   verifyItem,
 } from './items.ts';
+import { EXCERPT_MAX } from './media.ts';
 import { RelayConnection, type RelayEvent } from './relay.ts';
 import { type LinkFactory, Peers } from './peers.ts';
 import type { KV } from './storage.ts';
@@ -67,6 +68,11 @@ export interface ItemView {
   mime?: string;
   size?: number;
   thumb?: string;
+  /** Made by the sender: pixels of an image or a video, length of a video, start of a text. */
+  w?: number;
+  h?: number;
+  duration?: number;
+  excerpt?: string;
   chunks: number;
   /** Local item whose sender is not reachable now: nothing to copy or save. */
   unavailable?: boolean;
@@ -96,6 +102,186 @@ export class SendCancelledError extends Error {
   constructor() {
     super(t('err.sendCancelled'));
     this.name = 'SendCancelledError';
+  }
+}
+
+/** What the sender adds to a content: its preview (see `Header`), or a local text. */
+export interface SendExtra {
+  thumb?: string;
+  w?: number;
+  h?: number;
+  duration?: number;
+  excerpt?: string;
+  text?: string;
+}
+
+/**
+ * Random access to an item's content, for previews and streaming: the chunks are fetched
+ * (straight from the sender on the same network, otherwise from the relay) and decrypted
+ * on demand, a few kept in memory, the next ones fetched ahead.
+ */
+export interface ContentReader {
+  readonly size: number;
+  readonly name?: string;
+  readonly mime?: string;
+  /** Bytes [start, end) of the content. */
+  read(start: number, end: number): Promise<Uint8Array>;
+  /** Stops: what is still being read fails, nothing more is fetched. */
+  close(): void;
+}
+
+export interface ReaderOptions {
+  /** Decrypted chunks kept in memory (default 16, i.e. 16 MB). */
+  keep?: number;
+  /** Chunks fetched ahead of the last read (default 4). */
+  ahead?: number;
+}
+
+interface Slot {
+  promise: Promise<Uint8Array>;
+  resolve(data: Uint8Array): void;
+  reject(err: unknown): void;
+  state: 'queued' | 'fetching' | 'done';
+  /** Reads waiting for it: never evicted, never dropped from the queue meanwhile. */
+  waiting: number;
+  urgent: boolean;
+}
+
+/** The chunks of one content: a queue (urgent first), a few fetches at once, a small cache. */
+class ChunkReader implements ContentReader {
+  private slots = new Map<number, Slot>(); // least recently used first
+  private queue: number[] = [];
+  private running = 0;
+  private closed = false;
+
+  constructor(
+    readonly size: number,
+    private chunks: number,
+    private fetch: (idx: number) => Promise<Uint8Array>,
+    private opts: { keep: number; ahead: number; workers: number },
+    private onClose: () => void,
+    readonly name?: string,
+    readonly mime?: string,
+  ) {}
+
+  /** Chunk `idx`, decrypted. */
+  chunk(idx: number, urgent = true): Promise<Uint8Array> {
+    if (this.closed) {
+      const failed = Promise.reject(new Error('closed'));
+      failed.catch(() => {}); // a prefetch: nobody waits for it
+      return failed;
+    }
+    let s = this.slots.get(idx);
+    if (s) {
+      this.slots.delete(idx);
+      this.slots.set(idx, s);
+    } else {
+      let resolve!: Slot['resolve'];
+      let reject!: Slot['reject'];
+      const promise = new Promise<Uint8Array>((res, rej) => ((resolve = res), (reject = rej)));
+      promise.catch(() => {}); // a prefetch nobody waits for may fail quietly
+      s = { promise, resolve, reject, state: 'queued', waiting: 0, urgent };
+      this.slots.set(idx, s);
+      this.enqueue(idx, s);
+    }
+    if (urgent && s.state === 'queued' && !s.urgent) {
+      // a prefetched chunk now awaited: to the front
+      s.urgent = true;
+      this.queue.splice(this.queue.indexOf(idx), 1);
+      this.enqueue(idx, s);
+    }
+    if (!urgent) return s.promise;
+    s.waiting++;
+    const slot = s;
+    return s.promise.finally(() => {
+      slot.waiting--;
+      this.evict();
+    });
+  }
+
+  private enqueue(idx: number, s: Slot) {
+    // urgent: after the other urgent ones, before the prefetches
+    const at = s.urgent ? this.queue.findIndex((i) => !this.slots.get(i)?.urgent) : -1;
+    if (at < 0) this.queue.push(idx);
+    else this.queue.splice(at, 0, idx);
+    this.pump();
+  }
+
+  async read(start: number, end: number): Promise<Uint8Array> {
+    start = Math.max(0, Math.min(start, this.size));
+    end = Math.max(start, Math.min(end, this.size));
+    if (end === start) return new Uint8Array(0);
+    const first = Math.floor(start / CHUNK_SIZE);
+    const last = Math.floor((end - 1) / CHUNK_SIZE);
+    // a jump (seek): the prefetches nobody waits for give way to the new position
+    this.queue = this.queue.filter((i) => {
+      const s = this.slots.get(i)!;
+      if (s.waiting > 0 || (i >= first && i <= last + this.opts.ahead)) return true;
+      this.slots.delete(i);
+      return false;
+    });
+    const parts = [];
+    for (let i = first; i <= last; i++) parts.push(this.chunk(i));
+    for (let i = last + 1; i <= last + this.opts.ahead && i < this.chunks; i++) this.chunk(i, false);
+    const got = await Promise.all(parts);
+    const out = new Uint8Array(end - start);
+    let at = 0;
+    for (let i = first; i <= last; i++) {
+      const data = got[i - first];
+      const from = i === first ? start - i * CHUNK_SIZE : 0;
+      const to = Math.min(data.length, end - i * CHUNK_SIZE);
+      out.set(data.subarray(from, to), at);
+      at += to - from;
+    }
+    return out;
+  }
+
+  private pump() {
+    while (!this.closed && this.running < this.opts.workers && this.queue.length) {
+      const idx = this.queue.shift()!;
+      const s = this.slots.get(idx);
+      if (!s || s.state !== 'queued') continue;
+      s.state = 'fetching';
+      this.running++;
+      this.fetch(idx)
+        .then(
+          (data) => {
+            s.state = 'done';
+            s.resolve(data);
+          },
+          (err) => {
+            // failed: fetched again by the next read that needs it
+            if (this.slots.get(idx) === s) this.slots.delete(idx);
+            s.reject(err);
+          },
+        )
+        .finally(() => {
+          this.running--;
+          this.evict();
+          this.pump();
+        });
+    }
+  }
+
+  /** Keeps at most `keep` decrypted chunks, the least recently used go first. */
+  private evict() {
+    let done = 0;
+    for (const s of this.slots.values()) if (s.state === 'done') done++;
+    for (const [i, s] of this.slots) {
+      if (done <= this.opts.keep) break;
+      if (s.state !== 'done' || s.waiting > 0) continue;
+      this.slots.delete(i);
+      done--;
+    }
+  }
+
+  close() {
+    if (this.closed) return;
+    this.closed = true;
+    for (const s of this.slots.values()) if (s.state !== 'done') s.reject(new Error('closed'));
+    this.slots.clear();
+    this.queue = [];
+    this.onClose();
   }
 }
 
@@ -214,6 +400,8 @@ export class Engine {
   /** Latest version of the apps, as published on GitHub and reported by a relay (or null). */
   latest: string | null = null;
   private uploadSeq = 0;
+  /** Contents being read (previews, a video playing): the connections stay up meanwhile. */
+  private readers = new Set<ChunkReader>();
   private servedTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private listeners = new Set<(e: EngineEvent) => void>();
   private running = false;
@@ -299,7 +487,7 @@ export class Engine {
 
   /** App in the background: disconnects, but only once the transfers in progress are over. */
   background() {
-    if (this.busy) this.stopWhenIdle = true;
+    if (this.busy || this.readers.size) this.stopWhenIdle = true;
     else this.stop();
   }
 
@@ -959,7 +1147,12 @@ export class Engine {
       if (opened.header.kind === 'rekey') return null;
       const h = opened.header;
       const text = h.text ?? rt.outbox.get(item.id)?.text; // a local text sent from here
-      const view: ItemView = { ...base, kind: h.kind, text, name: h.name, mime: h.mime, size: h.size, thumb: h.thumb };
+      const thumb = typeof h.thumb === 'string' && h.thumb.startsWith('data:image/') ? h.thumb : undefined;
+      const view: ItemView = { ...base, kind: h.kind, text, name: h.name, mime: h.mime, size: h.size, thumb };
+      // what the sender made for the previews (checked: it comes from another device)
+      if (typeof h.w === 'number' && typeof h.h === 'number') Object.assign(view, { w: h.w, h: h.h });
+      if (typeof h.duration === 'number' && h.duration > 0) view.duration = h.duration;
+      if (typeof h.excerpt === 'string') view.excerpt = h.excerpt.slice(0, EXCERPT_MAX);
       if (item.local) view.local = true; // the relay's flag: it drops once sent to the relay
       const entry: Entry = { relay: item, opened, view };
       if (h.kind === 'note') {
@@ -1026,7 +1219,7 @@ export class Engine {
     }
     const rt = this.rt(groupId);
     // local mode: not even a short text in the announcement, it is fetched from here
-    if (localOnlyOf(rt.g.state)) return this.sendBlob(groupId, new Blob([text], { type: 'text/plain' }), '', 'text', undefined, text);
+    if (localOnlyOf(rt.g.state)) return this.sendBlob(groupId, new Blob([text], { type: 'text/plain' }), '', 'text', { text });
     await this.whenReady(rt);
     const header: Header = { kind: 'text', ts: Date.now(), text, size: text.length };
     const sealed = sealItem(this.device, this.recipients(rt), header, 0);
@@ -1043,8 +1236,13 @@ export class Engine {
     return sealed.id;
   }
 
-  /** Sends a content; resolves with the id of the item once it is fully uploaded. */
-  async sendBlob(groupId: string, blob: Blob, name: string, kind: 'image' | 'file' | 'text', thumb?: string, text?: string): Promise<string> {
+  /**
+   * Sends a content; resolves with the id of the item once it is fully uploaded. `preview`:
+   * what the history shows before any download (thumbnail, size in pixels, length, excerpt);
+   * `text`: a local text, kept for this device's own history.
+   */
+  async sendBlob(groupId: string, blob: Blob, name: string, kind: 'image' | 'file' | 'text', extra: SendExtra = {}): Promise<string> {
+    const { text, ...preview } = extra;
     const rt = this.rt(groupId);
     // shown at once, even while the connection is still being set up
     const key = `up-${++this.uploadSeq}`;
@@ -1053,11 +1251,11 @@ export class Engine {
     this.changed();
     try {
       await this.whenReady(rt);
-      // local mode: only the announcement goes to the relay (no thumbnail: it is content too)
+      // local mode: only the announcement goes to the relay (no preview: it is content too)
       const local = localOnlyOf(rt.g.state);
       const header: Header = { kind, ts: Date.now(), name: name || undefined, mime: blob.type, size: blob.size };
       if (local) header.local = true;
-      else if (thumb) header.thumb = thumb;
+      else Object.assign(header, preview);
       const sealed = sealItem(this.device, this.recipients(rt), header, Math.max(blob.size, 1));
       transfer.total = sealed.chunks;
       transfer.itemId = sealed.id; // its announcement may arrive before the relay's answer
@@ -1111,7 +1309,7 @@ export class Engine {
   }
 
   private stopIfIdle() {
-    if (this.stopWhenIdle && !this.busy) this.stop();
+    if (this.stopWhenIdle && !this.busy && !this.readers.size) this.stop();
   }
 
   /**
@@ -1187,84 +1385,138 @@ export class Engine {
     const entry = rt.items.get(itemId);
     if (!entry) throw new ItemGoneError();
     if (!entry.opened) throw new Error('item unavailable');
-    const { header, key } = entry.opened;
+    const { header } = entry.opened;
     if (header.kind === 'text' && header.text !== undefined) return { text: header.text };
     const textOf = async (blob: Blob) => (header.kind === 'text' ? { text: await blob.text() } : {});
     // sent from here: nothing to download
     const own = rt.outbox.get(itemId);
     if (own) return { blob: own.blob, name: header.name, mime: header.mime, ...(await textOf(own.blob)) };
-    const from = entry.relay.from;
-    const sender = rt.g.state.members[from]?.name ?? t('err.theSender');
-    const unreachable = () => new Error(t('err.localOnly', { name: sender }));
-    // same network as the sender: straight from it. Until the direct link is up (or if it
-    // cannot be), chunks come from the relay; local items can only come directly.
-    const peers = from !== this.device.id && rt.online.has(from) ? rt.peers : undefined;
-    let directFailed = !peers || !peers.reachable(from);
-    const local = !!entry.relay.local;
-    if (local && directFailed) throw unreachable();
-    if (!directFailed) peers!.warm(from);
     const chunks = entry.relay.chunks;
-    const transfer: Transfer = { id: itemId, groupId, itemId, name: header.name ?? '', direction: 'down', done: 0, total: chunks, peer: sender };
+    const transfer: Transfer = {
+      id: itemId,
+      groupId,
+      itemId,
+      name: header.name ?? '',
+      direction: 'down',
+      done: 0,
+      total: chunks,
+      peer: rt.g.state.members[entry.relay.from]?.name ?? t('err.theSender'),
+    };
+    // every chunk kept: they make the Blob
+    const reader = this.openReader(rt, itemId, { keep: chunks, ahead: 0 }, transfer);
     if (chunks > 1) {
       this.transfers.set(itemId, transfer);
       this.changed(); // shown at once, even while waiting for the sender's first chunks
     }
     try {
-      const parts: Uint8Array[] = new Array(chunks);
-      const queue = [...Array(chunks).keys()];
-      const worker = async () => {
-        for (let idx = queue.shift(); idx !== undefined; idx = queue.shift()) {
-          for (let askedComplete = false; ; ) {
-            // local item: waits for the link; otherwise only once it is up
-            if (!directFailed && (local || peers!.isConnected(from))) {
-              try {
-                parts[idx] = openContentChunk(key, itemId, idx, chunks, await peers!.fetch(from, itemId, idx));
-                transfer.direct = true;
-                break;
-              } catch {
-                // the direct link failed: the relay takes over (except in local mode)
-                directFailed = true;
-                transfer.direct = false;
-                if (local) throw unreachable();
-              }
-            }
-            try {
-              if (!rt.items.has(itemId)) throw new ItemGoneError(); // deleted meanwhile
-              const res = await this.retrying(rt, entry.relay.expiresAt, () => this.bulk(rt).request('chunk.get', { id: itemId, idx }));
-              parts[idx] = openContentChunk(key, itemId, idx, chunks, res.data);
-              break;
-            } catch (err: any) {
-              if (err.message !== 'unknown chunk' && err.message !== 'unknown item') throw err;
-              // Still being uploaded: this chunk is not there yet, wait for the sender.
-              // Otherwise deleted (or expired) on the relay while we were downloading it.
-              const now = rt.items.get(itemId);
-              if (!now || err.message === 'unknown item') throw new ItemGoneError();
-              if (now.relay.complete) {
-                // completed just after our request: once more, then it really is gone
-                if (askedComplete) throw new ItemGoneError();
-                askedComplete = true;
-                continue;
-              }
-              if (Date.now() - (now.relay.progressAt ?? now.relay.createdAt) > UPLOAD_STALLED) {
-                throw new Error(t('err.uploadInterrupted'));
-              }
-              await this.nextChange(5_000);
-            }
-          }
-          track(transfer, transfer.done + 1);
-          this.changed();
-        }
-      };
-      await Promise.all([...Array(DOWNLOAD_WORKERS)].map(worker));
-      const content = parts.slice(0, chunks);
+      const parts = await Promise.all([...Array(chunks).keys()].map((i) => reader.chunk(i)));
       // a 0-byte file is sent as one chunk holding one byte
       const size = header.size ?? 0;
-      const blob = new Blob(content as BlobPart[], { type: header.mime || 'application/octet-stream' }).slice(0, size, header.mime);
+      const blob = new Blob(parts as BlobPart[], { type: header.mime || 'application/octet-stream' }).slice(0, size, header.mime);
       return { blob, name: header.name, mime: header.mime, ...(await textOf(blob)) };
     } finally {
       this.transfers.delete(itemId);
       this.changed();
+      reader.close(); // and disconnects, if the app went to the background meanwhile
+    }
+  }
+
+  /**
+   * Reads an item's content on demand, without downloading it all: a video plays while it
+   * arrives, a text shows its start. To be closed. While a reader is open, the connections
+   * stay up even in the background (a video playing in picture-in-picture).
+   */
+  reader(groupId: string, itemId: string, opts: ReaderOptions = {}): ContentReader {
+    return this.openReader(this.rt(groupId), itemId, { keep: opts.keep ?? 16, ahead: opts.ahead ?? 4 });
+  }
+
+  private openReader(rt: Runtime, itemId: string, opts: { keep: number; ahead: number }, transfer?: Transfer): ChunkReader {
+    const entry = rt.items.get(itemId);
+    if (!entry) throw new ItemGoneError();
+    if (!entry.opened || entry.opened.header.kind === 'note') throw new Error('item unavailable');
+    const { header, key } = entry.opened;
+    const size = header.size ?? 0;
+    const chunks = entry.relay.chunks;
+    const done = () => {
+      this.readers.delete(reader);
       this.stopIfIdle();
+    };
+    const own = rt.outbox.get(itemId);
+    let fetch: (idx: number) => Promise<Uint8Array>;
+    if (own) {
+      // sent from here: the file itself
+      fetch = async (idx) => new Uint8Array(await own.blob.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer());
+    } else {
+      const from = entry.relay.from;
+      const sender = rt.g.state.members[from]?.name ?? t('err.theSender');
+      // same network as the sender: straight from it. Until the direct link is up (or if it
+      // cannot be), chunks come from the relay; local items can only come directly.
+      const peers = from !== this.device.id && rt.online.has(from) ? rt.peers : undefined;
+      const link = { directFailed: !peers || !peers.reachable(from), local: !!entry.relay.local, sender };
+      if (link.local && link.directFailed) throw new Error(t('err.localOnly', { name: sender }));
+      if (!link.directFailed) peers!.warm(from);
+      fetch = async (idx) => {
+        const data = await this.fetchChunk(rt, entry, itemId, idx, link, peers, transfer);
+        if (transfer) {
+          track(transfer, transfer.done + 1);
+          this.changed();
+        }
+        return data;
+      };
+    }
+    const reader = new ChunkReader(size, chunks, fetch, { ...opts, workers: DOWNLOAD_WORKERS }, done, header.name, header.mime);
+    this.readers.add(reader);
+    return reader;
+  }
+
+  /** Chunk `idx` of a received item, decrypted: from the sender if it can, else from the relay. */
+  private async fetchChunk(
+    rt: Runtime,
+    entry: Entry,
+    itemId: string,
+    idx: number,
+    link: { directFailed: boolean; local: boolean; sender: string },
+    peers: Peers | undefined,
+    transfer?: Transfer,
+  ): Promise<Uint8Array> {
+    const { key } = entry.opened!;
+    const from = entry.relay.from;
+    const chunks = entry.relay.chunks;
+    for (let askedComplete = false; ; ) {
+      // local item: waits for the link; otherwise only once it is up
+      if (!link.directFailed && (link.local || peers!.isConnected(from))) {
+        try {
+          const data = openContentChunk(key, itemId, idx, chunks, await peers!.fetch(from, itemId, idx));
+          if (transfer) transfer.direct = true;
+          return data;
+        } catch {
+          // the direct link failed: the relay takes over (except in local mode)
+          link.directFailed = true;
+          if (transfer) transfer.direct = false;
+          if (link.local) throw new Error(t('err.localOnly', { name: link.sender }));
+        }
+      }
+      try {
+        if (!rt.items.has(itemId)) throw new ItemGoneError(); // deleted meanwhile
+        const res = await this.retrying(rt, entry.relay.expiresAt, () => this.bulk(rt).request('chunk.get', { id: itemId, idx }));
+        return openContentChunk(key, itemId, idx, chunks, res.data);
+      } catch (err: any) {
+        if (err.message !== 'unknown chunk' && err.message !== 'unknown item') throw err;
+        // Still being uploaded: this chunk is not there yet, wait for the sender.
+        // Otherwise deleted (or expired) on the relay while we were downloading it.
+        const now = rt.items.get(itemId);
+        if (!now || err.message === 'unknown item') throw new ItemGoneError();
+        if (now.relay.complete) {
+          // completed just after our request: once more, then it really is gone
+          if (askedComplete) throw new ItemGoneError();
+          askedComplete = true;
+          continue;
+        }
+        if (Date.now() - (now.relay.progressAt ?? now.relay.createdAt) > UPLOAD_STALLED) {
+          throw new Error(t('err.uploadInterrupted'));
+        }
+        await this.nextChange(5_000);
+      }
     }
   }
 
