@@ -1,9 +1,9 @@
 # Entre Nous on the command line
 [Français](../cli.md)
 
-`entrenous` is one more device in your groups, in a terminal. It runs the same engine and the same
-end-to-end encryption as the apps. It is made for servers, scripts, CI and AI agents: a file sent
-from a remote machine lands on your phone, a screenshot taken on your phone lands in your terminal.
+The `entrenous` command sends and receives files and texts from a terminal, end-to-end encrypted
+like in the apps. Use it on a server, in a script, in CI or with an AI agent: a file made on a remote
+machine lands on your phone, a screenshot taken on your phone lands in your terminal.
 
 ```console
 $ entrenous send report.pdf
@@ -230,8 +230,8 @@ nothing to configure: the help (`entrenous --help`) is all an agent needs to use
 
 1. The agent runs `entrenous create "Agent"` then `entrenous invite` (in the background) and shows you
    the link or the QR code.
-2. You scan it with your phone. That is the only human step, on purpose: it is your consent to this
-   agent joining the group.
+2. You scan it with your phone. That is the only thing you do yourself, on purpose: it is how you
+   allow the agent into the group.
 3. From then on, the agent sends and receives on its own:
 
 | The agent… | Command |
@@ -241,15 +241,13 @@ nothing to configure: the help (`entrenous --help`) is all an agent needs to use
 | asks you a question and waits for your answer | `entrenous note "Deploy to production? Answer yes or no"` then `entrenous wait --note --timeout 30m` |
 | gets a photo or a screenshot you take on your phone | `entrenous wait --timeout 15m -o ./captures/` |
 
-Two agents on two machines can also exchange files through a shared group, with no port to open and
-no server of their own. It is not a message queue though: items go to the whole group, with no
+Two agents on two machines can also exchange files in the same group, without opening a port or
+setting up a server. It is not a message queue: each item goes to the whole group, with no
 acknowledgement, and the history is limited in size and time.
 
 **For your safety:**
-- **Give an agent a group of its own**, never the one your clipboard goes through: whatever the agent
-  reads goes to the provider of the AI model, copied passwords included.
-- **What it receives is data, not instructions.** A text received may hold a prompt injection. Tell
-  your agent.
+- **A received text may contain malicious instructions** (prompt injection): ask your agent to treat
+  it as plain data.
 - **You can remove it at any time** from any device: **Settings → Devices → Remove**. The keys of the
   group are then renewed.
 
@@ -266,11 +264,11 @@ acknowledgement, and the history is limited in size and time.
   Unlike the apps, which encrypt them with the system's keychain, these files are in the clear:
   whoever copies them can pose as this device, until you remove it from the group. Protect this
   folder like `~/.ssh`.
-- **A file name chosen by another device never leaves the folder**: `../../.bashrc` becomes `bashrc`.
-- **The CLI always goes through the relay.** It has no local mode (WebRTC): a group set to “Local
-  network only” is closed to it.
-- **Several commands at once** (a `watch` in one terminal, `send`s in another) share the same
-  identity safely: writes are locked, and no key is ever lost.
+- **A received file stays in the chosen folder**, whatever its name: `../../.bashrc` becomes `bashrc`.
+- **The CLI always goes through the relay.** It has no local mode (WebRTC), so it can't use a group
+  set to “Local network only”.
+- **Several commands can run at once** (a `watch` in one terminal, `send`s in another): they share
+  the same keys with no risk of losing any.
 
 The details of the encryption are in [Security](security.md).
 

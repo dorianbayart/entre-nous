@@ -17,11 +17,11 @@ sans pistage.
   données qu'il ne peut pas lire.
 - **Éphémère** : tout s'efface automatiquement, au bout de 10 minutes à 7 jours selon ton réglage.
 - **Sans compte** : tes appareils s'associent en scannant un QR code.
-- **En direct** quand c'est possible : sur le même réseau, le contenu passe d'un appareil à l'autre
+- **En direct** quand c'est possible : sur le même réseau, tes appareils s'échangent le contenu
   sans passer par internet.
 - **Textes, images, fichiers**, de n'importe quelle taille, et une note partagée en direct.
-- **Aperçus** : photos, textes et Markdown s'ouvrent dans l'appli ; une vidéo se lit pendant
-  qu'elle arrive, et continue en incrustation (picture-in-picture).
+- **Aperçus** : photos, textes, Markdown et vidéos s'ouvrent directement dans l'appli. Une vidéo
+  démarre sans attendre la fin du téléchargement et peut continuer en Picture-in-Picture.
 
 Essayer : <https://entrenous.0xdba.dev>
 
@@ -41,7 +41,7 @@ Essayer : <https://entrenous.0xdba.dev>
 | Linux | zone de notification, partage automatique (Tauri) : `.deb`, `.AppImage` | **nouvelle, pas encore testée** |
 | Windows | zone de notification, partage automatique (Tauri) : installeur `.exe` | **nouvelle, pas encore testée** |
 | Navigateur | appli web, rien à installer | fonctionne |
-| Terminal | `entrenous`, en ligne de commande, pour les serveurs, les scripts et les agents d'IA (Node.js) | **nouveau** |
+| Terminal | commande `entrenous`, pour les serveurs, les scripts et les agents d'IA (Node.js) | **nouveau** |
 
 ## Documentation
 
@@ -65,9 +65,14 @@ entrenous send build/app.apk                            # arrive sur le téléph
 entrenous wait --timeout 10m                            # attend ce que le téléphone envoie
 ```
 
-Un appareil de plus dans le groupe, avec le même chiffrement de bout en bout : pour envoyer un
-fichier depuis un serveur, récupérer une photo dans un script, ou laisser un agent d'IA te remettre
-ce qu'il a produit. Tout est dans [docs/cli.md](docs/cli.md).
+La commande `entrenous` envoie et reçoit des fichiers depuis un terminal, chiffrés de bout en bout
+comme dans l'appli. Par exemple :
+
+- un serveur t'envoie un fichier sur ton téléphone ;
+- un script récupère la photo que tu viens de prendre ;
+- un agent d'IA te transmet ce qu'il a produit.
+
+Le guide complet : [docs/cli.md](docs/cli.md).
 
 ## Héberger son relais en deux commandes
 
@@ -95,12 +100,12 @@ Détails, proxy et réglages : [docs/deploiement.md](docs/deploiement.md).
 
 - **Appli web** : son code est servi par le relais ; un relais compromis pourrait servir un code
   malveillant à l'appli web. Les applis Mac, Android, Linux et Windows embarquent leur interface.
-- **iPhone** : écrire dans le presse-papier demande un toucher (« Copier »), et pas de
-  « Partager vers » pour une appli web.
+- **iPhone** : il faut toucher « Copier » pour mettre un élément reçu dans le presse-papier, et une
+  appli web n'apparaît pas dans le menu « Partager ».
 - **Applis non signées** par un éditeur reconnu (Mac non notariée, APK hors Play Store, Windows
   sans certificat) : le système demande une confirmation à l'installation.
 - Un envoi interrompu reprend tant que l'appli reste ouverte, pas après son redémarrage.
-- Un appareil resté éteint pendant le retrait d'un autre doit être associé de nouveau.
+- Un appareil éteint au moment où un autre est retiré du groupe doit être associé de nouveau.
 
 ## Licence
 

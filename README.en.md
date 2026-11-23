@@ -21,8 +21,8 @@ no tracking.
 - **Direct** whenever possible: on the same network, content goes straight from one device to
   the other, without going through the internet.
 - **Text, images, files** of any size, plus a live shared note.
-- **Previews**: photos, texts and Markdown open in the app; a video plays while it arrives, and
-  goes on in picture-in-picture.
+- **Previews**: photos, texts, Markdown and videos open right in the app. A video starts without
+  waiting for the download to finish and can keep playing in Picture-in-Picture.
 
 Try it: <https://entrenous.0xdba.dev>
 
@@ -42,7 +42,7 @@ Try it: <https://entrenous.0xdba.dev>
 | Linux | system tray, automatic sharing (Tauri): `.deb`, `.AppImage` | **new, not tested yet** |
 | Windows | system tray, automatic sharing (Tauri): `.exe` installer | **new, not tested yet** |
 | Browser | web app, nothing to install | works |
-| Terminal | `entrenous`, on the command line, for servers, scripts and AI agents (Node.js) | **new** |
+| Terminal | `entrenous` command, for servers, scripts and AI agents (Node.js) | **new** |
 
 ## Documentation
 
@@ -66,9 +66,14 @@ entrenous send build/app.apk                            # lands on the phone
 entrenous wait --timeout 10m                            # waits for what the phone sends
 ```
 
-One more device in the group, with the same end-to-end encryption: to send a file from a server,
-get a photo into a script, or let an AI agent hand you what it made. It's all in
-[docs/en/cli.md](docs/en/cli.md).
+The `entrenous` command sends and receives files from a terminal, end-to-end encrypted like in the
+app. For example:
+
+- a server sends a file to your phone;
+- a script gets the photo you just took;
+- an AI agent hands you what it made.
+
+The full guide: [docs/en/cli.md](docs/en/cli.md).
 
 ## Host your own relay in two commands
 
@@ -96,12 +101,12 @@ Details, proxy and settings: [docs/en/deployment.md](docs/en/deployment.md).
 
 - **Web app**: its code is served by the relay, so a compromised relay could serve malicious code
   to the web app. The Mac, Android, Linux and Windows apps ship their own interface.
-- **iPhone**: writing to the clipboard takes a tap ("Copy"), and a web app can't appear in the
-  share sheet.
+- **iPhone**: you have to tap "Copy" to put a received item on the clipboard, and a web app doesn't
+  show up in the share sheet.
 - **Apps not signed** by a recognized developer (Mac app not notarized, APK outside the Play Store,
   Windows app without a certificate): the system asks you to confirm at install time.
 - An interrupted upload resumes as long as the app stays open, but not after a restart.
-- A device that was switched off while another one was removed has to be paired again.
+- A device that was off when another one was removed from the group has to be paired again.
 
 ## License
 

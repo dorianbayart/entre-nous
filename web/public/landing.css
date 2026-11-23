@@ -104,6 +104,7 @@ details {
 summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
 details p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
 details p strong { color: var(--text); }
+details ul { margin: -6px 0 12px; padding-left: 20px; color: var(--muted); font-size: 15px; }
 details pre {
   margin: 0 0 12px; padding: 12px 14px; overflow-x: auto;
   background: var(--bg); border: 1px solid var(--line); border-radius: 8px;

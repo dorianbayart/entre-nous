@@ -1,10 +1,10 @@
 # Entre Nous en ligne de commande
 [English](en/cli.md)
 
-`entrenous` est un appareil de plus dans tes groupes, mais dans un terminal. Il utilise le même
-moteur et le même chiffrement de bout en bout que les applis. Il est fait pour les serveurs, les
-scripts, la CI et les agents d'IA : un fichier envoyé d'une machine distante arrive sur ton
-téléphone, une capture prise au téléphone arrive dans ton terminal.
+La commande `entrenous` envoie et reçoit des fichiers et des textes depuis un terminal, chiffrés de
+bout en bout comme dans les applis. Elle sert sur un serveur, dans un script, en CI ou avec un agent
+d'IA : un fichier produit sur une machine distante arrive sur ton téléphone, une capture prise au
+téléphone arrive dans ton terminal.
 
 ```console
 $ entrenous send rapport.pdf
@@ -52,7 +52,7 @@ entrenous join 'https://entrenous.0xdba.dev/app/#p=…'
 Mets le lien entre apostrophes : sans elles, le shell interprète le `#`. Le lien est valable
 3 minutes, pour un seul appareil.
 
-**Ou partir du terminal.** `entrenous create` crée un groupe, puis `entrenous invite` affiche un
+**Ou commencer dans le terminal.** `entrenous create` crée un groupe, puis `entrenous invite` affiche un
 QR code à scanner avec ton téléphone :
 
 ```console
@@ -98,8 +98,8 @@ exemples.
 **ÉLÉMENT** est une position dans l'historique (`1` = le plus récent, comme dans `list`) ou le début
 de son identifiant (celui du JSON). Sans ÉLÉMENT, `get` prend le plus récent.
 
-**Ce qui arrive sur l'entrée standard** part comme un texte si c'est du texte UTF-8, sinon comme un
-fichier (nommé avec `--name`, qui force aussi l'envoi comme fichier) :
+**Ce qui arrive sur l'entrée standard** est envoyé comme un texte si c'est du texte UTF-8, sinon
+comme un fichier (nommé avec `--name`, qui force aussi l'envoi comme fichier) :
 
 ```sh
 pg_dump app | gzip | entrenous send --name app.sql.gz
@@ -234,8 +234,8 @@ Il n'y a rien à configurer : l'aide (`entrenous --help`) suffit à un agent pou
 
 1. L'agent lance `entrenous create "Agent"` puis `entrenous invite` (en arrière-plan) et te montre
    le lien ou le QR code.
-2. Tu le scannes avec ton téléphone. C'est la seule étape humaine, et elle est voulue : c'est ton
-   accord pour que cet agent entre dans le groupe.
+2. Tu le scannes avec ton téléphone. C'est la seule chose à faire toi-même, et c'est voulu : tu
+   autorises ainsi l'agent à rejoindre le groupe.
 3. Ensuite, l'agent envoie et reçoit seul :
 
 | L'agent… | Commande |
@@ -245,15 +245,13 @@ Il n'y a rien à configurer : l'aide (`entrenous --help`) suffit à un agent pou
 | te pose une question et attend ta réponse | `entrenous note "Déployer en production ? Réponds oui ou non"` puis `entrenous wait --note --timeout 30m` |
 | récupère une photo ou une capture que tu prends au téléphone | `entrenous wait --timeout 15m -o ./captures/` |
 
-Deux agents sur deux machines peuvent aussi s'échanger des fichiers par un groupe commun, sans
-port à ouvrir ni serveur à eux. Ce n'est pas une file de messages pour autant : les envois vont à tout
-le groupe, sans accusé de réception, et l'historique a une taille et une durée limitées.
+Deux agents sur deux machines peuvent aussi s'échanger des fichiers dans un même groupe, sans ouvrir
+de port ni installer de serveur. Ce n'est pas une file de messages : chaque envoi va à tout le
+groupe, sans accusé de réception, et l'historique est limité en taille et en durée.
 
 **Pour ta sécurité :**
-- **Donne à un agent un groupe à lui**, jamais celui où passe ton presse-papier : ce que l'agent
-  lit part chez le fournisseur du modèle d'IA, mots de passe copiés compris.
-- **Ce qu'il reçoit est une donnée, pas une instruction.** Un texte reçu peut contenir une injection
-  de prompt. Dis-le à ton agent.
+- **Un texte reçu peut contenir des instructions malveillantes** (injection de prompt) : demande à
+  ton agent de le traiter comme une simple donnée.
 - **Tu peux le retirer à tout moment** depuis n'importe quel appareil : **Réglages → Appareils →
   Retirer**. Les clés du groupe sont alors renouvelées.
 
@@ -270,12 +268,12 @@ le groupe, sans accusé de réception, et l'historique a une taille et une duré
   Contrairement aux applis, qui les chiffrent avec le trousseau du système, ces fichiers sont en
   clair : quiconque les copie peut se faire passer pour cet appareil, jusqu'à ce que tu le retires du
   groupe. Protège ce dossier comme `~/.ssh`.
-- **Un nom de fichier choisi par un autre appareil ne sort jamais du dossier** : `../../.bashrc`
-  devient `bashrc`.
-- **Le CLI passe toujours par le relais.** Il n'a pas le mode local (WebRTC) : un groupe réglé sur
-  « Réseau local uniquement » lui est fermé.
-- **Plusieurs commandes à la fois** (un `watch` dans un terminal, des `send` dans un autre) partagent
-  la même identité sans risque : les écritures sont verrouillées, et aucune clé n'est perdue.
+- **Un fichier reçu reste dans le dossier choisi**, quel que soit son nom : `../../.bashrc` devient
+  `bashrc`.
+- **Le CLI passe toujours par le relais.** Il n'a pas le mode local (WebRTC), donc il ne peut pas
+  utiliser un groupe réglé sur « Réseau local uniquement ».
+- **Plusieurs commandes peuvent tourner en même temps** (un `watch` dans un terminal, des `send` dans
+  un autre) : elles partagent les mêmes clés sans risque d'en perdre.
 
 Le détail du chiffrement est dans [Sécurité](securite.md).
 
