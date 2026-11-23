@@ -175,6 +175,8 @@ export const fr = {
   'settings.newGroup': 'Nom du nouveau groupe',
   'settings.server': 'Serveur',
   'settings.space': 'Espace : {space}',
+  'settings.relayVersion': 'Version du serveur : {v}',
+  'settings.relayVersionUnknown': 'Version du serveur : non indiquée (version ancienne, ou installée à la main)',
   'settings.persist': 'L’historique survit aux redémarrages du serveur.',
   'settings.noPersist': 'Le serveur ne garde rien sur disque : s’il redémarre, l’historique est perdu.',
   'settings.relay': 'Adresse du serveur',

@@ -296,6 +296,7 @@
     <h2 x-text="t('settings.server')"></h2>
     <p class="muted small" x-show="storageText" x-text="t('settings.space', { space: storageText })"></p>
     <p class="muted small" x-text="group ? group.relay : ''"></p>
+    <p class="muted small" x-show="relayVersionText" x-text="relayVersionText"></p>
     <p class="muted small" x-text="t(group && group.persist ? 'settings.persist' : 'settings.noPersist')"></p>
     <template x-if="native">
       <div>

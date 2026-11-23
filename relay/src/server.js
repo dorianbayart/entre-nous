@@ -12,6 +12,8 @@ import { Store } from './store.js';
 const env = process.env;
 const PORT = Number(env.PORT || 8080);
 const PERSIST = env.PERSIST === 'true';
+// release this relay was built from (scripts/auto-update.sh), shown in the apps' settings
+const VERSION = /^\d+\.\d+\.\d+$/.test(env.APP_VERSION ?? '') ? env.APP_VERSION : null;
 const MAX_STORAGE = parseSize(env.MAX_STORAGE || '0'); // 0 = unlimited (bounded by memory)
 const MAX_TTL = parseDuration(env.MAX_TTL || '7d');
 const PUBLIC_DIR = env.PUBLIC_DIR || fileURLToPath(new URL('../public', import.meta.url));
@@ -312,6 +314,7 @@ const handlers = {
       now: Date.now(),
       maxTtl: MAX_TTL,
       persist: PERSIST,
+      version: VERSION,
       latest: release?.version ?? null,
       storage: await storage(),
     };
@@ -624,7 +627,7 @@ setInterval(() => {
 
 server.listen(PORT, () => {
   log(
-    `entrenous relay on :${PORT}`,
+    `entrenous relay ${VERSION ?? '(no version)'} on :${PORT}`,
     `persist=${PERSIST}`,
     `redis maxmemory=${(maxmemory / 2 ** 20).toFixed(0)}MiB`,
     `max_storage=${MAX_STORAGE ? (MAX_STORAGE / 2 ** 20).toFixed(0) + 'MiB' : 'unlimited'}`,

@@ -175,6 +175,8 @@ export const en: Strings = {
   'settings.newGroup': 'New group name',
   'settings.server': 'Server',
   'settings.space': 'Space: {space}',
+  'settings.relayVersion': 'Server version: {v}',
+  'settings.relayVersionUnknown': 'Server version: not reported (an older one, or installed by hand)',
   'settings.persist': 'The history survives server restarts.',
   'settings.noPersist': 'The server keeps nothing on disk: if it restarts, the history is lost.',
   'settings.relay': 'Server address',

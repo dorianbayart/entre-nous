@@ -51,7 +51,8 @@ while :; do
     [ "$(cat "$STATE" 2>/dev/null)" = "$tag" ] && exit 0
     if [ "$tag" != "$built" ]; then
       git -C "$CLONE" checkout -q --detach "$tag"
-      docker compose build -q
+      # its version, shown in the apps' settings (the image has no git history)
+      docker compose build -q --build-arg APP_VERSION="${tag#v}"
       built=$tag
       say "$tag built"
     fi

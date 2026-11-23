@@ -33,6 +33,10 @@ test('reader: ranges on demand, during the upload, own copy, preview', { timeout
   mac.start();
   phone.start();
   await until('mac online', () => mac.groups[0]?.status === 'online');
+  // the relay's version (RELAY_VERSION: the one it was built with), or null when it does not say
+  const version = mac.groups[0].relayVersion;
+  if (process.env.RELAY_VERSION) assert.equal(version, process.env.RELAY_VERSION);
+  else assert.ok(version === null || /^\d+\.\d+\.\d+$/.test(version!), String(version));
   const inv = mac.invite(gid, () => {});
   await new Promise((r) => setTimeout(r, 300));
   await phone.join(inv.url);

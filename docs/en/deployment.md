@@ -205,4 +205,8 @@ then tries again the next day. Once a day is enough (`crontab -e`):
 If your `docker-compose.yml` lives outside the clone (proxy, your own settings), point to its
 folder: `COMPOSE_DIR=/path/to/compose`. `FORCE=1` restarts without waiting.
 
+The script gives the relay the release's number: the apps show it in **Settings → Server**. A
+relay built by hand (`docker compose up -d --build`) has none, unless built with
+`docker compose build --build-arg APP_VERSION=0.1.42`.
+
 Without `PERSIST`, updating empties the relay (pending history is lost, groups remain).

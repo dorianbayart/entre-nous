@@ -6,6 +6,8 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web/ ./
 COPY docs/images/chiffrement.svg docs/images/reseau.svg docs/images/chiffrement-en.svg docs/images/reseau-en.svg /docs/images/
+# the release built (0.1.42), given by scripts/auto-update.sh: no git history in the image
+ARG APP_VERSION=
 RUN npm run build
 
 FROM node:lts-alpine
@@ -16,6 +18,9 @@ COPY relay/package.json relay/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY relay/src ./src
 COPY --from=web /build/dist ./public
+# shown in the apps' settings (none: a relay built by hand)
+ARG APP_VERSION=
+ENV APP_VERSION=$APP_VERSION
 USER node
 ENV NODE_ENV=production PORT=8080
 EXPOSE 8080

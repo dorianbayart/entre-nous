@@ -1437,6 +1437,13 @@ Alpine.data('app', () => ({
     if (this.groupId) await engine.setAutoMax(this.groupId, bytes).catch((err) => this.toast(err.message));
   },
 
+  /** Settings, Server: the relay's version, once connected to it. */
+  get relayVersionText() {
+    const v = this.group?.relayVersion;
+    if (v === undefined) return '';
+    return v ? this.t('settings.relayVersion', { v }) : this.t('settings.relayVersionUnknown');
+  },
+
   get storageText() {
     const st = this.group?.storage;
     if (!st) return '';

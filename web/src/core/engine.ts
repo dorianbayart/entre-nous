@@ -350,6 +350,8 @@ interface Runtime {
   online: Set<string>;
   maxTtl: number;
   persist: boolean;
+  /** Version of the relay (0.1.42); null: it does not say (built by hand, or older). */
+  relayVersion?: string | null;
   storage?: { used: number; limit: number };
   ready: boolean;
   /** Direct links to the other devices (local mode). */
@@ -520,6 +522,8 @@ export class Engine {
       ttl: s.ttl,
       maxTtl: rt.maxTtl,
       persist: rt.persist,
+      /** Undefined until connected; null when the relay does not say it. */
+      relayVersion: rt.relayVersion,
       maxItems: maxItemsOf(s),
       autoMax: autoMaxOf(s),
       localOnly: localOnlyOf(s),
@@ -935,6 +939,7 @@ export class Engine {
     opening.answered = true;
     rt.maxTtl = res.maxTtl;
     rt.persist = res.persist;
+    rt.relayVersion = typeof res.version === 'string' ? res.version : null;
     rt.storage = res.storage;
     rt.online = new Set(res.online ?? []);
     if (typeof res.latest === 'string' && res.latest !== this.latest) {

@@ -205,5 +205,9 @@ chaque minute pendant 23 heures au plus, puis réessaie le lendemain. Une fois p
 Si ton `docker-compose.yml` est ailleurs que dans le clone (proxy, réglages à toi), indique son
 dossier : `COMPOSE_DIR=/chemin/du/compose`. `FORCE=1` relance sans attendre.
 
+Le script donne au relais le numéro de la release : les applis l'affichent dans **Réglages →
+Serveur**. Un relais construit à la main (`docker compose up -d --build`) n'en a pas, sauf avec
+`docker compose build --build-arg APP_VERSION=0.1.42`.
+
 Sans `PERSIST`, la mise à jour vide le relais (l'historique en attente est perdu, les groupes
 restent).
