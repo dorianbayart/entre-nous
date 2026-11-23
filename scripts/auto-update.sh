@@ -4,8 +4,8 @@
 #   0 4 * * * /path/to/entre-nous/scripts/auto-update.sh >> /path/to/update.log 2>&1
 # It follows the releases, not every commit: the relay, the web app and the apps offered for
 # download change together. A new release is built at once, but the relay only restarts when
-# that loses nothing: no content held, no pairing under way, no activity for 10 minutes (the
-# relay keeps everything in RAM). It checks every minute, for up to WAIT seconds (23 h), and
+# that loses nothing: no pairing under way, no activity for 10 minutes, and no content held (the
+# relay keeps everything in RAM), unless it runs with PERSIST=true (contents saved to disk). It checks every minute, for up to WAIT seconds (23 h), and
 # tries again the next day otherwise. While it waits, a newer release replaces the one it built.
 #   COMPOSE_DIR   folder of the docker-compose.yml, when it is not the clone itself
 #   FORCE=1       restart without waiting; if an update is already waiting, it is told to

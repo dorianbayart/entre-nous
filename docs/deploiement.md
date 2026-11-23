@@ -193,8 +193,9 @@ docker compose up -d --build
 
 Ou automatiquement, en suivant les releases (le relais, l'appli web et les applis proposées
 changent ensemble) : `scripts/auto-update.sh` regarde s'il y a une nouvelle release et, si oui, la
-compile tout de suite. Il ne relance le relais que quand il n'y a rien à perdre : aucun contenu
-gardé, aucune association en cours, aucune activité depuis 10 minutes (`IDLE_AFTER`). Il vérifie
+compile tout de suite. Il ne relance le relais que quand il n'y a rien à perdre : aucune
+association en cours, aucune activité depuis 10 minutes (`IDLE_AFTER`), et aucun contenu gardé, sauf
+avec `PERSIST=true` (l'historique est écrit sur disque à l'arrêt : la mise à jour se fait chaque jour). Il vérifie
 chaque minute pendant 23 heures au plus, puis réessaie le lendemain. Une fois par jour suffit
 (`crontab -e`) :
 

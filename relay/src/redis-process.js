@@ -52,13 +52,17 @@ export async function startRedis({ persist, dataDir = '/data', port = 6379 }) {
   const child = spawn('redis-server', ['-'], { stdio: ['pipe', 'inherit', 'inherit'] });
   child.stdin.end(config + '\n');
 
-  const client = new Redis({ host: '127.0.0.1', port, password, lazyConnect: true, maxRetriesPerRequest: 2 });
+  // No automatic reconnection while it starts: after a failed attempt (redis not listening yet),
+  // the client would keep reconnecting by itself and every further connect() would throw
+  // "already connecting/connected"; this loop retries instead.
+  const client = new Redis({ host: '127.0.0.1', port, password, lazyConnect: true, maxRetriesPerRequest: 2, retryStrategy: () => null });
   let connected = false;
   client.on('error', (err) => connected && console.error('redis:', err.message));
   for (let attempt = 0; ; attempt++) {
     try {
       await client.connect();
       connected = true;
+      client.options.retryStrategy = (times) => Math.min(times * 100, 2000); // from now on, as usual
       break;
     } catch (err) {
       if (attempt > 50 || child.exitCode !== null) throw new Error(`redis did not start: ${err.message}`);

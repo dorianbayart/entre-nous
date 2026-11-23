@@ -146,14 +146,15 @@ async function serveStatic(req, res) {
     return;
   }
   // For scripts/auto-update.sh, from inside the container only: can the relay be restarted
-  // without losing anything? No content held, no pairing under way, no activity for IDLE_AFTER.
+  // without losing anything? No pairing under way, no activity for IDLE_AFTER, and no content
+  // held (with PERSIST, the contents are written to disk when it stops: they may stay).
   if (url.pathname === '/idle') {
     const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress ?? '') && !req.headers['x-forwarded-for'];
     if (!local) {
       res.writeHead(404).end();
       return;
     }
-    const idle = Date.now() - lastActivity >= IDLE_AFTER && pairings.size === 0 && !(await store.hasItems());
+    const idle = Date.now() - lastActivity >= IDLE_AFTER && pairings.size === 0 && (PERSIST || !(await store.hasItems()));
     res.writeHead(idle ? 200 : 503, { 'Content-Type': 'text/plain' }).end(idle ? 'idle' : 'busy');
     return;
   }

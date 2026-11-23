@@ -194,8 +194,9 @@ docker compose up -d --build
 
 Or automatically, following the releases (the relay, the web app and the downloadable apps change
 together): `scripts/auto-update.sh` checks whether there's a new release and, if so, builds it
-right away. It only restarts the relay when there's nothing to lose: no content stored, no pairing
-in progress, no activity for 10 minutes (`IDLE_AFTER`). It checks every minute for up to 23 hours,
+right away. It only restarts the relay when there's nothing to lose: no pairing in progress, no
+activity for 10 minutes (`IDLE_AFTER`), and no content stored, unless it runs with `PERSIST=true`
+(the history is written to disk when it stops: it updates every day). It checks every minute for up to 23 hours,
 then tries again the next day. Once a day is enough (`crontab -e`):
 
 ```
