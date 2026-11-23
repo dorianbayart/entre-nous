@@ -1,12 +1,19 @@
 package dev.xdba.entrenous;
 
+import android.app.PendingIntent;
+import android.app.PictureInPictureParams;
+import android.app.RemoteAction;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Icon;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -17,7 +24,9 @@ import android.provider.OpenableColumns;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.util.Rational;
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.RequiresApi;
 import androidx.core.content.FileProvider;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -50,7 +59,8 @@ import javax.crypto.spec.GCMParameterSpec;
  *  - key storage encrypted by the Android Keystore (the keys never leave the device);
  *  - clipboard without a tap, marked sensitive;
  *  - received files (shared through the share sheet), and the "Share -> Entre Nous" entry;
- *  - invitation links (App Links), the back button, foreground / background.
+ *  - invitation links (App Links), the back button, foreground / background;
+ *  - picture-in-picture of a video (the WebView has none): the app becomes the small window.
  */
 @CapacitorPlugin(name = "EntreNous")
 public class EntreNousPlugin extends Plugin {
@@ -67,6 +77,7 @@ public class EntreNousPlugin extends Plugin {
     @Override
     public void load() {
         prefs = getContext().getSharedPreferences("entrenous", Context.MODE_PRIVATE);
+        registerPipReceiver();
         io.execute(this::purgeOldFiles);
         getActivity()
             .getOnBackPressedDispatcher()
@@ -107,6 +118,7 @@ public class EntreNousPlugin extends Plugin {
     public void info(PluginCall call) {
         JSObject o = new JSObject();
         o.put("model", Build.MODEL);
+        o.put("pip", pipSupported());
         call.resolve(o);
     }
 
@@ -352,6 +364,118 @@ public class EntreNousPlugin extends Plugin {
         File f = files.remove(call.getString("token", ""));
         if (f != null) deleteTree(f.getParentFile());
         call.resolve();
+    }
+
+    // ------------------------------------------------------------------ picture-in-picture
+
+    private static final String PIP_TOGGLE = "dev.xdba.entrenous.PIP_TOGGLE";
+    /** Android accepts small windows between 1:2.39 and 2.39:1. */
+    private static final float PIP_RATIO_MAX = 2.39f;
+    private boolean pipPlaying = false;
+    private Rational pipRatio = new Rational(16, 9);
+
+    private boolean pipSupported() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            && getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
+    }
+
+    private void setRatio(PluginCall call) {
+        int w = Math.max(1, call.getInt("width", 16));
+        int h = Math.max(1, call.getInt("height", 9));
+        float r = Math.max(1 / PIP_RATIO_MAX, Math.min(PIP_RATIO_MAX, (float) w / h));
+        pipRatio = new Rational(Math.round(r * 1000), 1000);
+    }
+
+    /** The small window's shape, its play/pause button, and whether leaving the app opens it. */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private PictureInPictureParams pipParams() {
+        Context ctx = getContext();
+        Intent toggle = new Intent(PIP_TOGGLE).setPackage(ctx.getPackageName());
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 0, toggle, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        String label = pipPlaying ? "Pause" : "Lecture";
+        Icon icon = Icon.createWithResource(ctx, pipPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+        List<RemoteAction> actions = new ArrayList<>();
+        actions.add(new RemoteAction(icon, label, label, pi));
+        PictureInPictureParams.Builder b = new PictureInPictureParams.Builder().setAspectRatio(pipRatio).setActions(actions);
+        // Android 12 and later: a playing video turns into the small window when the app is left
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) b.setAutoEnterEnabled(pipPlaying).setSeamlessResizeEnabled(true);
+        return b.build();
+    }
+
+    /** The play/pause button of the small window: handed over to the web side. */
+    private void registerPipReceiver() {
+        if (!pipSupported()) return;
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                notifyListeners("pipToggle", new JSObject());
+            }
+        };
+        IntentFilter filter = new IntentFilter(PIP_TOGGLE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            getContext().registerReceiver(receiver, filter);
+        }
+    }
+
+    @PluginMethod
+    public void pipEnter(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !pipSupported()) {
+            call.reject("picture-in-picture not available");
+            return;
+        }
+        setRatio(call);
+        main.post(() -> {
+            try {
+                getActivity().enterPictureInPictureMode(pipParams());
+                call.resolve();
+            } catch (IllegalStateException | IllegalArgumentException e) {
+                call.reject(e.getMessage());
+            }
+        });
+    }
+
+    /** Back to the full app (the web side leaves its video-only page). */
+    @PluginMethod
+    public void pipExit(PluginCall call) {
+        main.post(() -> {
+            Intent i = new Intent(getContext(), MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            getActivity().startActivity(i);
+        });
+        call.resolve();
+    }
+
+    /** A video plays or not: the button of the small window, and the automatic entry. */
+    @PluginMethod
+    public void pipPlaying(PluginCall call) {
+        pipPlaying = Boolean.TRUE.equals(call.getBoolean("on", false));
+        setRatio(call);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && pipSupported()) {
+            main.post(() -> {
+                try {
+                    getActivity().setPictureInPictureParams(pipParams());
+                } catch (IllegalStateException | IllegalArgumentException ignored) {}
+            });
+        }
+        call.resolve();
+    }
+
+    /** Android 8 to 11: leaving the app (Home) while a video plays opens the small window. */
+    void onUserLeaving() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && Build.VERSION.SDK_INT < Build.VERSION_CODES.S && pipPlaying && pipSupported()) {
+            try {
+                getActivity().enterPictureInPictureMode(pipParams());
+            } catch (IllegalStateException ignored) {}
+        }
+    }
+
+    /** In or out of the small window; `closed`: dismissed (not expanded back to the app). */
+    void onPipChanged(boolean active, boolean closed) {
+        JSObject o = new JSObject();
+        o.put("active", active);
+        o.put("closed", closed);
+        notifyListeners("pip", o);
     }
 
     // ------------------------------------------------------------------ intents

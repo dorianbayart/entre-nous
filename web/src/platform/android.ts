@@ -49,8 +49,9 @@ export function androidPlatform(): PlatformApi {
     imageCopyMax: IMAGE_MAX,
 
     async init() {
-      const { model } = await Native.info().catch(() => ({ model: '' }));
+      const { model, pip } = await Native.info().catch(() => ({ model: '', pip: false }));
       if (model) p.defaultName = model;
+      if (!pip) delete p.pip; // before Android 8, or turned off by the maker
     },
 
     async copy(mime, content) {
@@ -107,6 +108,23 @@ export function androidPlatform(): PlatformApi {
     },
     keepAwake(on) {
       Native.keepAwake({ on }).catch(() => {});
+    },
+
+    // The WebView has no picture-in-picture: the whole app becomes the small window (its page
+    // then shows only the video), with a play/pause button; leaving the app while a video
+    // plays opens it too.
+    pip: {
+      enter: (width, height) => Native.pipEnter({ width, height }).then(() => {}),
+      exit: () => Native.pipExit().then(() => {}),
+      onChange(cb) {
+        Native.addListener('pip', (e: { active: boolean; closed: boolean }) => cb(!!e.active, !!e.closed));
+      },
+      playing(on, width, height) {
+        Native.pipPlaying({ on, width: Math.round(width), height: Math.round(height) }).catch(() => {});
+      },
+      onToggle(cb) {
+        Native.addListener('pipToggle', () => cb());
+      },
     },
   };
   return p;
