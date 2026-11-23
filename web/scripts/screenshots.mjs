@@ -23,20 +23,31 @@ const S = {
     settings: 'Réglages', name: 'Nom', back: 'Retour', invite: 'Inviter un appareil', scan: 'Scanner un QR code',
     save: 'Enregistrer', devices: 'Appareils', pcName: 'PC Linux',
     macLabel: 'Mac · barre des menus', pcLabel: 'PC · navigateur, rien à installer', lock: '🔒 chiffré de bout en bout',
-    endSub: 'Un presse-papier partagé entre tous tes appareils.',
-    chips: ['Éphémère', 'Chiffré de bout en bout', 'Sans inscription', 'Mac · Android · iPhone · Linux · Windows · navigateur'],
+    endSub: 'Le copier-coller, en mieux.',
+    chips: ['Aperçus', 'Éphémère', 'Chiffré de bout en bout', 'Sans compte', 'Mac · Android · iPhone · Windows · Linux · CLI'],
     wifi: 'Code Wi-Fi invités : poney-violet-42', quote: 'Devis-cuisine.pdf',
     T: {
       copy: ['Tu copies sur ton Mac…', 'Rien à faire de plus : c’est envoyé tout seul.'],
       got: ['…c’est déjà sur ton téléphone.', 'Chiffré sur le Mac, illisible entre les deux, déchiffré sur le téléphone.'],
       trio: ['Une photo depuis Android, partout à la fois', 'Le Mac et le PC la reçoivent en même temps, par morceaux chiffrés.'],
       paste: ['Déjà dans le presse-papier du Mac', 'Prête à coller, en pleine qualité.'],
+      view: ['Ou prévisualise-la', 'Sans la télécharger.'],
+      md: ['Un document Markdown, mis en forme', 'Lis-le avant de le télécharger.'],
       note: ['Une note partagée, en direct', 'Tape-la sur le Mac : elle s’écrit sur tous les appareils.'],
+    },
+    md: {
+      name: 'Week-end-Lisbonne.md',
+      text: [
+        '# Week-end à Lisbonne', '', '**Départ** vendredi à 7 h 40, Orly, terminal 3.', '',
+        '## À ne pas oublier', '', '- Passeports', '- Chargeurs et adaptateur', '- Crème solaire', '',
+        '## Programme', '', '| Jour | Au programme |', '|---|---|', '| Samedi | Alfama, le tram 28 |', '| Dimanche | Belém et ses *pastéis de nata* |', '',
+        '> Réserver le restaurant de samedi soir avant jeudi.', '',
+      ].join('\n'),
     },
     address: 'Rendez-vous 14 h, 8 rue des Tanneurs', addressShort: '📋 Rendez-vous 14 h…', addressFind: 'Tanneurs',
     received: 'Reçu à l’instant', chunk: (i, n) => `📷 morceau ${i}/${n}`, paste: 'Colle où tu veux',
     note: 'Courses : pain, tomates, café, citrons',
-    hero: { title: 'Copie sur un appareil, colle sur un autre.', sub: 'Un presse-papier partagé, éphémère, chiffré, sans inscription, sur tous tes appareils.' },
+    hero: { title: 'Le copier-coller, en mieux.', sub: 'Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.' },
     pairing: { title: 'Association simple, par QR code ou par lien', leftLabel: 'Mac : Réglages → Inviter un appareil', rightLabel: 'Téléphone : scanner, ou coller le lien' },
     video: 'Vacances.mp4',
     uploading: {
@@ -45,25 +56,37 @@ const S = {
       labels: { mac3: 'Mac : télécharge déjà la vidéo', phone3: 'Android : envoie la vidéo', pc3: 'PC : la télécharge aussi' },
     },
     settingsPair: { title: 'Des réglages simples, pour tout le groupe', leftLabel: 'Réglages de l’appareil et du groupe', rightLabel: 'Les appareils du groupe' },
+    previewsPair: { title: 'Prévisualise tes photos et tes documents sans les télécharger', leftLabel: 'Mac : un document Markdown mis en forme', rightLabel: 'Téléphone : une photo en aperçu' },
   },
   en: {
     settings: 'Settings', name: 'Name', back: 'Back', invite: 'Invite a device', scan: 'Scan a QR code',
     save: 'Save', devices: 'Devices', pcName: 'Linux PC',
     macLabel: 'Mac · menu bar', pcLabel: 'PC · browser, nothing to install', lock: '🔒 end-to-end encrypted',
-    endSub: 'A clipboard shared across all your devices.',
-    chips: ['Ephemeral', 'End-to-end encrypted', 'No sign-up', 'Mac · Android · iPhone · Linux · Windows · browser'],
+    endSub: 'Copy-paste, only better.',
+    chips: ['Previews', 'Ephemeral', 'End-to-end encrypted', 'No account', 'Mac · Android · iPhone · Windows · Linux · CLI'],
     wifi: 'Guest Wi-Fi password: purple-pony-42', quote: 'Kitchen-quote.pdf',
     T: {
       copy: ['You copy on your Mac…', 'Nothing else to do: it’s sent on its own.'],
       got: ['…and it’s already on your phone.', 'Encrypted on the Mac, unreadable in between, decrypted on the phone.'],
       trio: ['A photo from Android, everywhere at once', 'The Mac and the PC receive it at the same time, in encrypted chunks.'],
       paste: ['Already in the Mac’s clipboard', 'Ready to paste, in full quality.'],
+      view: ['Or preview it', 'Without downloading it.'],
+      md: ['A Markdown document, formatted', 'Read it before downloading it.'],
       note: ['A shared note, live', 'Type it on the Mac: it appears on every device.'],
+    },
+    md: {
+      name: 'Lisbon-weekend.md',
+      text: [
+        '# Lisbon weekend', '', '**Leaving** Friday at 7:40 am, Orly, terminal 3.', '',
+        '## Don’t forget', '', '- Passports', '- Chargers and adapter', '- Sunscreen', '',
+        '## Plan', '', '| Day | What |', '|---|---|', '| Saturday | Alfama, tram 28 |', '| Sunday | Belém and its *pastéis de nata* |', '',
+        '> Book Saturday night’s restaurant before Thursday.', '',
+      ].join('\n'),
     },
     address: 'Meet at 2 pm, 8 Tanners Street', addressShort: '📋 Meet at 2 pm…', addressFind: 'Tanners',
     received: 'Just received', chunk: (i, n) => `📷 chunk ${i}/${n}`, paste: 'Paste it anywhere',
     note: 'Shopping: bread, tomatoes, coffee, lemons',
-    hero: { title: 'Copy on one device, paste on another.', sub: 'A shared clipboard: ephemeral, encrypted, no sign-up, on all your devices.' },
+    hero: { title: 'Copy-paste, only better.', sub: 'A smart clipboard: shared, cross-platform, end-to-end encrypted, ephemeral, no account, no trace.' },
     pairing: { title: 'Easy pairing, with a QR code or a link', leftLabel: 'Mac: Settings → Invite a device', rightLabel: 'Phone: scan, or paste the link' },
     video: 'Holidays.mp4',
     uploading: {
@@ -72,6 +95,7 @@ const S = {
       labels: { mac3: 'Mac: already downloading the video', phone3: 'Android: uploading the video', pc3: 'PC: downloading it too' },
     },
     settingsPair: { title: 'Simple settings, for the whole group', leftLabel: 'Device and group settings', rightLabel: 'The group’s devices' },
+    previewsPair: { title: 'Preview your photos and documents without downloading them', leftLabel: 'Mac: a formatted Markdown document', rightLabel: 'Phone: a photo preview' },
   },
 }[LANG];
 mkdirSync(LANDING, { recursive: true });
@@ -170,61 +194,129 @@ async function invite(host, open) {
 }
 
 const shot = (page) => page.screenshot({ type: 'png' });
+
+/** Opens the preview of the item named `name` (its tile), and waits until it is drawn. */
+async function openPreview(page, name) {
+  await page.locator('.history .item', { hasText: name }).locator('button.thumb').click();
+  await until('preview', () =>
+    page.evaluate(() => {
+      const img = document.querySelector('.viewer-image');
+      const md = document.querySelector('.viewer .markdown h1');
+      return (img && img.offsetParent && img.complete && img.naturalWidth > 0) || (md && md.offsetParent);
+    }),
+  );
+  await sleep(400);
+}
+async function closePreview(page) {
+  await page.keyboard.press('Escape');
+  await page.locator('section.viewer').waitFor({ state: 'hidden' });
+  await sleep(200);
+}
 const dataUrl = (png) => 'data:image/png;base64,' + png.toString('base64');
 
-/** A photo for the demo, drawn in the page: a lake at sunset, `w` × `h`. */
+/**
+ * A photo for the demo, drawn in the page, `w` × `h` (any shape): a lake at sunset, mountains,
+ * fir trees on the shore, their reflection. Always the same (seeded).
+ */
 async function photo(page, w, h) {
   const b64 = await page.evaluate(
     async ([w, h]) => {
+      let seed = 42;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       const c = document.createElement('canvas');
-      c.width = Math.max(w, 3200);
-      c.height = Math.max(h, 2400);
+      c.width = w;
+      c.height = h;
       const g = c.getContext('2d');
-      const sky = g.createLinearGradient(0, 0, 0, 1400);
-      sky.addColorStop(0, '#2b3a67');
-      sky.addColorStop(0.55, '#e0838a');
-      sky.addColorStop(1, '#f7c58c');
+      const u = Math.min(w, h);
+      const horizon = Math.round(h * 0.6);
+      const sky = g.createLinearGradient(0, 0, 0, horizon);
+      sky.addColorStop(0, '#1d2d5c');
+      sky.addColorStop(0.4, '#6e5b94');
+      sky.addColorStop(0.75, '#ee9479');
+      sky.addColorStop(1, '#ffd59b');
       g.fillStyle = sky;
-      g.fillRect(0, 0, 3200, 1400);
-      g.fillStyle = '#fff1c9';
+      g.fillRect(0, 0, w, horizon);
+      // the sun and its glow
+      const sx = w * 0.62, sy = horizon - u * 0.17, sr = u * 0.075;
+      const glow = g.createRadialGradient(sx, sy, sr * 0.6, sx, sy, sr * 7);
+      glow.addColorStop(0, 'rgba(255, 232, 175, .95)');
+      glow.addColorStop(1, 'rgba(255, 190, 140, 0)');
+      g.fillStyle = glow;
+      g.fillRect(0, 0, w, horizon);
+      g.fillStyle = '#fff4d8';
       g.beginPath();
-      g.arc(2100, 1150, 170, 0, Math.PI * 2);
+      g.arc(sx, sy, sr, 0, Math.PI * 2);
       g.fill();
-      const ridge = (y, amp, color, seed) => {
+      // long thin clouds, lit from below
+      for (let i = 0; i < 7; i++) {
+        const y = horizon * (0.12 + 0.45 * rnd()), x = w * rnd(), len = w * (0.25 + 0.35 * rnd()), th = u * (0.008 + 0.014 * rnd());
+        g.fillStyle = `rgba(255, ${170 + 50 * rnd()}, ${150 + 40 * rnd()}, ${0.35 + 0.3 * rnd()})`;
+        g.beginPath();
+        g.ellipse(x, y, len / 2, th, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+      // mountains: jagged ridges, from far (light) to near (dark)
+      const ridge = (top, rough, color) => {
+        const n = 512;
+        const pts = new Array(n + 1).fill(0);
+        pts[0] = rnd();
+        pts[n] = rnd();
+        for (let step = n; step > 1; step /= 2)
+          for (let i = step / 2; i < n; i += step) pts[i] = (pts[i - step / 2] + pts[i + step / 2]) / 2 + (rnd() - 0.5) * rough * (step / n) ** 0.8;
         g.fillStyle = color;
         g.beginPath();
-        g.moveTo(0, 1400);
-        for (let x = 0; x <= 3200; x += 40) g.lineTo(x, y - amp * Math.abs(Math.sin(x / 520 + seed) + 0.5 * Math.sin(x / 210 + seed * 3)));
-        g.lineTo(3200, 1400);
+        g.moveTo(0, horizon);
+        for (let i = 0; i <= n; i++) g.lineTo((i / n) * w, Math.min(horizon, horizon - top * u * (0.35 + pts[i])));
+        g.lineTo(w, horizon);
         g.fill();
       };
-      ridge(1150, 380, '#6b5b8a', 1);
-      ridge(1300, 260, '#4a4470', 2.2);
-      ridge(1400, 150, '#2f3557', 4);
-      // the lake: the sky upside down, darker
+      ridge(0.42, 1.3, '#9a7aa6');
+      ridge(0.3, 1.2, '#6d5a8c');
+      ridge(0.16, 1.0, '#3e3d66');
+      // fir trees on both shores
+      const fir = (x, height) => {
+        g.fillStyle = '#171a30';
+        g.fillRect(x - height * 0.02, horizon - height * 0.12, height * 0.04, height * 0.12);
+        for (let k = 0; k < 5; k++) {
+          const y0 = horizon - height * (0.1 + k * 0.17), half = height * (0.2 - k * 0.032);
+          g.beginPath();
+          g.moveTo(x - half, y0);
+          g.lineTo(x, y0 - height * 0.32);
+          g.lineTo(x + half, y0);
+          g.fill();
+        }
+      };
+      for (let i = 0; i < 9; i++) fir(w * (0.01 + 0.03 * i + 0.012 * rnd()), u * (0.12 + 0.12 * rnd()) * (1 - i * 0.07));
+      for (let i = 0; i < 6; i++) fir(w * (0.99 - 0.035 * i - 0.01 * rnd()), u * (0.1 + 0.1 * rnd()) * (1 - i * 0.1));
+      // the lake: everything above, upside down, darker; ripples; the sun's path
       g.save();
-      g.translate(0, 2800);
+      g.translate(0, horizon * 2);
       g.scale(1, -1);
-      g.globalAlpha = 0.75;
-      g.drawImage(c, 0, 0, 3200, 1400, 0, 0, 3200, 1400);
+      g.globalAlpha = 0.85;
+      g.drawImage(c, 0, 0, w, horizon, 0, 0, w, horizon);
       g.restore();
-      g.fillStyle = 'rgba(20, 30, 60, .35)';
-      g.fillRect(0, 1400, 3200, 1000);
-      const out = document.createElement('canvas');
-      out.width = w;
-      out.height = h;
-      const o = out.getContext('2d');
-      o.drawImage(c, 0, 0, 3200, 2400, 0, 0, w, h);
+      const water = g.createLinearGradient(0, horizon, 0, h);
+      water.addColorStop(0, 'rgba(20, 26, 55, .25)');
+      water.addColorStop(1, 'rgba(12, 16, 38, .7)');
+      g.fillStyle = water;
+      g.fillRect(0, horizon, w, h - horizon);
+      for (let i = 0; i < 260; i++) {
+        const d = rnd() ** 1.6, y = horizon + d * (h - horizon);
+        const near = Math.abs(rnd() * w - sx) < u * 0.12;
+        const x = near ? sx + (rnd() - 0.5) * u * (0.15 + 0.3 * d) : rnd() * w;
+        g.fillStyle = near ? `rgba(255, 228, 180, ${0.35 + 0.4 * rnd()})` : `rgba(255, 210, 190, ${0.06 + 0.1 * rnd()})`;
+        g.fillRect(x, y, u * (0.02 + 0.08 * rnd()) * (0.5 + d), Math.max(1, u * 0.002 * (1 + 2 * d)));
+      }
       // film grain: a realistic size for a phone photo
-      const img = o.getImageData(0, 0, w, h);
+      const img = g.getImageData(0, 0, w, h);
       for (let i = 0; i < img.data.length; i += 4) {
-        const n = (Math.random() - 0.5) * 26;
+        const n = (Math.random() - 0.5) * 22;
         img.data[i] += n;
         img.data[i + 1] += n;
         img.data[i + 2] += n;
       }
-      o.putImageData(img, 0, 0);
-      const blob = await new Promise((r) => out.toBlob(r, 'image/jpeg', 0.92));
+      g.putImageData(img, 0, 0);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.92));
       const bytes = new Uint8Array(await blob.arrayBuffer());
       let s = '';
       for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
@@ -522,6 +614,8 @@ await mac.locator('input[type=file]').setInputFiles({ name: S.quote, mimeType: '
 await phone.locator('.history .item', { hasText: S.quote }).waitFor();
 await pc.locator('.history .item', { hasText: S.quote }).waitFor();
 await phone.locator('.transfer').first().waitFor({ state: 'detached' }).catch(() => {});
+await pc.locator('input[type=file]').setInputFiles({ name: S.md.name, mimeType: 'text/markdown', buffer: Buffer.from(S.md.text) });
+for (const d of [mac, phone]) await d.locator('.history .item', { hasText: S.md.name }).waitFor();
 await sleep(600);
 
 const pct = async (page) => /(\d+) ?%/.exec((await page.locator('.transfer').allTextContents()).join(' '))?.[1];
@@ -579,7 +673,7 @@ hold({ ...d1, ...caption(T.got), bubbles: [bubble('phone', S.received, 1)] }, 2.
 const t0 = await trioShots();
 tween(12, (k) => ({ ...d1, ...t0, trio: k, ...caption(T.trio, T.got, k), bubbles: [bubble('phone', S.received, 1 - k)] }));
 hold({ ...t0, ...caption(T.trio) }, 0.8);
-const jpeg = await photo(phone, 2800, 2100);
+const jpeg = await photo(phone, 2100, 2800); // a phone photo: upright
 await phone.evaluate(() => window.__hold());
 await phone.locator('input[type=file]').setInputFiles({ name: 'IMG_4127.jpg', mimeType: 'image/jpeg', buffer: jpeg });
 await mac.locator('.transfer', { hasText: 'IMG_4127' }).waitFor();
@@ -596,7 +690,7 @@ for (let i = 1; i <= chunks; i++) {
     await phone.evaluate(() => window.__release());
     for (const d of [mac, pc]) {
       await d.locator('.transfer').first().waitFor({ state: 'detached' });
-      await until('thumbnail', () => d.locator('.history .item img.thumb').count());
+      await until('thumbnail', () => d.locator('.history .item .thumb.pic img').count());
     }
   }
   await sleep(500);
@@ -615,10 +709,23 @@ tween(9, (k) => ({ ...tu, ...caption(T.paste, T.trio, k), bubbles: [bubble('mac3
 hold({ ...tu, ...caption(T.paste), bubbles: [bubble('mac3', pasted, 1)] }, 2.2);
 const poster = timeline.at(-1).state;
 
-// 3. the live note, letter by letter, on every device
+// 3. previews: the photo full size on the Mac, the Markdown file formatted on the phone
+await openPreview(mac, 'IMG_4127');
+const tv = await trioShots();
+tween(9, (k) => ({ ...blend(tu, tv, k), ...caption(T.view, T.paste, k), bubbles: [bubble('mac3', pasted, 1 - k)] }));
+hold({ ...tv, ...caption(T.view) }, 2.4);
+await openPreview(phone, S.md.name);
+const tm = await trioShots();
+tween(9, (k) => ({ ...blend(tv, tm, k), ...caption(T.md, T.view, k) }));
+hold({ ...tm, ...caption(T.md) }, 2.8);
+await closePreview(mac);
+await closePreview(phone);
+const tc = await trioShots();
+
+// 4. the live note, letter by letter, on every device
 const note = S.note;
-tween(9, (k) => ({ ...tu, ...caption(T.note, T.paste, k), bubbles: [bubble('mac3', pasted, 1 - k)] }));
-let last = tu;
+tween(9, (k) => ({ ...blend(tm, tc, k), ...caption(T.note, T.md, k) }));
+let last = tc;
 for (let i = 2; i <= note.length; i += 2) {
   await mac.locator('.note textarea').fill(note.slice(0, i));
   for (const d of [phone, pc]) await until('note', async () => (await d.locator('.note textarea').inputValue()) === note.slice(0, i), 5000);
@@ -669,9 +776,31 @@ await renderPair(
   file(OUT, 'association', '.png'),
 );
 
-// a video still being sent, already being downloaded by the two others
-const video = Buffer.alloc(6 * 1024 * 1024 + 4321);
-for (let i = 0; i < video.length; i += 4096) video[i] = i & 255;
+// previews: the Markdown file on the Mac, the photo on the phone
+await openPreview(mac, S.md.name);
+await openPreview(phone, 'IMG_4127');
+await renderPair(
+  pair({
+    ...S.previewsPair,
+    left: await shot(mac),
+    right: await shot(phone),
+  }),
+  file(OUT, 'apercus', '.png'),
+);
+await closePreview(mac);
+await closePreview(phone);
+
+// a video still being sent, already being downloaded by the two others: a real one (its
+// image and its length in the history), made from the demo photo, about 6 MB
+const vdir = mkdtempSync(join(tmpdir(), 'entrenous-video-'));
+writeFileSync(join(vdir, 'photo.jpg'), await photo(phone, 1920, 1080));
+execFileSync('ffmpeg', [
+  '-y', '-loglevel', 'error', '-loop', '1', '-i', join(vdir, 'photo.jpg'), '-t', '12',
+  '-vf', "zoompan=z='1+0.0006*on':d=1:s=1920x1080:fps=30,noise=alls=10:allf=t,format=yuv420p",
+  '-c:v', 'libx264', '-b:v', '4M', '-maxrate', '4M', '-bufsize', '8M', '-movflags', '+faststart', join(vdir, 'video.mp4'),
+]);
+const video = readFileSync(join(vdir, 'video.mp4'));
+rmSync(vdir, { recursive: true });
 await phone.evaluate(() => window.__hold());
 await phone.locator('input[type=file]').setInputFiles({ name: S.video, mimeType: 'video/mp4', buffer: video });
 await mac.locator('.transfer', { hasText: S.video }).waitFor();
@@ -711,7 +840,7 @@ await renderPair(
 );
 
 // landing page: the pictures of the documentation shown in its FAQ, lighter
-for (const name of ['association', 'envoi-en-cours', 'reglages']) {
+for (const name of ['association', 'apercus', 'envoi-en-cours', 'reglages']) {
   execFileSync('magick', [file(OUT, name, '.png'), '-resize', '1200x', '-quality', '82', file(LANDING, name, '.webp')]);
 }
 
@@ -743,5 +872,5 @@ rmSync(dir, { recursive: true });
 
 await browser.close();
 const x = LANG === 'en' ? '-en' : '';
-console.log(`docs/images: apercu${x}.png, apercu-sombre${x}.png, demo${x}.gif (${timeline.length} images), association${x}.png, envoi-en-cours${x}.png, reglages${x}.png`);
-console.log(`web/public/images: appareils(-sombre)${x}.webp, demo(-fixe)${x}.webp, association${x}.webp, envoi-en-cours${x}.webp, reglages${x}.webp`);
+console.log(`docs/images: apercu${x}.png, apercu-sombre${x}.png, demo${x}.gif (${timeline.length} images), association${x}.png, apercus${x}.png, envoi-en-cours${x}.png, reglages${x}.png`);
+console.log(`web/public/images: appareils(-sombre)${x}.webp, demo(-fixe)${x}.webp, association${x}.webp, apercus${x}.webp, envoi-en-cours${x}.webp, reglages${x}.webp`);

@@ -3,7 +3,7 @@
 // [[symbole]] et \n pour un retour à la ligne.
 export const fr = {
   // ---------------------------------------------------------------- communs
-  'app.description': 'Un presse-papier commun à tous tes appareils, chiffré de bout en bout.',
+  'app.description': 'Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.',
   settings: 'Réglages',
   back: 'Retour',
   cancel: 'Annuler',

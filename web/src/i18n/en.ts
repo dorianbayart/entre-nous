@@ -3,7 +3,7 @@ import type { Strings } from './fr.ts';
 
 export const en: Strings = {
   // ---------------------------------------------------------------- common
-  'app.description': 'A clipboard shared across all your devices, end-to-end encrypted.',
+  'app.description': 'A smart clipboard: shared, cross-platform, end-to-end encrypted, ephemeral, no account, no trace.',
   settings: 'Settings',
   back: 'Back',
   cancel: 'Cancel',

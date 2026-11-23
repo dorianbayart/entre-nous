@@ -79,6 +79,8 @@ Une photo, une vidéo, un texte ou un fichier Markdown s'ouvrent dans l'appli, s
 touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Ouvrir** (texte, Markdown). Les flèches
 (ou un glissement sur téléphone, ← → au clavier) passent d'un élément à l'autre ; Échap ferme.
 
+![Un document Markdown mis en forme sur le Mac ; une photo en aperçu sur le téléphone](images/apercus.png)
+
 - **Dans l'historique, avant tout téléchargement** : la vignette d'une photo, l'image et la durée
   d'une vidéo, les premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
   chiffrés, à l'élément ; le serveur n'en voit rien. Une vignette ne garde aucune métadonnée de la

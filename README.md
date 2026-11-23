@@ -1,10 +1,10 @@
 # Entre Nous
 [English](README.en.md)
 
-**Copie sur un appareil, colle sur un autre.**
+**Le copier-coller, en mieux.**
 
-Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte,
-sans pistage.
+Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte,
+sans trace.
 
 <p align="center">
   <picture>
@@ -13,22 +13,21 @@ sans pistage.
   </picture>
 </p>
 
-- **Confidentiel** : tout est chiffré sur ton appareil ; le serveur relais ne transporte que des
-  données qu'il ne peut pas lire.
-- **Éphémère** : tout s'efface automatiquement, au bout de 10 minutes à 7 jours selon ton réglage.
+- **Chiffré de bout en bout** : seuls tes appareils peuvent lire ce que tu partages.
+- **Éphémère** : tout s'efface automatiquement, après 10 minutes à 7 jours, selon ton choix.
 - **Sans compte** : tes appareils s'associent en scannant un QR code.
-- **En direct** quand c'est possible : sur le même réseau, tes appareils s'échangent le contenu
-  sans passer par internet.
-- **Textes, images, fichiers**, de n'importe quelle taille, et une note partagée en direct.
-- **Aperçus** : photos, textes, Markdown et vidéos s'ouvrent directement dans l'appli. Une vidéo
-  démarre sans attendre la fin du téléchargement et peut continuer en Picture-in-Picture.
+- **En direct sur ton Wi-Fi** : sur le même réseau, ce que tu partages va directement d'un appareil
+  à l'autre, sans passer par internet.
+- **Textes, photos, vidéos, fichiers**, de n'importe quelle taille, et une note partagée en direct.
+- **Aperçus** : prévisualise une photo ou un document Markdown sans le télécharger, et regarde une
+  vidéo pendant qu'elle se télécharge, même en Picture-in-Picture.
 
 Essayer : <https://entrenous.0xdba.dev>
 
 ## En action
 
 <p align="center">
-  <img src="docs/images/demo.gif" width="840" alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; une note partagée s'écrit en direct sur les trois appareils">
+  <img src="docs/images/demo.gif" width="840" alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; le Mac en affiche l'aperçu ; le téléphone affiche un document Markdown mis en forme ; une note partagée s'écrit en direct sur les trois appareils">
 </p>
 
 ## Plateformes

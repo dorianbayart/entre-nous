@@ -1,10 +1,10 @@
 # Entre Nous
 [Français](README.md)
 
-**Copy on one device, paste on another.**
+**Copy-paste, only better.**
 
-A clipboard shared across all your devices: end-to-end encrypted, ephemeral, no account,
-no tracking.
+A smart clipboard: shared, cross-platform, end-to-end encrypted, ephemeral, no account,
+no trace.
 
 <p align="center">
   <picture>
@@ -13,23 +13,21 @@ no tracking.
   </picture>
 </p>
 
-- **Private**: everything is encrypted on your device; the relay server only carries data it
-  can't read.
-- **Ephemeral**: everything is deleted automatically, after 10 minutes to 7 days depending on
-  your setting.
+- **End-to-end encrypted**: only your devices can read what you share.
+- **Ephemeral**: everything is deleted automatically, after 10 minutes to 7 days, as you choose.
 - **No account**: your devices pair by scanning a QR code.
-- **Direct** whenever possible: on the same network, content goes straight from one device to
+- **Direct on your Wi-Fi**: on the same network, what you share goes straight from one device to
   the other, without going through the internet.
-- **Text, images, files** of any size, plus a live shared note.
-- **Previews**: photos, texts, Markdown and videos open right in the app. A video starts without
-  waiting for the download to finish and can keep playing in Picture-in-Picture.
+- **Text, photos, videos, files** of any size, plus a live shared note.
+- **Previews**: preview a photo or a Markdown document without downloading it, and watch a video
+  while it downloads, even in Picture-in-Picture.
 
 Try it: <https://entrenous.0xdba.dev>
 
 ## See it in action
 
 <p align="center">
-  <img src="docs/images/demo-en.gif" width="840" alt="Something copied on the Mac arrives, encrypted, on the phone; a photo shared from Android lands on the Mac and a PC at the same time; a shared note is typed live on all three devices">
+  <img src="docs/images/demo-en.gif" width="840" alt="Something copied on the Mac arrives, encrypted, on the phone; a photo shared from Android lands on the Mac and a PC at the same time, and the Mac previews it; the phone shows a formatted Markdown document; a shared note is typed live on all three devices">
 </p>
 
 ## Platforms

@@ -1,7 +1,7 @@
 {
   "name": "Entre Nous",
   "short_name": "Entre Nous",
-  "description": "Presse-papier partagé entre tes appareils, chiffré de bout en bout.",
+  "description": "Le copier-coller, en mieux. Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.",
   "lang": "fr",
   "start_url": "/app/",
   "scope": "/app/",

@@ -79,6 +79,8 @@ A photo, a video, a text or a Markdown file opens in the app, without saving it:
 thumbnail, or **View** (image), **Play** (video), **Open** (text, Markdown). The arrows (or a
 swipe on a phone, ← → on a keyboard) go from one item to the next; Escape closes.
 
+![A formatted Markdown document on the Mac; a photo preview on the phone](../images/apercus-en.png)
+
 - **In the history, before any download**: a photo's thumbnail, a video's poster and length, the
   first words of a text. The sending device makes them and attaches them, encrypted, to the item;
   the server sees none of it. A thumbnail keeps none of the photo's metadata (place, camera); the

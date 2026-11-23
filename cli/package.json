@@ -1,7 +1,7 @@
 {
   "name": "entrenous",
   "version": "0.0.0",
-  "description": "Entre Nous in your terminal: a clipboard shared across all your devices, end-to-end encrypted and ephemeral.",
+  "description": "Entre Nous in your terminal: a smart clipboard, shared, cross-platform, end-to-end encrypted, ephemeral, no account, no trace.",
   "keywords": [
     "clipboard",
     "end-to-end encryption",

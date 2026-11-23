@@ -6,8 +6,8 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Copie sur un appareil, colle sur un autre. Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.">
-  <title>Entre Nous · Presse-papier partagé et chiffré entre tous tes appareils</title>
+  <meta name="description" content="Le copier-coller, en mieux. Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.">
+  <title>Entre Nous · Le copier-coller, en mieux</title>
   <link rel="alternate" hreflang="fr" href="/fr/">
   <link rel="alternate" hreflang="en" href="/en/">
   <link rel="alternate" hreflang="x-default" href="/">
@@ -23,8 +23,8 @@
   <header class="hero">
     <img class="logo" src="/app/icon.svg" alt="" width="64" height="64">
     <h1>Entre&nbsp;Nous</h1>
-    <p class="lead">Copie sur un appareil, colle sur un autre.</p>
-    <p class="sub">Un presse-papier commun à tous tes appareils, chiffré de bout en bout, éphémère, sans compte, sans pistage.</p>
+    <p class="lead">Le copier-coller, en mieux.</p>
+    <p class="sub">Un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.</p>
 
     <div class="cta">
       <a class="button primary" id="web" href="/app/">Ouvrir l’appli web</a>
@@ -50,7 +50,7 @@
     <p class="note download-note" id="windows-note">Windows 10 ou 11 · version bêta</p>
     <p class="note download-note" id="linux-note">Debian, Ubuntu et dérivées<span class="size"></span> · <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-linux.AppImage">AppImage</a> pour les autres distributions · version bêta</p>
     <p class="note" id="ios-note">Sur iPhone, ajoute l’appli web à ton écran d’accueil.</p>
-    <p class="platforms">Mac · Android · iPhone · Windows · Linux</p>
+    <p class="platforms">Mac · Android · iPhone · Windows · Linux · CLI</p>
     <p class="note" id="version" hidden></p>
   </header>
 
@@ -71,16 +71,14 @@
   <section>
     <h2>Comment ça marche</h2>
     <ol class="steps">
-      <li><strong>Installe Entre&nbsp;Nous</strong> sur un premier appareil ou lance l’application web.</li>
-      <li><strong>Ajoute tes autres appareils</strong> en scannant un QR&nbsp;code, ou en collant son lien.
-        Aucun compte à créer.</li>
-      <li><strong>Copie, colle.</strong> Textes, photos, fichiers&nbsp;: tout passe
-        d’un appareil à l’autre en un instant.</li>
+      <li><strong>Installe Entre&nbsp;Nous</strong> sur un premier appareil, ou ouvre l’appli web.</li>
+      <li><strong>Ajoute tes autres appareils</strong>&nbsp;: scanne un QR&nbsp;code ou colle un lien. Aucun compte à créer.</li>
+      <li><strong>Copie, colle.</strong> Textes, photos, vidéos, fichiers&nbsp;: tout arrive sur tes autres appareils en un instant.</li>
     </ol>
     <picture class="demo wide">
       <source media="(prefers-reduced-motion: reduce)" srcset="/images/demo-fixe.webp">
       <img src="/images/demo.webp" width="1000" height="667" loading="lazy"
-           alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; une note partagée s’écrit en direct sur les trois appareils">
+           alt="Une copie sur le Mac arrive, chiffrée, sur le téléphone ; une photo partagée depuis Android arrive en même temps sur le Mac et sur un PC ; le Mac en affiche l’aperçu ; le téléphone affiche un document Markdown mis en forme ; une note partagée s’écrit en direct sur les trois appareils">
     </picture>
   </section>
 
@@ -89,14 +87,11 @@
     <img class="schema wide" src="/images/chiffrement.svg" width="960" height="380" loading="lazy"
          alt="Le contenu est chiffré sur le Mac ; le serveur relais ne transporte que des données illisibles ; le téléphone le déchiffre">
     <ul class="facts">
-      <li><strong>Confidentiel.</strong> Ce que tu transfères est chiffré sur ton appareil, et voyage
-        sur une connexion elle-même chiffrée.</li>
-      <li><strong>Éphémère.</strong> Tout s’efface automatiquement. Choisis la taille de l’historique
-        et le temps de rétention du presse-papier.</li>
+      <li><strong>Chiffré de bout en bout.</strong> Seuls tes appareils peuvent lire ce que tu partages.</li>
+      <li><strong>Éphémère.</strong> Tout s’efface automatiquement, après 10&nbsp;minutes à 7&nbsp;jours, selon ton choix.</li>
       <li><strong>Sans compte.</strong> Pas d’inscription, pas d’e-mail, pas de mot de passe.</li>
-      <li><strong>Sans pistage.</strong> Pas de publicité, pas de traceur, pas de log.</li>
-      <li><strong>Open source.</strong> Le code est public, sous licence AGPL&nbsp;: chacun peut vérifier
-        ce qu’il fait. <a href="https://github.com/dorianbayart/entre-nous">Voir le code sur GitHub</a></li>
+      <li><strong>Sans pistage.</strong> Aucune publicité, aucun traceur, aucun log.</li>
+      <li><strong>Open source.</strong> Le code est public (licence AGPL)&nbsp;: tout le monde peut le vérifier. <a href="https://github.com/dorianbayart/entre-nous">Voir le code sur GitHub</a></li>
     </ul>
   </section>
 
@@ -105,8 +100,7 @@
     <details data-platform="android">
       <summary>Android</summary>
       <p>Télécharge <a href="https://github.com/dorianbayart/entre-nous/releases/latest/download/Entre-Nous-android.apk">l’appli</a> et ouvre le fichier.
-        Android te demandera d’autoriser l’installation&nbsp;: Entre&nbsp;Nous ne passe pas par
-        le Play Store.</p>
+        Android te demande d’autoriser l’installation, car Entre&nbsp;Nous n’est pas sur le Play Store.</p>
       <p>Entre&nbsp;Nous apparaît ensuite dans le menu <strong>Partager</strong> de toutes tes applis.</p>
       <p>Sans rien installer, <a href="/app/">l’appli web</a> fonctionne aussi dans Chrome.</p>
     </details>
@@ -114,15 +108,15 @@
       <summary>iPhone et iPad</summary>
       <p>Ouvre <a href="/app/">l’appli web</a> dans Safari, puis
         <strong>Partager → Sur l’écran d’accueil</strong>.</p>
-      <p>Lance Entre&nbsp;Nous depuis cette icône pour ajouter ton iPhone, et non depuis Safari.</p>
+      <p>Pour ajouter ton iPhone, ouvre ensuite Entre&nbsp;Nous depuis cette icône, pas depuis Safari.</p>
     </details>
     <details data-platform="mac">
       <summary>Mac</summary>
       <p>Décompresse le fichier et glisse <strong>Entre&nbsp;Nous</strong> dans Applications.
         L’appli se loge dans la barre des menus, en haut de l’écran.
         Pour envoyer un fichier, glisse-le sur son icône.</p>
-      <p>Au premier lancement, macOS la bloque car elle n’est pas encore validée par Apple&nbsp;:
-        va dans <strong>Réglages Système → Confidentialité et sécurité</strong>, puis clique
+      <p>Au premier lancement, macOS la bloque, car elle n’est pas encore validée par Apple.
+        Va dans <strong>Réglages Système → Confidentialité et sécurité</strong>, puis clique
         sur <strong>Ouvrir quand même</strong>.</p>
       <p>Si ton Mac demande l’accès au trousseau, choisis <strong>Toujours autoriser</strong>.</p>
     </details>
@@ -146,12 +140,12 @@
     <details data-platform="other">
       <summary>Autres appareils</summary>
       <p>Rien à installer&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur
-        récent. Colle (Ctrl+V) ou glisse un fichier pour l’envoyer.</p>
+        récent. Pour envoyer un fichier, colle-le (Ctrl+V) ou glisse-le dans la page.</p>
     </details>
     <details data-platform="cli">
-      <summary>Terminal</summary>
-      <p>Pour les serveurs, les scripts et les agents d’IA&nbsp;: <strong>entrenous</strong>, en ligne
-        de commande, avec Node.js&nbsp;22 ou plus récent.</p>
+      <summary>CLI</summary>
+      <p>Pour les serveurs, les scripts et les agents d’IA&nbsp;: la commande <strong>entrenous</strong>,
+        avec Node.js&nbsp;22 ou plus récent.</p>
       <pre><code>npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
 entrenous join '<span class="ph">lien d’invitation</span>'
 entrenous send rapport.pdf
@@ -165,55 +159,60 @@ entrenous wait</code></pre>
     <h2>Questions fréquentes</h2>
     <details>
       <summary>Qui peut lire ce que je partage&nbsp;?</summary>
-      <p>Tes appareils, et personne d’autre. Pas même nous. Le code est
-        <a href="https://github.com/dorianbayart/entre-nous">open source</a>&nbsp;: chacun peut le vérifier.</p>
+      <p>Tes appareils, et personne d’autre, pas même le serveur&nbsp;: tout est chiffré de bout en bout.
+        Le code est <a href="https://github.com/dorianbayart/entre-nous">open source</a>, tout le monde peut le vérifier.</p>
     </details>
     <details>
       <summary>Mes mots de passe copiés sont-ils partagés aussi&nbsp;?</summary>
-      <p>Non. Sur ordinateur, ce que ton gestionnaire de mots de passe marque comme secret n’est
-        jamais partagé automatiquement.</p>
-      <p>À l’inverse, ce qu’Entre&nbsp;Nous écrit dans ton presse-papier est marqué de la même façon&nbsp;:
-        les historiques de presse-papier ne le gardent pas.</p>
+      <p>Non. Sur ordinateur, un mot de passe copié depuis ton gestionnaire de mots de passe
+        n’est jamais partagé automatiquement.</p>
+      <p>Et ce que tu copies depuis Entre&nbsp;Nous n’apparaît pas dans les historiques de presse-papier.</p>
     </details>
     <details>
       <summary>Faut-il installer quelque chose&nbsp;?</summary>
-      <p>Pas forcément&nbsp;: <a href="/app/">l’appli web</a> fonctionne dans tout navigateur récent.
-        Les applis vont plus loin&nbsp;: partage depuis n’importe quelle appli sur Android,
-        et copie automatique sur Mac, Windows et Linux.</p>
+      <p>Non. <a href="/app/">L’appli web</a> fonctionne dans tout navigateur récent.
+        Les applis en font plus&nbsp;: partage depuis n’importe quelle appli sur Android,
+        partage automatique du presse-papier sur Mac, Windows et Linux.</p>
     </details>
     <details>
       <summary>Comment ajouter un appareil&nbsp;?</summary>
       <p>Sur un appareil déjà associé, ouvre <strong>Réglages → Inviter un appareil</strong>.
-        Scanne le QR&nbsp;code avec le nouvel appareil, ou colle son lien dans <strong>Rejoindre</strong>&nbsp;:
-        pratique sur un ordinateur sans caméra, ou pour l’envoyer à distance.
+        Scanne le QR&nbsp;code avec le nouvel appareil, ou colle le lien dans <strong>Rejoindre</strong>
+        (pratique sur un ordinateur sans caméra, ou à distance).
         L’invitation est valable 3&nbsp;minutes, pour un seul appareil.</p>
       <a class="figure" href="/images/association.webp"><img src="/images/association.webp" width="1200" height="1040" loading="lazy"
          alt="Le Mac affiche le QR code d’invitation et son lien ; le téléphone le scanne, ou colle le lien"></a>
     </details>
     <details>
+      <summary>Puis-je voir un fichier avant de le télécharger&nbsp;?</summary>
+      <p>Oui. Tu peux prévisualiser une photo sans la télécharger, regarder une vidéo pendant qu’elle
+        se télécharge (même en Picture-in-Picture), et lire un document Markdown mis en forme avant
+        de le télécharger.</p>
+      <a class="figure" href="/images/apercus.webp"><img src="/images/apercus.webp" width="1200" height="1040" loading="lazy"
+         alt="Un document Markdown mis en forme sur le Mac ; une photo en aperçu sur le téléphone"></a>
+    </details>
+    <details>
       <summary>Faut-il attendre la fin d’un gros envoi&nbsp;?</summary>
-      <p>Non. Un fichier apparaît sur tous tes appareils dès le début de son envoi&nbsp;: chacun peut
-        l’enregistrer tout de suite, le téléchargement suit l’envoi. Pour le copier, en revanche,
-        il faut attendre la fin de l’envoi.</p>
+      <p>Non. Tu peux télécharger un fichier pendant qu’il est encore en cours d’envoi.
+        Pour le copier, il faut attendre la fin de l’envoi.</p>
       <a class="figure" href="/images/envoi-en-cours.webp"><img src="/images/envoi-en-cours.webp" width="1200" height="800" loading="lazy"
          alt="Pendant que le téléphone envoie une vidéo, le Mac et le PC la téléchargent déjà"></a>
     </details>
     <details>
       <summary>Chez moi, est-ce que ça passe par internet&nbsp;?</summary>
-      <p>Le contenu, non&nbsp;: quand tes appareils sont sur le même Wi-Fi, il va directement de l’un à
-        l’autre, au débit du Wi-Fi. Seule une annonce chiffrée passe par le serveur, pour les mettre
-        en relation.</p>
-      <p>Ailleurs (4G, autre réseau), le contenu passe par le serveur relais, toujours chiffré.
-        Avec <strong>Réseau local uniquement</strong>, il ne passe jamais par le serveur.</p>
+      <p>Non. Sur le même Wi-Fi, ce que tu partages va directement d’un appareil à l’autre,
+        à la vitesse de ton Wi-Fi. Seule une annonce chiffrée passe par le serveur.</p>
+      <p>Ailleurs (4G, autre réseau), ça passe par le serveur relais, toujours chiffré.
+        Avec <strong>Réseau local uniquement</strong>, ce que tu partages ne passe jamais par le serveur.</p>
       <a class="figure" href="/images/reseau.svg"><img src="/images/reseau.svg" width="960" height="400" loading="lazy"
          alt="Sur le même Wi-Fi, le contenu passe en direct ; ailleurs, par le relais, toujours chiffré"></a>
     </details>
     <details>
       <summary>Combien de temps mes données sont-elles gardées&nbsp;?</summary>
       <p>24&nbsp;heures par défaut. Tu peux choisir 10&nbsp;minutes, 1&nbsp;heure, 24&nbsp;heures ou 7&nbsp;jours.
-        Passé ce délai, tout s’efface.</p>
+        Ensuite, tout s’efface.</p>
       <p>Dans les réglages du groupe, tu choisis aussi la taille de l’historique (1&nbsp;élément, 10 ou
-        sans limite) et jusqu’à quelle taille le presse-papier est partagé automatiquement.</p>
+        sans limite) et la taille maximale du partage automatique.</p>
       <a class="figure" href="/images/reglages.webp"><img src="/images/reglages.webp" width="1200" height="1040" loading="lazy"
          alt="Les réglages de l’appareil et du groupe, et la liste des appareils du groupe"></a>
     </details>
@@ -221,18 +220,18 @@ entrenous wait</code></pre>
       <summary>Mon téléphone était éteint&nbsp;: est-ce que je reçois quand même&nbsp;?</summary>
       <p>Oui. Ce que tu partages attend sur le serveur jusqu’à son expiration, et ton téléphone
         le reçoit dès qu’il se reconnecte. Le serveur ne garde rien sur disque&nbsp;: s’il redémarre,
-        ce qui attendait est effacé.</p>
+        tout est effacé.</p>
     </details>
     <details>
       <summary>Y a-t-il une limite de taille&nbsp;?</summary>
-      <p>Pas par fichier&nbsp;: seule compte la place libre sur le serveur, indiquée dans les Réglages.
+      <p>Non, pas par fichier. Seule compte la place libre sur le serveur, indiquée dans les Réglages.
         Sur ordinateur, le partage automatique s’arrête à 1&nbsp;Mo par défaut&nbsp;; au-delà, envoie le
         fichier avec le bouton <strong>Fichier</strong>.</p>
     </details>
     <details>
       <summary>Puis-je partager avec ma famille ou des collègues&nbsp;?</summary>
       <p>Oui. Crée un groupe pour chacun (famille, travail…) et invites-y leurs appareils.
-        Les groupes sont indépendants&nbsp;: ce que tu partages dans l’un n’apparaît pas dans l’autre.</p>
+        Ce que tu partages dans un groupe n’apparaît pas dans les autres.</p>
     </details>
     <details>
       <summary>Et si je perds un appareil&nbsp;?</summary>
@@ -245,13 +244,13 @@ entrenous wait</code></pre>
       <ul>
         <li>un serveur t’envoie un fichier sur ton téléphone&nbsp;;</li>
         <li>un script récupère la photo que tu viens de prendre&nbsp;;</li>
-        <li>un agent d’IA te transmet ce qu’il a produit.</li>
+        <li>un agent d’IA t’envoie ce qu’il a produit.</li>
       </ul>
       <p><a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/cli.md">Le guide de la ligne de commande</a></p>
     </details>
     <details>
       <summary>Puis-je utiliser mon propre serveur&nbsp;?</summary>
-      <p>Oui&nbsp;: le serveur relais s’installe en deux commandes avec Docker. Choisis-le ensuite dans
+      <p>Oui. Le serveur relais s’installe en deux commandes avec Docker. Choisis-le ensuite dans
         les applis (<strong>Réglages → Serveur</strong>), ou ouvre l’appli web depuis ton serveur.
         <a href="https://github.com/dorianbayart/entre-nous/blob/master/docs/deploiement.md">Le guide d’hébergement</a></p>
     </details>

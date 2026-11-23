@@ -4,7 +4,7 @@ import { pick, setLang, type Lang } from '../../web/src/i18n/index.ts';
 
 const en = {
   // ---------------------------------------------------------------- help
-  tagline: 'Entre Nous in your terminal: a clipboard shared across all your devices, end-to-end encrypted and ephemeral.',
+  tagline: 'Entre Nous in your terminal: a smart clipboard, shared, cross-platform, end-to-end encrypted, ephemeral, no account, no trace.',
   usage: 'Usage',
   commands: 'Commands',
   options: 'Options',
@@ -157,7 +157,7 @@ export type CliKey = keyof typeof en;
 type Strings = { [K in CliKey]: string };
 
 const fr: Strings = {
-  tagline: 'Entre Nous dans ton terminal : un presse-papier commun à tous tes appareils, chiffré de bout en bout et éphémère.',
+  tagline: 'Entre Nous dans ton terminal : un presse-papier malin, partagé, multiplateforme, chiffré de bout en bout, éphémère, sans compte, sans trace.',
   usage: 'Utilisation',
   commands: 'Commandes',
   options: 'Options',

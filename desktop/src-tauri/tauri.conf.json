@@ -18,8 +18,8 @@
     "active": true,
     "targets": ["deb", "appimage", "nsis"],
     "category": "Utility",
-    "shortDescription": "Encrypted clipboard shared between your devices",
-    "longDescription": "Copy on one device, paste on another. A clipboard shared across all your devices: end-to-end encrypted, ephemeral, no account, no tracking.",
+    "shortDescription": "Copy-paste, only better",
+    "longDescription": "Copy-paste, only better. A smart clipboard: shared, cross-platform, end-to-end encrypted, ephemeral, no account, no trace.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.ico"],
     "linux": {
       "deb": { "depends": ["libayatana-appindicator3-1"] }

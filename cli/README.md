@@ -1,7 +1,7 @@
 # entrenous
 
-**Entre Nous in your terminal**: a clipboard shared across all your devices (phone, Mac, PC,
-browser), end-to-end encrypted, ephemeral, with no account. Send a file from a server to your phone,
+**Entre Nous in your terminal**: a smart clipboard, shared across all your devices (phone, Mac,
+PC, browser), end-to-end encrypted, ephemeral, no account, no trace. Send a file from a server to your phone,
 get a photo from your phone into a script, let an AI agent hand you what it made.
 
 ```console
