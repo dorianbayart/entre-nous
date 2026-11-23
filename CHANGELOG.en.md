@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.33 — 2026-11-23
+- Shows a changelog of what the available update changes.
+
 ## 0.1.28 — 2026-11-23
 - The server's version is shown in the settings.
 

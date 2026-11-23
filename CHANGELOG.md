@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.33 — 2026-11-23
+- Affiche un changelog des modifications de la mise à jour disponible.
+
 ## 0.1.28 — 2026-11-23
 - La version du serveur est affichée dans les réglages.
 

@@ -89,8 +89,30 @@
     <p class="status" x-text="statusText"></p>
     <div class="update" x-show="update">
       <span x-text="t('update.available', { v: update })"></span>
+      <button class="small ghost" x-show="updateNews.length" @click="toggleUpdateNews" :aria-expanded="updateNewsOpen ? 'true' : 'false'" x-text="t('update.news')"></button>
       <a class="button small secondary" :href="updateUrl" x-text="t('update.download')"></a>
       <button class="small ghost" @click="dismissUpdate" x-text="t('update.later')"></button>
+      <div class="news-list" x-show="updateNewsOpen && updateNews.length">
+        <template x-for="e in updateNews" :key="e.version">
+          <div>
+            <p class="news-version" x-show="updateNews.length > 1" x-text="e.version"></p>
+            <ul><template x-for="c in newsItems(e)" :key="c"><li x-rich="c"></li></template></ul>
+          </div>
+        </template>
+      </div>
+    </div>
+    <!-- after an update, once: what it brought -->
+    <div class="news" x-show="whatsNew.length">
+      <strong x-text="whatsNewTitle"></strong>
+      <div class="news-list">
+        <template x-for="e in whatsNew" :key="e.version">
+          <div>
+            <p class="news-version" x-show="whatsNew.length > 1" x-text="e.version"></p>
+            <ul><template x-for="c in newsItems(e)" :key="c"><li x-rich="c"></li></template></ul>
+          </div>
+        </template>
+      </div>
+      <button class="small secondary" @click="dismissWhatsNew" x-text="t('news.ok')"></button>
     </div>
 
     <div class="actions">

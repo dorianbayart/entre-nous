@@ -469,3 +469,43 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
   await b.context.close();
   assert.deepEqual(problems, []);
 });
+
+test('what is new: shown once after an update, from the changelog built in', { timeout: 60_000 }, async () => {
+  const d = await device('Fanny');
+  await d.page.goto(APP);
+  await d.page.locator('section.main').waitFor();
+  const version = /Version ([\d.]+)/.exec(await d.page.locator('section.settings').textContent())?.[1];
+  if (!version || version === '0.0.0') return; // a relay built without its version: nothing to compare
+  const news = d.page.locator('.news');
+  assert.ok(await news.isHidden(), 'nothing on a first run');
+  // as if the app had been used in 0.1.17, then updated
+  await d.page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('entrenous', 1);
+        req.onsuccess = () => {
+          const store = req.result.transaction('kv', 'readwrite').objectStore('kv');
+          const get = store.get('prefs');
+          get.onsuccess = () => {
+            const prefs = JSON.parse(get.result);
+            prefs.newsSeen = '0.1.17';
+            store.put(JSON.stringify(prefs), 'prefs').onsuccess = resolve;
+          };
+        };
+        req.onerror = reject;
+      }),
+  );
+  await d.page.reload();
+  await news.waitFor();
+  assert.equal(await news.locator('strong').first().textContent(), 'Nouveautés depuis la version 0.1.17');
+  assert.ok((await news.textContent()).includes('Prévisualisation'));
+  assert.ok(!(await news.textContent()).includes('Première version'), 'only what came after 0.1.17');
+  await button(news, 'Compris').click();
+  await news.waitFor({ state: 'hidden' });
+  await d.page.reload();
+  await d.page.locator('section.main').waitFor();
+  await sleep(500);
+  assert.ok(await news.isHidden(), 'shown once');
+  await d.context.close();
+  assert.deepEqual(problems, []);
+});

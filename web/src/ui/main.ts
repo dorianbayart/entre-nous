@@ -3,7 +3,7 @@
 import Alpine from '@alpinejs/csp';
 import qrcode from 'qrcode-generator';
 import jsQR from 'jsqr';
-import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ItemView, type Invite } from '../core/engine.ts';
+import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ChangelogEntry, type ItemView, type Invite } from '../core/engine.ts';
 import { hash } from '../core/crypto.ts';
 import { b64, utf8 } from '../core/bytes.ts';
 import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
@@ -36,6 +36,7 @@ interface Prefs {
   lang?: Lang; // chosen by the user; none: the system's
   relay?: string; // native apps: server of new groups, when not the default one
   updateSeen?: string; // new version whose banner was closed
+  newsSeen?: string; // version whose "What's new" was seen (none: first run, nothing to show)
   updateNotified?: string; // new version already announced by a system notification
 }
 
@@ -93,6 +94,7 @@ let installPrompt: any = null;
 /** iPhone, in Safari: the invitation waits while the install screen is shown, for "Use in Safari". */
 let installInvite: string | null = null;
 let lastShared = '';
+let loadingNewsFor = ''; // the new version whose changelog was asked to the relay
 let pendingLocal: Outgoing | undefined;
 let noteTypedAt = 0;
 const copiedIds = new Set<string>(); // items already written to the clipboard here
@@ -194,6 +196,11 @@ Alpine.data('app', () => ({
     groupId: null,
   } as Prefs,
   noteMax: NOTE_MAX,
+  /** After an update: what the versions since the last one used here brought (shown once). */
+  whatsNew: [] as ChangelogEntry[],
+  /** Before an update: what it brings, from the relay (the banner's "What's new"). */
+  updateNews: [] as ChangelogEntry[],
+  updateNewsOpen: false,
   noteEmpty: true,
   toastText: '',
   toastTimer: undefined as ReturnType<typeof setTimeout> | undefined,
@@ -317,6 +324,7 @@ Alpine.data('app', () => ({
       await this.join(pendingInvite);
     }
     this.view = engine.groups.length ? 'main' : 'welcome';
+    this.loadWhatsNew().catch(() => {});
     // sent with the interface shown, so their progress is visible
     this.handleSharedFiles().catch(() => {});
     // Android app: shares, invitation links and the back button come from the native side
@@ -407,10 +415,56 @@ Alpine.data('app', () => ({
   /** Desktop apps: one system notification per new version, seen even with the window closed. */
   announceUpdate() {
     const v = this.update;
+    if (v) this.loadUpdateNews().catch(() => {});
     if (!v || !platform.notify || this.prefs.updateNotified === v) return;
     this.prefs.updateNotified = v;
     this.savePrefs();
     platform.notify('Entre Nous', this.t('update.notify', { v }));
+  },
+
+  /** After an update: the changes since the version last used here (CHANGELOG.md, built in). */
+  async loadWhatsNew() {
+    if (__VERSION__ === '0.0.0') return; // built without a version
+    const seen = this.prefs.newsSeen;
+    if (!seen || newer(seen, __VERSION__)) {
+      // first run (or an older build): nothing to announce
+      this.prefs.newsSeen = __VERSION__;
+      this.savePrefs();
+      return;
+    }
+    if (!newer(__VERSION__, seen)) return;
+    this.whatsNew = __CHANGELOG__.filter((e) => newer(e.version, seen) && !newer(e.version, __VERSION__));
+    if (!this.whatsNew.length) this.dismissWhatsNew();
+  },
+
+  get whatsNewTitle() {
+    const list = this.whatsNew;
+    if (!list.length) return '';
+    return list.length === 1 ? this.t('news.title', { v: list[0].version }) : this.t('news.since', { v: this.prefs.newsSeen ?? '' });
+  },
+
+  dismissWhatsNew() {
+    this.whatsNew = [];
+    this.prefs.newsSeen = __VERSION__;
+    this.savePrefs();
+  },
+
+  /** The changes of a version in the language of the interface (**bold**, no `code` marks). */
+  newsItems(e: ChangelogEntry) {
+    return (this.lang === 'fr' ? e.fr : e.en).map((c) => c.replace(/`(.+?)`/g, '$1'));
+  },
+
+  /** The banner of a new version: what it brings, asked once to the relay. */
+  async loadUpdateNews() {
+    const v = this.update;
+    if (!v || this.updateNews[0]?.version === v || loadingNewsFor === v) return;
+    loadingNewsFor = v;
+    const entries = await engine.changelog(__VERSION__).catch(() => []);
+    this.updateNews = entries.filter((e) => !newer(e.version, v));
+  },
+
+  toggleUpdateNews() {
+    this.updateNewsOpen = !this.updateNewsOpen;
   },
 
   dismissUpdate() {

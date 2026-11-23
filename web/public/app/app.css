@@ -261,6 +261,14 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
   font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / .15); z-index: 20;
 }
 
+/* what a version brings: in the update banner, and once after an update */
+.news { margin: 10px 0 14px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.news .small { margin-top: 6px; }
+.news-list { flex-basis: 100%; font-size: 13px; max-height: 45vh; overflow-y: auto; }
+.news-list ul { margin: 4px 0 6px; padding-left: 18px; }
+.news-list li { margin: 3px 0; }
+.news-version { margin: 8px 0 0; font-weight: 600; font-size: 12px; color: var(--muted); }
+
 /* ---------------------------------------------------------- preview */
 
 .viewer {
