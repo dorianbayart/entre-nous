@@ -91,7 +91,8 @@ test('two terminals: pairing, texts, files, stdin, wait, watch, note, rm', { tim
   const sent = JSON.parse((await ok('alice', ['send', '-m', 'hello\nworld', '--json'])).stdout);
   assert.equal(sent.kind, 'text');
   assert.equal((await ok('bob', ['get'])).stdout, 'hello\nworld');
-  assert.equal((await ok('bob', ['get', sent.id.slice(0, 6)])).stdout, 'hello\nworld');
+  // after "--": an id may start with "-" (base64url)
+  assert.equal((await ok('bob', ['get', '--', sent.id.slice(0, 6)])).stdout, 'hello\nworld');
 
   // ---- stdin: text, then binary (a file)
   await ok('bob', ['send'], { input: 'piped text' });
