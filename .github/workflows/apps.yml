@@ -201,6 +201,15 @@ jobs:
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.version.outputs.version }}
     steps:
+      # the changelog: release notes, and changelog.json (the relay gives it to the apps)
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            CHANGELOG.md
+            CHANGELOG.en.md
+            scripts/changelog.mjs
+          sparse-checkout-cone-mode: false
+          path: src
       - uses: actions/download-artifact@v5
         with:
           path: in
@@ -217,10 +226,14 @@ jobs:
           cp in/Entre-Nous-linux/deb/*.deb out/Entre-Nous-linux.deb
           cp in/Entre-Nous-linux/appimage/*.AppImage out/Entre-Nous-linux.AppImage
           cp in/Entre-Nous-cli/entrenous-cli.tgz out/entrenous-cli.tgz
+          node src/scripts/changelog.mjs json > out/changelog.json
           ls -l out
       - name: Release
         run: |
+          # what changed since the release this one replaces (deleted below)
+          previous=$(gh release view --json tagName --jq .tagName 2>/dev/null | sed 's/^v//' || true)
+          { node src/scripts/changelog.mjs notes "${previous:-0.0.0}" "$VERSION"; echo; echo "Compilée depuis ${GITHUB_SHA::7}."; } > notes.md
           gh release create "v$VERSION" out/* --target "$GITHUB_SHA" --latest \
-            --title "Entre Nous $VERSION" --notes "Compilée depuis ${GITHUB_SHA::7}."
+            --title "Entre Nous $VERSION" --notes-file notes.md
           gh release list --limit 100 --json tagName --jq '.[].tagName' | grep -vx "v$VERSION" \
             | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
