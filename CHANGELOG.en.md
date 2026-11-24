@@ -2,17 +2,14 @@
 [Français](CHANGELOG.md)
 
 ## 0.1.40 — 2026-11-24
-- Photos open large at once, without being downloaded.
-- HEIC photos sent from an iPhone or a Mac, and SVG images, get a preview on every device.
-- A message tells you when an image has no preview.
+- A thumbnail lets you preview images without downloading them.
+- Preview of JPEG, PNG, GIF, WebP, AVIF, SVG and HEIC images.
 
 ## 0.1.39 — 2026-11-24
-- Preview PDFs right in the app, with text to copy and clickable links.
-- The history shows a PDF's first page.
+- PDF preview.
 
 ## 0.1.38 — 2026-11-24
-- Listen to audio files right in the app.
-- MP3, M4A, Opus, FLAC and WAV files play while they download.
+- Listen to MP3, M4A, Opus, FLAC and WAV audio while it downloads.
 
 ## 0.1.35 — 2026-11-23
 - The settings show the space used on the server, with a gauge.

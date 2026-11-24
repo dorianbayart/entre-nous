@@ -2,17 +2,14 @@
 [English](CHANGELOG.en.md)
 
 ## 0.1.40 — 2026-11-24
-- Les photos s'affichent en grand tout de suite, sans être téléchargées.
-- Les photos HEIC envoyées depuis un iPhone ou un Mac, et les images SVG, ont un aperçu sur tous les appareils.
-- Un message te prévient quand une image n'a pas d'aperçu.
+- Une vignette permet de prévisualiser les images sans les télécharger.
+- Aperçu des images JPEG, PNG, GIF, WebP, AVIF, SVG et HEIC.
 
 ## 0.1.39 — 2026-11-24
-- Aperçu des PDF directement dans l'appli, avec le texte à copier et les liens cliquables.
-- L'historique montre la première page d'un PDF.
+- Aperçu des PDF.
 
 ## 0.1.38 — 2026-11-24
-- Écoute des fichiers audio directement dans l'appli.
-- Les MP3, M4A, Opus, FLAC et WAV s'écoutent pendant leur téléchargement.
+- Écoute les audios MP3, M4A, Opus, FLAC et WAV pendant leur téléchargement.
 
 ## 0.1.35 — 2026-11-23
 - Les réglages montrent l'espace utilisé sur le serveur, avec une jauge.
