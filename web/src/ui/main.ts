@@ -241,6 +241,8 @@ Alpine.data('app', () => ({
   updateNews: [] as ChangelogEntry[],
   updateNewsOpen: false,
   noteEmpty: true,
+  /** The note or the clipboard is being sent: a second tap must not send it again. */
+  textSending: false,
   toastText: '',
   toastTimer: undefined as ReturnType<typeof setTimeout> | undefined,
   busy: false,
@@ -329,6 +331,7 @@ Alpine.data('app', () => ({
     // after a sleep or a network change, connections may be dead: check them now
     platform.onWake?.(() => engine.reconnect());
     window.addEventListener('online', () => engine.reconnect());
+    window.addEventListener('offline', () => engine.reconnect());
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       installPrompt = e;
@@ -597,7 +600,21 @@ Alpine.data('app', () => ({
   /** The note becomes an item of the history; the note itself stays, live. */
   async sendNote() {
     const text = ((this as any).$refs.note as HTMLTextAreaElement).value;
-    if (text.trim()) await this.send({ kind: 'text', text });
+    if (!text.trim() || !this.canSendText) return;
+    this.textSending = true;
+    try {
+      await this.send({ kind: 'text', text });
+    } finally {
+      this.textSending = false;
+    }
+  },
+
+  /**
+   * The note and the clipboard: offline, a send would wait for the connection, and each tap
+   * would send one more.
+   */
+  get canSendText() {
+    return this.group?.status === 'online' && !this.textSending;
   },
 
   async publish(item: ItemView) {
@@ -1596,6 +1613,8 @@ Alpine.data('app', () => ({
   },
 
   async sendClipboard() {
+    if (!this.canSendText) return;
+    this.textSending = true;
     try {
       const o = await platform.read();
       if (!o) {
@@ -1605,6 +1624,8 @@ Alpine.data('app', () => ({
       await this.send(o);
     } catch (err: any) {
       this.toast(this.t('toast.clipboardDenied'));
+    } finally {
+      this.textSending = false;
     }
   },
 

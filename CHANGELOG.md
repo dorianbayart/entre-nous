@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.46 — 2026-11-24
+- Fix: « Hors ligne » quand le réseau est coupé, et une note n'est plus envoyée en double.
+
 ## 0.1.45 — 2026-11-24
 - Accusés de réception et de lecture.
 

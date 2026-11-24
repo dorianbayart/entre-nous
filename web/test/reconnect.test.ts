@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/engine.ts';
 import { MemoryKV } from '../src/core/storage.ts';
+import { RelayConnection } from '../src/core/relay.ts';
 
 const RELAY = process.env.RELAY ?? 'http://127.0.0.1:8080';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -110,4 +111,14 @@ test('an upload that completes while a device connects does not stay pending', {
   }
 
   for (const e of [alice, bob]) e.stop();
+});
+
+test('a relay out of reach shows "offline", not "connecting" forever', { timeout: 30_000 }, async () => {
+  const seen: string[] = [];
+  const conn = new RelayConnection('http://127.0.0.1:9', async () => {}, () => {}, (s) => seen.push(s));
+  conn.start().catch(() => {});
+  await until('offline', () => conn.status === 'offline' && seen.length > 1);
+  await sleep(1500); // the next attempts go on without going back to "connecting"
+  conn.stop();
+  assert.deepEqual(seen, ['connecting', 'offline']);
 });

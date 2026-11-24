@@ -199,6 +199,40 @@ test('two devices: note, items, deletion, upload and download', { timeout: 120_0
   assert.deepEqual(problems, []);
 });
 
+test('offline: said at once, nothing sent twice when back', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+
+  await a.context.setOffline(true);
+  await until('offline shown', async () => (await a.page.locator('.status').textContent()).includes('Hors ligne'), 20_000);
+  await a.page.locator('.note textarea').fill('Écrite hors ligne');
+  const send = button(a.page.locator('.note-bar'), 'Envoyer');
+  assert.ok(await send.isDisabled(), 'the note can be sent offline');
+  await send.click({ force: true });
+  await send.click({ force: true });
+  assert.ok(await button(a.page, 'Envoyer le presse-papier').isDisabled(), 'the clipboard can be sent offline');
+  // a file chosen offline waits for the connection, listed once
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'hors-ligne.txt', mimeType: 'text/plain', buffer: Buffer.from('fichier') });
+
+  await a.context.setOffline(false);
+  await until('back online', async () => !(await send.isDisabled()), 30_000);
+  await send.click();
+  await b.page.locator('.history .item', { hasText: 'Écrite hors ligne' }).waitFor();
+  await sleep(1000);
+  assert.equal(await b.page.locator('.history .item', { hasText: 'Écrite hors ligne' }).count(), 1, 'the note is sent more than once');
+  await b.page.locator('.history .item', { hasText: 'hors-ligne.txt' }).waitFor();
+  await sleep(1000);
+  assert.equal(await b.page.locator('.history .item', { hasText: 'hors-ligne.txt' }).count(), 1, 'the file is sent more than once');
+  for (const d of [a, b]) await d.context.close();
+  // the browser reports each failed attempt to connect
+  const lost = problems.filter((p) => /ERR_INTERNET_DISCONNECTED/.test(p));
+  for (const p of lost) problems.splice(problems.indexOf(p), 1);
+  assert.deepEqual(problems, []);
+});
+
 test('three devices, one of them a phone: invitations, parallel downloads, removal', { timeout: 120_000 }, async () => {
   const a = await device('Alice');
   const b = await device('Bob');

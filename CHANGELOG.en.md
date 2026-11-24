@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.46 — 2026-11-24
+- Fix: "Offline" shows when the network is down, and a note is no longer sent twice.
+
 ## 0.1.45 — 2026-11-24
 - Delivery and read receipts.
 

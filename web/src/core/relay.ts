@@ -21,6 +21,8 @@ export class RelayConnection {
   private heartbeat?: ReturnType<typeof setInterval>;
   private retry?: ReturnType<typeof setTimeout>;
   private lastSeen = 0;
+  /** The last attempt to connect failed: "offline" until one succeeds, not "connecting". */
+  private failed = false;
   status: 'offline' | 'connecting' | 'online' = 'offline';
 
   /**
@@ -48,6 +50,7 @@ export class RelayConnection {
     this.ws?.close(1000);
     this.ws = null;
     this.opened = null;
+    this.failed = false;
     this.failPending();
     this.setStatus('offline');
   }
@@ -90,6 +93,7 @@ export class RelayConnection {
       if (!this.opened) {
         clearTimeout(this.retry);
         this.backoff = 500;
+        this.failed = false;
         this.ensureOpen().catch(() => {});
       }
       return;
@@ -110,7 +114,7 @@ export class RelayConnection {
 
   private ensureOpen(): Promise<void> {
     if (this.opened) return this.opened;
-    this.setStatus('connecting');
+    this.setStatus(this.failed ? 'offline' : 'connecting');
     this.opened = new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.wsUrl());
       ws.binaryType = 'arraybuffer';
@@ -120,6 +124,7 @@ export class RelayConnection {
         try {
           await this.onOpen(this);
           ready = true;
+          this.failed = false;
           this.backoff = 500;
           this.setStatus('online');
           clearInterval(this.heartbeat);
@@ -144,7 +149,8 @@ export class RelayConnection {
         this.opened = null;
         this.failPending();
         if (!ready) reject(new RelayError('connection failed'));
-        this.setStatus(this.active ? 'connecting' : 'offline');
+        this.failed = !ready;
+        this.setStatus(this.active && ready ? 'connecting' : 'offline');
         if (this.active) {
           this.retry = setTimeout(() => this.active && this.ensureOpen().catch(() => {}), this.backoff);
           this.backoff = Math.min(this.backoff * 2, 15_000);
