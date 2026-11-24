@@ -1,7 +1,7 @@
 // What a content can be previewed as, from its name and type; the start of a text file.
 // Shared by the apps (previews, made on the sending side) and the command line.
 
-export type PreviewKind = 'image' | 'video' | 'audio' | 'markdown' | 'text';
+export type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'markdown' | 'text';
 
 /** Characters of a text file shown under its name in the history. */
 export const EXCERPT_MAX = 280;
@@ -21,6 +21,7 @@ export function previewKind(name = '', mime = ''): PreviewKind | undefined {
   mime = mime.toLowerCase().split(';')[0].trim();
   if (mime === 'text/markdown' || mime === 'text/x-markdown' || MARKDOWN.test(name)) return 'markdown';
   if (mime.startsWith('image/') || (!mime && IMAGE.test(name))) return 'image';
+  if (mime === 'application/pdf' || /\.pdf$/i.test(name)) return 'pdf';
   if (mime.startsWith('audio/') || AUDIO.test(name)) return 'audio';
   if (mime.startsWith('video/') || VIDEO.test(name)) return 'video';
   if (TEXT_MIME.test(mime) || TEXT.test(name) || /^(readme|license|changelog|makefile|dockerfile)$/i.test(name)) return 'text';

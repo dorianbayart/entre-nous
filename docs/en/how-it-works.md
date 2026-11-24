@@ -81,13 +81,14 @@ sequenceDiagram
 ```
 
 - **An item** = an announcement signed by the sender, an encrypted header (type, name, size,
-  short text, and the preview: thumbnail, size in pixels, the length of a video or an audio file, the start of a text),
+  short text, and the preview: thumbnail, size in pixels, the length of a video or an audio file, a PDF's first page and number of pages, the start of a text),
   one envelope per device, and the content's chunks.
 - **Previews**: the chunks can be read in any order. So a video or an audio file plays while it arrives: the
   device decrypts only the chunks the player needs (an MP4's index, often at the end, then the
   rest), keeps a few in memory and fetches the next ones ahead; jumping ahead goes straight
   to the right chunk (for an MP3, from its table of contents or its bitrate; for Opus or FLAC, from the position written
-  in the file). A text reads only its first one.
+  in the file). A PDF reads its table (often at the end
+  of the file), then the chunks of the pages shown. A text reads only its first one.
 - **During the upload**, the item is already visible everywhere, and the upload's progress shows
   above the history; a device can start downloading before the end, following the upload as it
   goes (its progress shows in the item). Copying, however, waits for the upload to finish.

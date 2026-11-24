@@ -370,6 +370,14 @@
       <span class="viewer-count" x-show="viewerTotal > 1" x-text="viewerCount"></span>
     </header>
 
+    <div class="viewer-tools" x-show="viewerIs('pdf') && viewer.pages > 0">
+      <span class="pdf-count" x-text="pdfPageLabel"></span>
+      <div class="segmented" role="group">
+        <button @click="pdfZoomOut" :disabled="viewer.zoom <= 1" :aria-label="t('viewer.zoomOut')" :title="t('viewer.zoomOut')">−</button>
+        <button class="zoom" @click="pdfZoomReset" :aria-label="t('viewer.zoomFit')" :title="t('viewer.zoomFit')" x-text="pdfZoomLabel"></button>
+        <button @click="pdfZoomIn" :disabled="viewer.zoom >= 3" :aria-label="t('viewer.zoomIn')" :title="t('viewer.zoomIn')">+</button>
+      </div>
+    </div>
     <div class="viewer-tools" x-show="viewerIs('markdown') || viewerIs('text')">
       <div class="segmented" role="group" x-show="viewerIs('markdown')">
         <button :aria-pressed="isRendered() ? 'true' : 'false'" @click="showRendered" x-text="t('viewer.rendered')"></button>
@@ -389,6 +397,7 @@
         <span class="note" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
         <audio x-ref="audio" controls preload="metadata"></audio>
       </div>
+      <div class="pdf-pages" x-ref="pdf" x-show="viewerIs('pdf') && !viewer.error" @scroll="onPdfScroll"></div>
       <article class="markdown" x-ref="md" x-show="viewerRendered"></article>
       <div class="lines" x-ref="lines" x-show="viewerLines" :aria-label="t('viewer.text')"></div>
       <div class="viewer-state" x-show="viewer.loading && !viewerIs('video') && !viewerIs('audio')">

@@ -19,7 +19,7 @@ sans trace.
 - **En direct sur ton Wi-Fi** : sur le même réseau, ce que tu partages va directement d'un appareil
   à l'autre, sans passer par internet.
 - **Textes, photos, vidéos, fichiers**, de n'importe quelle taille, et une note partagée en direct.
-- **Aperçus** : prévisualise une photo ou un document Markdown sans le télécharger, et regarde une
+- **Aperçus** : prévisualise une photo, un PDF ou un document Markdown sans le télécharger, et regarde une
   vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.
 
 Essayer : <https://entrenous.0xdba.dev>

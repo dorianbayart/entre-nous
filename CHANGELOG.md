@@ -1,6 +1,10 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.39 — 2026-11-24
+- Aperçu des PDF directement dans l'appli, avec le texte à copier et les liens cliquables.
+- L'historique montre la première page d'un PDF.
+
 ## 0.1.38 — 2026-11-24
 - Écoute des fichiers audio directement dans l'appli.
 - Les MP3, M4A, Opus, FLAC et WAV s'écoutent pendant leur téléchargement.

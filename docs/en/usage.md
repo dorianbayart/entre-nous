@@ -75,15 +75,15 @@ You can create more groups (one for family, one for work): they're independent o
 
 ### Previews
 
-A photo, a video, an audio file, a text or a Markdown file opens in the app, without saving it:
-tap the thumbnail, or **View** (image), **Play** (video), **Listen** (audio), **Open** (text,
-Markdown). The arrows (or a
+A photo, a video, an audio file, a PDF, a text or a Markdown file opens in the app, without saving
+it: tap the thumbnail, or **View** (image), **Play** (video), **Listen** (audio), **Open** (PDF,
+text, Markdown). The arrows (or a
 swipe on a phone, ← → on a keyboard) go from one item to the next; Escape closes.
 
 ![A formatted Markdown document on the Mac; a photo preview on the phone](../images/apercus-en.png)
 
 - **In the history, before any download**: a photo's thumbnail, a video's poster and length, an
-  audio file's length, the first words of a text. The sending device makes them and attaches them, encrypted, to the item;
+  audio file's length, a PDF's first page and number of pages, the first words of a text. The sending device makes them and attaches them, encrypted, to the item;
   the server sees none of it. A thumbnail keeps none of the photo's metadata (place, camera); the
   file itself is sent as it is. In "Local network only" mode none of this goes through the
   server: the item shows without a preview.
@@ -94,6 +94,10 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
 - **Audio**: it plays while it arrives, without being downloaded whole, and you can jump forward
   or back at any time. MP3, M4A, Opus, FLAC and WAV (8, 16 or 24 bits); other formats (Ogg
   Vorbis, floating-point WAV…) download first, then play if the device can play them.
+- **PDF**: its pages scroll, each drawn as it comes on screen; only the parts of the file they need
+  are downloaded. **−** and **+** zoom, the percentage goes back to the width of the screen. Its text
+  can be selected, and **Copy the selection** copies it; its web links (http, https, mailto) open in
+  the browser, its internal links go to their page. JPEG 2000 images, rare, do not show.
 - **Watch in picture-in-picture**: the video goes on in a small window above the others.
   - **Mac**: the system's own, which goes on when the Entre Nous window closes; coming back from
     it opens the window again.

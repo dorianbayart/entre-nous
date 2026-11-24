@@ -198,7 +198,7 @@ With `--json`, each command writes a single JSON object (`watch`: one per line).
 
 `kind` is `text`, `image` or `file`. `text` holds a text, `path` the path of a saved file, `uploading`
 marks an item still being uploaded. What the sender attached for previews: `width` and `height`
-(pixels of an image or a video), `duration` (seconds, a video or an audio file), `excerpt` (the first characters of
+(pixels of an image or a video), `duration` (seconds, a video or an audio file), `pages` (pages of a PDF), `excerpt` (the first characters of
 a text file; `send` attaches it too for the text files it sends). Dates are ISO 8601 (UTC), sizes
 are in bytes.
 

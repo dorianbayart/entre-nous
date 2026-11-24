@@ -149,7 +149,9 @@ flowchart LR
   d'un Markdown est écrit comme du texte, ses images ne sont pas chargées (elles diraient à leur
   serveur qui lit le fichier), seuls les liens `https:`, `http:` et `mailto:` restent ; images, vidéos
   et sons sont décodés par le navigateur ou la vue web du système, comme sur une page web. Une
-  miniature est ré-encodée par l'expéditeur : elle ne garde pas les métadonnées de la photo.
+  miniature est ré-encodée par l'expéditeur : elle ne garde pas les métadonnées de la photo. Les PDF
+  sont lus par pdf.js dans un worker, sans leurs scripts, sans formulaires XFA, sans WebAssembly ; seuls leurs liens `https:`, `http:`
+  et `mailto:` s'ouvrent, à l'extérieur.
 - **Pas d'audit indépendant** à ce jour. Le code est public : chacun peut le vérifier.
 
 ## Signaler une faille

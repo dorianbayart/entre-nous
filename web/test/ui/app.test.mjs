@@ -523,6 +523,83 @@ test('songs: MP3, M4A, Opus, FLAC and WAV streamed, jumps to the middle and near
   assert.deepEqual(problems, []);
 });
 
+test('PDF: first page and page count from the sender, pages drawn as they show, zoom', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  // 12 pages, two chunks: the text pages, then a big image (last page), the table at the end
+  await a.page.locator('input[type=file]').setInputFiles(`${FIXTURES}doc.pdf`);
+  const item = b.page.locator('.history .item', { hasText: 'doc.pdf' });
+  await item.waitFor();
+  await until('upload over', async () => (await b.page.locator('.transfer').count()) === 0, 60_000);
+
+  // ---- the history: the first page as a thumbnail, PDF, Open
+  await item.locator('.thumb.pic.pdf img').waitFor();
+  assert.equal(await item.locator('.badge').textContent(), 'PDF');
+  await button(item, 'Ouvrir').click();
+  const viewer = b.page.locator('section.viewer');
+  assert.match(await viewer.locator('.viewer-title span').textContent(), /12 pages/);
+
+  // ---- pages: the first drawn at once, a far one only once it shows
+  const pages = viewer.locator('.pdf-pages .pdf-page');
+  await until('12 frames', async () => (await pages.count()) === 12, 20_000);
+  const drawn = (n) => pages.nth(n - 1).locator('canvas').evaluate((c) => c.width > 0);
+  await until('page 1 drawn', () => drawn(1), 20_000);
+  assert.equal(await viewer.locator('.pdf-count').textContent(), 'Page 1 / 12');
+  assert.ok(!(await drawn(12)), 'the last page waits');
+  assert.equal(await b.page.evaluate(() => document.querySelectorAll('.transfer').length), 0, 'not downloaded as a whole');
+  // page 1 holds text: dark pixels on white
+  const ink = await pages.nth(0).locator('canvas').evaluate((c) => {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, Math.floor(c.height / 3)).data;
+    let dark = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] < 100) dark++;
+    return dark;
+  });
+  assert.ok(ink > 100, `page 1 has ink (${ink} dark pixels)`);
+
+  // ---- its text: selectable, copied by "Copy the selection"
+  const text = pages.nth(0).locator('.textLayer');
+  await text.locator('span', { hasText: 'Page 1' }).waitFor();
+  assert.ok(!(await button(viewer, 'Copier la sélection').isVisible()), 'nothing selected yet');
+  await text.locator('span', { hasText: 'Entre Nous' }).evaluate((span) => {
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  });
+  await button(viewer, 'Copier la sélection').waitFor();
+  assert.match(await b.page.evaluate(() => getSelection().toString()), /Entre Nous : apercu PDF/);
+  await b.page.evaluate(() => getSelection().removeAllRanges());
+  await button(viewer, 'Copier la sélection').waitFor({ state: 'hidden' });
+
+  // ---- its links: a web link opens outside, the other goes to the last page
+  const web = pages.nth(0).locator('.pdf-links a[href="https://example.com/"]');
+  await web.waitFor();
+  assert.equal(await web.getAttribute('target'), '_blank');
+  assert.equal(await web.getAttribute('rel'), 'noopener noreferrer');
+  await pages.nth(0).locator('.pdf-links a[href="#"]').click();
+  await until('page 12 drawn', () => drawn(12), 20_000);
+  await until('page 12 in view', async () => (await viewer.locator('.pdf-count').textContent()) === 'Page 12 / 12');
+
+  // ---- zoom: wider pages, the same page kept in view
+  const width = () => pages.nth(0).evaluate((p) => p.getBoundingClientRect().width);
+  const before = await width();
+  await viewer.getByLabel('Agrandir').last().click();
+  await until('zoomed', async () => (await width()) > before * 1.4);
+  assert.equal(await viewer.locator('.segmented .zoom').textContent(), '150 %');
+  await until('still on page 12', () => drawn(12), 20_000);
+  await viewer.getByLabel('À la largeur de l’écran').click();
+  await until('back to the width', async () => Math.abs((await width()) - before) < 2);
+
+  await b.page.keyboard.press('Escape');
+  await viewer.waitFor({ state: 'hidden' });
+  await a.context.close();
+  await b.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('what is new: shown once after an update, from the changelog built in', { timeout: 60_000 }, async () => {
   const d = await device('Fanny');
   await d.page.goto(APP);

@@ -4,9 +4,11 @@
 //  - image: thumbnail, its size in pixels;
 //  - video: a frame (poster), its size in pixels and its length;
 //  - audio: its length;
+//  - PDF: its first page, its number of pages;
 //  - text file: its first characters.
 import type { SendExtra } from '../core/engine.ts';
 import { decodeStart, excerptOf, isText, previewKind } from '../core/media.ts';
+import { blobReader, drawPage, openPdf } from './pdf.ts';
 
 /** Thumbnails: the history shows them 64 px wide, cropped: 192 px = 64 × 3 (phone screens). */
 const THUMB_SHORT = 192;
@@ -149,6 +151,21 @@ async function audioPreview(blob: Blob): Promise<SendExtra> {
   }
 }
 
+/** A PDF: its first page as a thumbnail, its number of pages. Nothing past VIDEO_WAIT. */
+async function pdfPreview(blob: Blob): Promise<SendExtra> {
+  const { doc, close } = await openPdf(blobReader(blob));
+  try {
+    const canvas = document.createElement('canvas');
+    // about THUMB_LONG pixels wide, whatever the screen's density
+    const drawn = drawPage(doc, 1, canvas, THUMB_LONG / Math.min(window.devicePixelRatio || 1, 3));
+    await Promise.race([drawn, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), VIDEO_WAIT))]);
+    const thumb = await thumbnailOf(canvas, canvas.width, canvas.height).catch(() => undefined);
+    return { thumb, pages: doc.numPages };
+  } finally {
+    close();
+  }
+}
+
 /** A text file: its first characters, shown under its name. */
 async function textPreview(blob: Blob): Promise<SendExtra> {
   const head = new Uint8Array(await blob.slice(0, 4096).arrayBuffer());
@@ -166,6 +183,7 @@ export async function preview(blob: Blob, name: string): Promise<{ kind: 'image'
     if (asImage) extra = await imagePreview(blob);
     else if (kind === 'video') extra = await videoPreview(blob);
     else if (kind === 'audio') extra = await audioPreview(blob);
+    else if (kind === 'pdf') extra = await pdfPreview(blob);
     else if (isText(name, blob.type)) extra = await textPreview(blob);
   } catch {
     extra = {}; // not decodable here (a HEIC photo outside Safari…): sent without a preview

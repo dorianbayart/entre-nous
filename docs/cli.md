@@ -203,7 +203,7 @@ Avec `--json`, chaque commande écrit un seul objet JSON (`watch` : un par ligne
 `kind` vaut `text`, `image` ou `file`. `text` contient un texte, `path` le chemin d'un fichier
 enregistré, `uploading` indique un élément encore en cours d'envoi. Ce que l'expéditeur a joint pour
 les aperçus : `width` et `height` (pixels d'une image ou d'une vidéo), `duration` (secondes, une
-vidéo ou un fichier audio), `excerpt` (les premiers caractères d'un fichier texte ; `send` le joint aussi pour les
+vidéo ou un fichier audio), `pages` (pages d'un PDF), `excerpt` (les premiers caractères d'un fichier texte ; `send` le joint aussi pour les
 fichiers texte qu'il envoie). Les dates sont en ISO 8601 (UTC), les tailles en octets.
 
 ### Exemples

@@ -75,15 +75,16 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 
 ### Aperçus
 
-Une photo, une vidéo, un fichier audio, un texte ou un fichier Markdown s'ouvrent dans l'appli, sans
-les enregistrer : touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Écouter** (audio),
-**Ouvrir** (texte, Markdown). Les flèches
-(ou un glissement sur téléphone, ← → au clavier) passent d'un élément à l'autre ; Échap ferme.
+Une photo, une vidéo, un fichier audio, un PDF, un texte ou un fichier Markdown s'ouvrent dans
+l'appli, sans les enregistrer : touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Écouter**
+(audio), **Ouvrir** (PDF, texte, Markdown). Les flèches (ou un glissement sur téléphone, ← → au
+clavier) passent d'un élément à l'autre ; Échap ferme.
 
 ![Un document Markdown mis en forme sur le Mac ; une photo en aperçu sur le téléphone](images/apercus.png)
 
 - **Dans l'historique, avant tout téléchargement** : la vignette d'une photo, l'image et la durée
-  d'une vidéo, la durée d'un fichier audio, les premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
+  d'une vidéo, la durée d'un fichier audio, la première page et le nombre de pages d'un PDF, les
+  premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
   chiffrés, à l'élément ; le serveur n'en voit rien. Une vignette ne garde aucune métadonnée de la
   photo (lieu, appareil) ; le fichier lui-même part tel quel. En mode « Réseau local uniquement »,
   rien de tout ça ne passe par le serveur : l'élément s'affiche sans aperçu.
@@ -96,6 +97,11 @@ les enregistrer : touche la vignette, ou **Voir** (image), **Lire** (vidéo), **
   ou reculer à tout moment. MP3, M4A, Opus, FLAC et WAV (8, 16 ou 24 bits) ; les autres formats
   (Ogg Vorbis, WAV en virgule flottante…) se téléchargent d'abord, puis s'écoutent si l'appareil
   sait les lire.
+- **PDF** : ses pages défilent, chacune affichée en arrivant à l'écran ; seules les parties du
+  fichier dont elles ont besoin sont téléchargées. **−** et **+** zooment, le pourcentage revient à
+  la largeur de l'écran. Son texte se sélectionne, et **Copier la sélection** le copie ; ses liens
+  web (http, https, mailto) s'ouvrent dans le navigateur, ses liens internes mènent à leur page. Les
+  images JPEG 2000, rares, ne s'affichent pas.
 - **Regarder en incrustation** (picture-in-picture) : la vidéo continue dans une petite fenêtre
   au-dessus des autres.
   - **Mac** : celle du système, qui continue quand la fenêtre d'Entre Nous se ferme ; elle la

@@ -284,7 +284,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
     calc(max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px)) + 16px);
 }
 /* images and videos: on a dark ground, whatever the theme */
-.viewer.kind-image, .viewer.kind-video {
+.viewer.kind-image, .viewer.kind-video, .viewer.kind-pdf {
   --bg: #0e0e0d; --surface: #1f1f1e; --text: #ecebe7; --muted: #9a988f; --line: #2e2e2c;
   --accent: #7fb8a3; --accent-text: #10201b; --accent-soft: #233630; --danger: #e0806e;
   color-scheme: dark;
@@ -307,6 +307,43 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .viewer-image { max-width: 100%; max-height: 100%; object-fit: contain; position: relative; }
 .viewer-blur { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: blur(14px); opacity: .7; }
 .viewer-video { width: 100%; max-height: 100%; border-radius: 12px; background: #000; }
+/* a PDF: its pages one under the other, each drawn when it comes near the screen */
+.pdf-pages {
+  align-self: stretch; flex: 1; overflow: auto; display: flex; flex-direction: column; align-items: safe center;
+  gap: 12px; padding: 12px; border-radius: var(--radius); background: #2a2a28; overscroll-behavior: contain;
+}
+.pdf-page { flex: none; position: relative; background: #fff; box-shadow: 0 2px 10px rgb(0 0 0 / .35); }
+.pdf-page canvas { display: block; width: 100%; height: 100%; }
+/* its text, transparent over the drawing, to select it (rules of pdf.js's pdf_viewer.css) */
+.textLayer {
+  position: absolute; inset: 0; overflow: clip; text-align: initial; line-height: 1; letter-spacing: normal;
+  word-spacing: normal; text-size-adjust: none; -webkit-text-size-adjust: none; forced-color-adjust: none;
+  transform-origin: 0 0; z-index: 0; color-scheme: only light;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%;
+  user-select: text; -webkit-user-select: text;
+}
+.textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1; --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.textLayer .markedContent { display: contents; }
+.textLayer ::selection { background: color-mix(in srgb, AccentColor, transparent 50%); color: transparent; }
+.textLayer br::selection { background: transparent; }
+.textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; cursor: default; user-select: none; -webkit-user-select: none; }
+/* its links, over the text */
+.pdf-links { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.pdf-links a { position: absolute; pointer-events: auto; border-radius: 2px; }
+.pdf-links a:hover, .pdf-links a:focus-visible { background: rgb(47 93 80 / .15); outline: 1px solid rgb(47 93 80 / .5); }
+.pdf-count { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: auto; }
+.segmented .zoom { min-width: 62px; font-variant-numeric: tabular-nums; }
+.segmented button:disabled { opacity: .4; }
+.thumb.pic.pdf img { object-position: top; }
 /* a song: its note, its player */
 .viewer-audio { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
 .viewer-audio .note {
@@ -324,7 +361,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .viewer .nav.prev { left: 4px; }
 .viewer .nav.next { right: 4px; }
 /* texts scroll, a video has its own controls there: no arrows over them */
-.kind-text .nav, .kind-markdown .nav, .kind-video .nav, .kind-audio .nav { display: none; }
+.kind-text .nav, .kind-markdown .nav, .kind-video .nav, .kind-audio .nav, .kind-pdf .nav { display: none; }
 .viewer-note { margin: 0 4px; color: var(--muted); font-size: 12px; }
 
 /* a text, with its line numbers */

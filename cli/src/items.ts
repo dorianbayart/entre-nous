@@ -40,9 +40,10 @@ export function itemJSON(item: ItemView, position?: number, extra: Record<string
     ...(item.name ? { name: item.name } : {}),
     ...(item.mime ? { mime: item.mime } : {}),
     ...(item.size !== undefined && item.kind !== 'text' ? { size: item.size } : {}),
-    // made by the sender: pixels of an image or a video, its length, the start of a text file
+    // made by the sender: pixels of an image or a video, its length, pages of a PDF, the start of a text file
     ...(item.w && item.h ? { width: item.w, height: item.h } : {}),
     ...(item.duration ? { duration: item.duration } : {}),
+    ...(item.pages ? { pages: item.pages } : {}),
     ...(item.excerpt ? { excerpt: item.excerpt } : {}),
     ...(item.text !== undefined ? { text: item.text } : {}),
     ...(item.pending ? { uploading: true } : {}),

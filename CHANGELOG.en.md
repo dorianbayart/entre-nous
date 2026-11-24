@@ -1,6 +1,10 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.39 — 2026-11-24
+- Preview PDFs right in the app, with text to copy and clickable links.
+- The history shows a PDF's first page.
+
 ## 0.1.38 — 2026-11-24
 - Listen to audio files right in the app.
 - MP3, M4A, Opus, FLAC and WAV files play while they download.

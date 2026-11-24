@@ -13,6 +13,7 @@ import { webrtcAvailable, webrtcLinks } from '../core/webrtc.ts';
 import { preview } from './previews.ts';
 import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
+import { drawLayers, drawPage, openPdf, pageSize, type PdfDocument } from './pdf.ts';
 import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
 import { LANGS, duration, humanSize, storageSpace, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
@@ -116,6 +117,9 @@ let stopMedia: (() => void) | undefined;
 let viewerUrl = ''; // object URL of an image or of a whole video
 let textShown = ''; // the text of a text preview, for "Copy the text"
 let swipeX: number | null = null;
+/** An open PDF: its document, what closes it, what draws its pages as they show. */
+let pdf: { doc: PdfDocument; close: () => void; observer?: IntersectionObserver; drawing: Promise<void>; onSelect?: () => void } | undefined;
+const PDF_ZOOMS = [1, 1.5, 2, 3];
 /** Lines of a text preview drawn at most (a megabyte of short lines would be heavy). */
 const TEXT_LINES_MAX = 20_000;
 
@@ -228,6 +232,10 @@ Alpine.data('app', () => ({
     source: false, // Markdown shown as plain text
     wrap: true,
     canPip: false,
+    pages: 0, // PDF: its pages, the one in view, the zoom (1: the width of the screen)
+    page: 1,
+    zoom: 1,
+    selection: '', // PDF: the text selected in it
   },
   /** Picture-in-picture by the app itself (Android, Linux, Windows): only the video shows. */
   pipMode: false,
@@ -859,12 +867,14 @@ Alpine.data('app', () => ({
   },
 
   tileClass(item: ItemView) {
-    return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (this.isVideo(item) ? ' video' : this.isAudio(item) ? ' audio' : '');
+    const k = this.previewOf(item);
+    return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (k === 'video' || k === 'audio' || k === 'pdf' ? ' ' + k : '');
   },
 
   /** On the tile: the length of a video or a song, a document's extension. */
   badge(item: ItemView) {
     if (this.isVideo(item) || this.isAudio(item)) return item.duration ? clock(item.duration) : '';
+    if (this.previewOf(item) === 'pdf') return 'PDF';
     if (item.thumb) return '';
     const ext = /\.([a-z0-9]{1,5})$/i.exec(item.name ?? '')?.[1];
     return ext ? ext.toUpperCase() : '';
@@ -890,6 +900,7 @@ Alpine.data('app', () => ({
     const parts = [item.mine ? this.t('me') : item.fromName, this.ago(item), this.sizeOf(item)];
     if (item.w && item.h && this.viewer.kind === 'image') parts.push(this.t('viewer.size', { w: item.w, h: item.h }));
     if (item.duration) parts.push(clock(item.duration));
+    if (item.pages) parts.push(this.tn('viewer.pages', item.pages));
     return parts.filter(Boolean).join(' · ');
   },
 
@@ -949,7 +960,7 @@ Alpine.data('app', () => ({
     const seq = ++viewerSeq;
     const groupId = this.groupId;
     this.confirming = '';
-    this.viewer = { open: true, id: item.id, kind, loading: true, error: '', src: '', note: '', source: false, wrap: this.viewer.wrap, canPip: false };
+    this.viewer = { open: true, id: item.id, kind, loading: true, error: '', src: '', note: '', source: false, wrap: this.viewer.wrap, canPip: false, pages: 0, page: 1, zoom: 1, selection: '' };
     await (this as any).$nextTick();
     const stale = () => seq !== viewerSeq;
     try {
@@ -962,6 +973,8 @@ Alpine.data('app', () => ({
         await this.playVideo(groupId, item, stale);
       } else if (kind === 'audio') {
         await this.playAudio(groupId, item, stale);
+      } else if (kind === 'pdf') {
+        await this.showPdf(groupId, item, stale);
       } else {
         // a text: its start (the first chunk at most)
         const reader = engine.reader(groupId, item.id, { ahead: 0 });
@@ -1053,6 +1066,137 @@ Alpine.data('app', () => ({
     audio.play().catch(() => {}); // may wait for a tap (no sound without a gesture)
   },
 
+  /**
+   * A PDF: pdf.js reads only the parts it needs (its table, the pages shown); a page is drawn
+   * when it comes near the screen, and forgotten far from it.
+   */
+  async showPdf(groupId: string, item: ItemView, stale: () => boolean) {
+    const opened = await openPdf(engine.reader(groupId, item.id, { keep: 8, ahead: 0 }));
+    if (stale()) return opened.close();
+    pdf = { ...opened, drawing: Promise.resolve() };
+    this.viewer.pages = opened.doc.numPages;
+    // text selected in the PDF: "Copy the selection"
+    pdf.onSelect = () => {
+      const sel = document.getSelection();
+      const box: HTMLElement | undefined = (this as any).$refs.pdf;
+      const text = sel && box && sel.anchorNode && box.contains(sel.anchorNode) ? sel.toString() : '';
+      this.viewer.selection = text.trim() ? text : '';
+    };
+    document.addEventListener('selectionchange', pdf.onSelect);
+    await this.layoutPdf();
+  },
+
+  /** One frame per page, its height from the first page's shape until it is drawn. */
+  async layoutPdf() {
+    const box: HTMLElement | undefined = (this as any).$refs.pdf;
+    if (!pdf || !box) return;
+    const current = pdf;
+    current.observer?.disconnect();
+    const width = Math.max(200, (box.clientWidth - 24) * this.viewer.zoom);
+    const first = await pageSize(current.doc, 1);
+    if (pdf !== current) return;
+    const frames: HTMLElement[] = [];
+    for (let n = 1; n <= current.doc.numPages; n++) {
+      const frame = document.createElement('div');
+      frame.className = 'pdf-page';
+      frame.dataset.n = String(n);
+      frame.style.width = width + 'px';
+      frame.style.height = Math.round((first.h * width) / first.w) + 'px';
+      const text = document.createElement('div');
+      text.className = 'textLayer';
+      const links = document.createElement('div');
+      links.className = 'pdf-links';
+      frame.append(document.createElement('canvas'), text, links);
+      frames.push(frame);
+    }
+    box.replaceChildren(...frames);
+    current.observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const frame = e.target as HTMLElement;
+          const canvas = frame.firstElementChild as HTMLCanvasElement;
+          if (!e.isIntersecting) {
+            // far from the screen: its pixels and its text are given back
+            canvas.width = canvas.height = 0;
+            for (const layer of Array.from(frame.children).slice(1)) layer.replaceChildren();
+            delete frame.dataset.drawn;
+            continue;
+          }
+          if (frame.dataset.drawn) continue;
+          frame.dataset.drawn = '1';
+          // one page at a time: pdf.js asks for the bytes of each in turn
+          current.drawing = current.drawing.then(async () => {
+            if (pdf !== current || !frame.dataset.drawn) return;
+            try {
+              const n = Number(frame.dataset.n);
+              const height = await drawPage(current.doc, n, canvas, width);
+              frame.style.height = Math.round(height) + 'px';
+              const [, text, links] = Array.from(frame.children) as HTMLElement[];
+              await drawLayers(current.doc, n, text, links, width, (page) => this.pdfGoTo(page));
+            } catch {
+              delete frame.dataset.drawn;
+            }
+          });
+        }
+      },
+      { root: box, rootMargin: '150% 0px' },
+    );
+    for (const f of frames) current.observer.observe(f);
+  },
+
+  /** A link to another page: that page at the top. */
+  pdfGoTo(page: number) {
+    const box: HTMLElement | undefined = (this as any).$refs.pdf;
+    const frame = box?.children[page - 1] as HTMLElement | undefined;
+    if (box && frame) box.scrollTop = frame.offsetTop - 12;
+  },
+
+  /** The page in view, as the PDF scrolls. */
+  onPdfScroll() {
+    const box: HTMLElement | undefined = (this as any).$refs.pdf;
+    if (!box || !this.viewer.pages) return;
+    const mark = box.scrollTop + box.clientHeight / 3;
+    let n = 1;
+    for (const frame of box.children as any as HTMLElement[]) {
+      if (frame.offsetTop > mark) break;
+      n = Number(frame.dataset.n);
+    }
+    this.viewer.page = n;
+  },
+
+  get pdfPageLabel() {
+    return this.t('viewer.page', { n: this.viewer.page, total: this.viewer.pages });
+  },
+
+  get pdfZoomLabel() {
+    return Math.round(this.viewer.zoom * 100) + ' %';
+  },
+
+  pdfZoomIn() {
+    this.pdfZoom(1);
+  },
+
+  pdfZoomOut() {
+    this.pdfZoom(-1);
+  },
+
+  /** Back to the width of the screen. */
+  pdfZoomReset() {
+    this.pdfZoom(-PDF_ZOOMS.indexOf(this.viewer.zoom));
+  },
+
+  /** The next zoom up or down, the same page kept in view. */
+  async pdfZoom(step: number) {
+    const i = PDF_ZOOMS.indexOf(this.viewer.zoom) + step;
+    if (!step || i < 0 || i >= PDF_ZOOMS.length) return;
+    const page = this.viewer.page;
+    this.viewer.zoom = PDF_ZOOMS[i];
+    await this.layoutPdf();
+    const box: HTMLElement | undefined = (this as any).$refs.pdf;
+    const frame = box?.children[page - 1] as HTMLElement | undefined;
+    if (box && frame) box.scrollTop = frame.offsetTop - 12;
+  },
+
   audioEl(): HTMLAudioElement | undefined {
     return (this as any).$refs?.audio;
   },
@@ -1080,12 +1224,19 @@ Alpine.data('app', () => ({
       audio.load();
     }
     if (this.pipMode) this.exitPip();
+    if (pdf) {
+      pdf.observer?.disconnect();
+      if (pdf.onSelect) document.removeEventListener('selectionchange', pdf.onSelect);
+      pdf.close();
+      pdf = undefined;
+    }
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
     viewerUrl = '';
     textShown = '';
     const refs = (this as any).$refs ?? {};
     refs.lines?.replaceChildren();
     refs.md?.replaceChildren();
+    refs.pdf?.replaceChildren();
   },
 
   closeViewer() {
@@ -1151,8 +1302,8 @@ Alpine.data('app', () => ({
   viewerCopy() {
     const item = this.viewerItem;
     if (!item) return;
-    if (this.viewer.kind === 'text' || this.viewer.kind === 'markdown') {
-      const text = textShown;
+    if (this.viewer.kind === 'text' || this.viewer.kind === 'markdown' || this.viewer.kind === 'pdf') {
+      const text = this.viewer.kind === 'pdf' ? this.viewer.selection : textShown;
       platform
         .copy('text/plain', Promise.resolve({ text }))
         .then(() => this.toast(this.t('toast.copied')))
@@ -1164,11 +1315,12 @@ Alpine.data('app', () => ({
     const item = this.viewerItem;
     if (!item || this.viewer.loading || this.viewer.error) return false;
     if (this.viewer.kind === 'image') return this.canCopy(item);
+    if (this.viewer.kind === 'pdf') return !!this.viewer.selection;
     return this.viewer.kind === 'text' || this.viewer.kind === 'markdown';
   },
 
   get viewerCopyLabel() {
-    return this.t(this.viewer.kind === 'image' ? 'copy' : 'viewer.copyText');
+    return this.t(this.viewer.kind === 'image' ? 'copy' : this.viewer.kind === 'pdf' ? 'viewer.copySelection' : 'viewer.copyText');
   },
 
   viewerSave() {

@@ -134,11 +134,12 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   (évènement `progress` du relais à chaque bloc reçu) ; « Copier » et « Enregistrer » attendent
   la fin, et la réception automatique (Mac, notification, boîte aux lettres) ne part qu'à ce
   moment-là. Sans nouveau bloc depuis 30 s : « envoi en pause ».
-- **Aperçus** (photo, vidéo, audio, texte, Markdown), dans l'appli, sans enregistrer :
+- **Aperçus** (photo, vidéo, audio, PDF, texte, Markdown), dans l'appli, sans enregistrer :
   - faits par l'**émetteur** pour ce qui s'affiche avant tout téléchargement, joints à l'en-tête
     chiffré : miniature 192 px sur le petit côté, 384 au plus sur le grand (64 px × 3 des écrans de
     téléphone), WebP qualité 0,8 (JPEG là où le canvas n'encode pas le WebP : Safari), 12 Ko visés,
-    0,6 au-delà ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; audio : durée ; texte : 280 premiers
+    0,6 au-delà ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; audio : durée ; PDF : première page et
+    nombre de pages ; texte : 280 premiers
     caractères. L'émetteur est aussi celui qui sait décoder ses fichiers (HEIC d'un iPhone).
     Rien en mode local (l'aperçu est du contenu) ;
   - le **récepteur** lit le contenu à l'ouverture, à la demande : `engine.reader()` déchiffre les
@@ -161,8 +162,17 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
     PiP natif de l'activité (bouton lecture/pause, entrée automatique en quittant l'appli) ;
     Linux, Windows (aucune API dans WebKitGTK, WebView2 non testé) : la fenêtre se réduit à la
     vidéo, au premier plan ;
+  - **PDF** : pdf.js (Apache-2.0, build « legacy »), branché sur `engine.reader()` par
+    `PDFDataRangeTransport` : il ne demande que les plages utiles (table, puis objets des pages
+    affichées), par 128 Ko. Pages dessinées dans un canvas à l'approche de l'écran
+    (IntersectionObserver), oubliées loin de lui ; zoom 100 à 300 %. Par-dessus : la couche de
+    texte de pdf.js (`TextLayer`, sélection, « Copier la sélection » pour le Mac sans menu Édition)
+    et les liens (`getAnnotations`) : http(s)/mailto en `_blank`, internes vers leur page. Worker servi par l'appli
+    (`app/pdf.worker.js`), sans scripts PDF, sans XFA, sans WebAssembly (interdit par la CSP : pas
+    de JPEG 2000), sans fetch depuis le worker ;
   - Markdown : markdown-it (MIT) sans HTML, images non chargées, liens http(s)/mailto seuls.
-    mp4box et markdown-it ne se chargent qu'à l'ouverture d'une vidéo, d'un M4A ou d'un Markdown.
+    mp4box, pdf.js et markdown-it ne se chargent qu'à l'ouverture (ou à l'envoi, pour pdf.js) d'une
+    vidéo, d'un M4A, d'un PDF ou d'un Markdown.
 - Pendant un transfert : écran maintenu allumé (Wake Lock dans l'appli web, `FLAG_KEEP_SCREEN_ON`
   sur Android), mise en veille du Mac bloquée ; l'appli passée en arrière-plan ne se déconnecte
   qu'une fois le transfert fini.

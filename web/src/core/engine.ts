@@ -68,10 +68,11 @@ export interface ItemView {
   mime?: string;
   size?: number;
   thumb?: string;
-  /** Made by the sender: pixels of an image or a video, length of a video, start of a text. */
+  /** Made by the sender: pixels of an image or a video, length of a video or a song, pages of a PDF, start of a text. */
   w?: number;
   h?: number;
   duration?: number;
+  pages?: number;
   excerpt?: string;
   chunks: number;
   /** Local item whose sender is not reachable now: nothing to copy or save. */
@@ -119,6 +120,7 @@ export interface SendExtra {
   w?: number;
   h?: number;
   duration?: number;
+  pages?: number;
   excerpt?: string;
   text?: string;
 }
@@ -1182,6 +1184,7 @@ export class Engine {
       // what the sender made for the previews (checked: it comes from another device)
       if (typeof h.w === 'number' && typeof h.h === 'number') Object.assign(view, { w: h.w, h: h.h });
       if (typeof h.duration === 'number' && h.duration > 0) view.duration = h.duration;
+      if (Number.isInteger(h.pages) && h.pages! > 0 && h.pages! < 1_000_000) view.pages = h.pages;
       if (typeof h.excerpt === 'string') view.excerpt = h.excerpt.slice(0, EXCERPT_MAX);
       if (item.local) view.local = true; // the relay's flag: it drops once sent to the relay
       const entry: Entry = { relay: item, opened, view };

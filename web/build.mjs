@@ -85,6 +85,8 @@ for (const name of ['chiffrement.svg', 'reseau.svg', 'chiffrement-en.svg', 'rese
   if (existsSync(schema)) await cp(schema, outdir + 'images/' + name);
 }
 
+// pdf.js's worker (PDF previews): next to app.js, loaded only when a PDF is opened or sent
+await cp(fileURLToPath(new URL('./node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url)), outdir + 'app/pdf.worker.js');
 const changelog = loadChangelog();
 await writeFile(outdir + 'app/changelog.json', JSON.stringify(changelog));
 await mkdir(outdir + 'nouveautes', { recursive: true });

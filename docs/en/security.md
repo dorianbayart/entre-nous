@@ -147,7 +147,8 @@ flowchart LR
   file is written as text, its images are not loaded (they would tell their server who reads the
   file), only `https:`, `http:` and `mailto:` links stay; images, videos and sounds are decoded by
   the browser or the system's web view, as on a web page. A thumbnail is re-encoded by the sender: it
-  keeps none of the photo's metadata.
+  keeps none of the photo's metadata. PDFs are read by pdf.js in a worker, without their scripts,
+  XFA forms or WebAssembly; only their `https:`, `http:` and `mailto:` links open, outside.
 - **No independent audit** so far. The code is public: anyone can review it.
 
 ## Reporting a vulnerability
