@@ -136,9 +136,12 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   moment-là. Sans nouveau bloc depuis 30 s : « envoi en pause ».
 - **Aperçus** (photo, vidéo, audio, PDF, texte, Markdown), dans l'appli, sans enregistrer :
   - faits par l'**émetteur** pour ce qui s'affiche avant tout téléchargement, joints à l'en-tête
-    chiffré : miniature 192 px sur le petit côté, 384 au plus sur le grand (64 px × 3 des écrans de
-    téléphone), WebP qualité 0,8 (JPEG là où le canvas n'encode pas le WebP : Safari), 12 Ko visés,
-    0,6 au-delà ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; audio : durée ; PDF : première page et
+    chiffré : aperçu de 720 px au plus de côté, JPEG progressif qualité 85 (encodeur maison,
+    `ui/jpeg.ts` : le canvas ne fait que du JPEG séquentiel), 30 à 100 Ko pour une photo, qualité
+    70, 55 puis 40 au-delà de 160 Ko ; la miniature de l'historique **et** l'image de la
+    visionneuse : l'original ne se télécharge que pour être copié ou enregistré (une image sans
+    aperçu : un message ; en mode local, l'original). SVG dessiné à 720 px, dans un `<img>` (pas de
+    script) ; PDF : première page à 384 px ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; audio : durée ; PDF : première page et
     nombre de pages ; texte : 280 premiers
     caractères. L'émetteur est aussi celui qui sait décoder ses fichiers (HEIC d'un iPhone).
     Rien en mode local (l'aperçu est du contenu) ;

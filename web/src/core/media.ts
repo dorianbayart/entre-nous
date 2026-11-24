@@ -8,7 +8,7 @@ export const EXCERPT_MAX = 280;
 /** A text preview shows the start of the file: its first chunk at most. */
 export const TEXT_PREVIEW_MAX = 1024 * 1024;
 
-const IMAGE = /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp|svg)$/i;
+const IMAGE = /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp|svgz?|tiff?|jxl|ico)$/i;
 const VIDEO = /\.(mp4|m4v|mov|webm)$/i;
 const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|weba)$/i;
 const MARKDOWN = /\.(md|markdown|mdown|mkd)$/i;
@@ -20,7 +20,7 @@ const TEXT_MIME = /^(text\/|application\/(json|xml|x-yaml|yaml|toml|x-sh|javascr
 export function previewKind(name = '', mime = ''): PreviewKind | undefined {
   mime = mime.toLowerCase().split(';')[0].trim();
   if (mime === 'text/markdown' || mime === 'text/x-markdown' || MARKDOWN.test(name)) return 'markdown';
-  if (mime.startsWith('image/') || (!mime && IMAGE.test(name))) return 'image';
+  if (mime.startsWith('image/') || ((!mime || mime === 'application/octet-stream') && IMAGE.test(name))) return 'image';
   if (mime === 'application/pdf' || /\.pdf$/i.test(name)) return 'pdf';
   if (mime.startsWith('audio/') || AUDIO.test(name)) return 'audio';
   if (mime.startsWith('video/') || VIDEO.test(name)) return 'video';

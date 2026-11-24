@@ -1,6 +1,11 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.40 — 2026-11-24
+- Photos open large at once, without being downloaded.
+- HEIC photos sent from an iPhone or a Mac, and SVG images, get a preview on every device.
+- A message tells you when an image has no preview.
+
 ## 0.1.39 — 2026-11-24
 - Preview PDFs right in the app, with text to copy and clickable links.
 - The history shows a PDF's first page.

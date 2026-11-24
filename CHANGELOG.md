@@ -1,6 +1,11 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.40 — 2026-11-24
+- Les photos s'affichent en grand tout de suite, sans être téléchargées.
+- Les photos HEIC envoyées depuis un iPhone ou un Mac, et les images SVG, ont un aperçu sur tous les appareils.
+- Un message te prévient quand une image n'a pas d'aperçu.
+
 ## 0.1.39 — 2026-11-24
 - Aperçu des PDF directement dans l'appli, avec le texte à copier et les liens cliquables.
 - L'historique montre la première page d'un PDF.

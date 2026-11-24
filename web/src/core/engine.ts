@@ -87,6 +87,8 @@ export interface ItemView {
   rate?: number;
   /** Content only served directly by its sender, on the same network (local mode). */
   local?: boolean;
+  /** Sent in local mode: no preview came with it (the viewer shows the content itself). */
+  previewless?: boolean;
   error?: string;
 }
 
@@ -1187,6 +1189,7 @@ export class Engine {
       if (Number.isInteger(h.pages) && h.pages! > 0 && h.pages! < 1_000_000) view.pages = h.pages;
       if (typeof h.excerpt === 'string') view.excerpt = h.excerpt.slice(0, EXCERPT_MAX);
       if (item.local) view.local = true; // the relay's flag: it drops once sent to the relay
+      if (h.local) view.previewless = true; // sent in local mode: without its preview, even once on the relay
       const entry: Entry = { relay: item, opened, view };
       if (h.kind === 'note') {
         const prev = rt.items.get(item.id)?.note;

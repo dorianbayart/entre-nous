@@ -82,12 +82,17 @@ clavier) passent d'un élément à l'autre ; Échap ferme.
 
 ![Un document Markdown mis en forme sur le Mac ; une photo en aperçu sur le téléphone](images/apercus.png)
 
-- **Dans l'historique, avant tout téléchargement** : la vignette d'une photo, l'image et la durée
+- **Dans l'historique, avant tout téléchargement** : l'aperçu d'une photo, l'image et la durée
   d'une vidéo, la durée d'un fichier audio, la première page et le nombre de pages d'un PDF, les
   premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
-  chiffrés, à l'élément ; le serveur n'en voit rien. Une vignette ne garde aucune métadonnée de la
+  chiffrés, à l'élément ; le serveur n'en voit rien. Un aperçu ne garde aucune métadonnée de la
   photo (lieu, appareil) ; le fichier lui-même part tel quel. En mode « Réseau local uniquement »,
   rien de tout ça ne passe par le serveur : l'élément s'affiche sans aperçu.
+- **Photo** : tu la vois en grand tout de suite, sans la télécharger. Elle ne se télécharge que si
+  tu la copies ou l'enregistres. JPEG, PNG, GIF, WebP, AVIF et SVG ont un aperçu depuis tous les
+  appareils ; les photos HEIC et les TIFF, quand elles viennent d'un iPhone ou d'un Mac. Une photo
+  que l'appareil qui l'envoie ne sait pas lire (une photo HEIC envoyée depuis Chrome) arrive sans
+  aperçu : enregistre-la pour l'ouvrir.
 - **Vidéo** : elle se lit pendant qu'elle arrive, sans être téléchargée en entier, et on peut avancer
   ou reculer à tout moment (même pendant que l'autre appareil l'envoie encore). MP4 et MOV (ceux
   des téléphones) ; les autres formats, ou un iPhone plus ancien qu'iOS 17.1, la téléchargent

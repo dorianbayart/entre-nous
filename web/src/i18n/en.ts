@@ -86,6 +86,7 @@ export const en: Strings = {
   'viewer.size': '{w} × {h}',
   'viewer.loading': 'Decrypting…',
   'viewer.unreadable': 'This format cannot be played on this device. Save the file to open it with another app.',
+  'viewer.noPreview': 'No preview for this image. Save it to open it with another app.',
   'viewer.truncated': 'Preview of the first MB of {size}. Save the file to get all of it.',
   'viewer.wrap': 'Wrap lines',
   'viewer.rendered': 'Formatted',

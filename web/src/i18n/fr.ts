@@ -86,6 +86,7 @@ export const fr = {
   'viewer.size': '{w} × {h}',
   'viewer.loading': 'Déchiffrement…',
   'viewer.unreadable': 'Ce format ne se lit pas sur cet appareil. Enregistre le fichier pour l’ouvrir avec une autre appli.',
+  'viewer.noPreview': 'Pas d’aperçu pour cette image. Enregistre-la pour l’ouvrir avec une autre appli.',
   'viewer.truncated': 'Aperçu du premier Mo sur {size}. Enregistre le fichier pour l’avoir en entier.',
   'viewer.wrap': 'Retour à la ligne',
   'viewer.rendered': 'Mis en forme',

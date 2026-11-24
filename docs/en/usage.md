@@ -82,11 +82,15 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
 
 ![A formatted Markdown document on the Mac; a photo preview on the phone](../images/apercus-en.png)
 
-- **In the history, before any download**: a photo's thumbnail, a video's poster and length, an
+- **In the history, before any download**: a photo's preview, a video's poster and length, an
   audio file's length, a PDF's first page and number of pages, the first words of a text. The sending device makes them and attaches them, encrypted, to the item;
-  the server sees none of it. A thumbnail keeps none of the photo's metadata (place, camera); the
+  the server sees none of it. A preview keeps none of the photo's metadata (place, camera); the
   file itself is sent as it is. In "Local network only" mode none of this goes through the
   server: the item shows without a preview.
+- **Photo**: you see it full size at once, without downloading it. It is downloaded only when you
+  copy or save it. JPEG, PNG, GIF, WebP, AVIF and SVG get a preview from any device; HEIC and TIFF
+  photos, when they come from an iPhone or a Mac. A photo the sending device cannot read (a HEIC
+  photo sent from Chrome) arrives without a preview: save it to open it.
 - **Video**: it plays while it arrives, without being downloaded whole, and you can jump forward
   or back at any time (even while the other device is still sending it). MP4 and MOV (what phones
   record); other formats, or an iPhone older than iOS 17.1, download it first. A format the device

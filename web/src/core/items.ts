@@ -29,7 +29,7 @@ export interface Header {
   name?: string;
   mime?: string;
   size?: number;
-  thumb?: string; // small WebP or JPEG data URL: an image, the poster of a video
+  thumb?: string; // JPEG (WebP before) data URL: the preview of an image, the poster of a video, a PDF's first page
   w?: number; // pixels of an image or a video
   h?: number;
   duration?: number; // seconds, a video or an audio file

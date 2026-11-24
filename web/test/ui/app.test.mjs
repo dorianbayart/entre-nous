@@ -399,6 +399,8 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
     `${FIXTURES}photo.jpg`,
     { name: 'notes.md', mimeType: '', buffer: Buffer.from(md) },
     { name: 'journal.log', mimeType: 'text/plain', buffer: Buffer.from(log) },
+    // a HEIC: Chrome cannot read it, sent without a preview
+    { name: 'iphone.heic', mimeType: 'image/heic', buffer: Buffer.from('not really a HEIC photo') },
   ]) {
     await a.page.locator('input[type=file]').setInputFiles(f);
     await b.page.locator('.history .item', { hasText: typeof f === 'string' ? f.split('/').pop() : f.name }).waitFor();
@@ -415,7 +417,8 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
   assert.ok(await button(item('notes.md'), 'Ouvrir').isVisible(), 'a document opens');
   assert.ok(await button(item('photo.jpg'), 'Voir').isVisible(), 'an image is viewed');
   const thumb = await item('photo.jpg').locator('.thumb img').getAttribute('src');
-  assert.match(thumb, /^data:image\/webp;base64,/, 'thumbnail in WebP');
+  assert.match(thumb, /^data:image\/jpeg;base64,/, 'preview in JPEG');
+  assert.ok(Buffer.from(thumb.split(',')[1], 'base64').includes(Buffer.from([0xff, 0xc2])), 'a progressive JPEG');
 
   // ---- Markdown: formatted, nothing of the file's own markup, no javascript: link
   await button(item('notes.md'), 'Ouvrir').click();
@@ -434,14 +437,23 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
   // ---- text: numbered lines; the next items with the arrows
   await button(item('journal.log'), 'Ouvrir').click();
   await until('300 lines', async () => (await viewer.locator('.lines .ln').count()) === 300);
-  assert.equal(await viewer.locator('.viewer-count').textContent(), '1 / 4');
+  assert.equal(await viewer.locator('.viewer-count').textContent(), '2 / 5');
   await b.page.keyboard.press('Escape');
   await viewer.waitFor({ state: 'hidden' });
 
-  // ---- image: the original, decrypted, with its size in pixels
+  // ---- an image without a preview: said so, nothing else
+  await button(item('iphone.heic'), 'Voir').click();
+  await viewer.locator('.viewer-error', { hasText: 'Pas d’aperçu pour cette image' }).waitFor();
+  assert.equal(await viewer.locator('.viewer-image').isVisible(), false);
+  await viewer.getByLabel('Retour', { exact: true }).click();
+
+  // ---- image: the sender's preview (720 px), nothing downloaded; the original's size in pixels
   await button(item('photo.jpg'), 'Voir').click();
-  await until('image shown', () => viewer.locator('.viewer-image').evaluate((i) => i.complete && i.naturalWidth === 800));
+  await until('image shown', () => viewer.locator('.viewer-image').evaluate((i) => i.complete && i.naturalWidth === 720 && i.naturalHeight === 540));
+  assert.match(await viewer.locator('.viewer-image').getAttribute('src'), /^data:image\/jpeg;base64,/);
   assert.match(await viewer.locator('.viewer-title span').textContent(), /800 × 600/);
+  assert.equal(await b.page.evaluate(() => document.querySelectorAll('.transfer').length), 0, 'the photo is not downloaded');
+
   await viewer.getByLabel('Élément précédent').click();
   await viewer.locator('.markdown h1').waitFor(); // the Markdown, newer
 

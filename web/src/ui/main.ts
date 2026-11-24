@@ -930,6 +930,14 @@ Alpine.data('app', () => ({
     return d ? this.progress(d) : '';
   },
 
+  /** The image of the viewer cannot be shown here (a format this device does not read). */
+  onViewerImageError() {
+    if (this.viewer.open && this.viewer.kind === 'image' && this.viewer.src) {
+      this.viewer.src = '';
+      this.viewer.error = this.t('viewer.unreadable');
+    }
+  },
+
   viewerIs(kind: string) {
     return this.viewer.open && this.viewer.kind === kind;
   },
@@ -965,10 +973,16 @@ Alpine.data('app', () => ({
     const stale = () => seq !== viewerSeq;
     try {
       if (kind === 'image') {
-        const c = await engine.content(groupId, item.id);
-        if (stale()) return;
-        viewerUrl = URL.createObjectURL(c.blob!);
-        this.viewer.src = viewerUrl;
+        if (item.thumb) {
+          // the preview made by the sender: nothing to download
+          this.viewer.src = item.thumb;
+        } else if (item.previewless) {
+          // the local mode sends no preview: the image itself
+          const c = await engine.content(groupId, item.id);
+          if (stale()) return;
+          viewerUrl = URL.createObjectURL(c.blob!);
+          this.viewer.src = viewerUrl;
+        } else this.viewer.error = this.t('viewer.noPreview');
       } else if (kind === 'video') {
         await this.playVideo(groupId, item, stale);
       } else if (kind === 'audio') {
