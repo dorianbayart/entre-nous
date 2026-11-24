@@ -343,7 +343,8 @@ public class EntreNousPlugin extends Plugin {
             call.reject("unknown file");
             return;
         }
-        long offset = call.getLong("offset", 0L);
+        // not getLong: it gives the default for a number that fits in an int (any offset below 2 GB)
+        long offset = call.getData().optLong("offset", 0L);
         int length = call.getInt("length", 512 * 1024);
         try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
             long left = Math.max(0, raf.length() - offset);

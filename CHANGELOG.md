@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.42 — 2026-11-24
+- Fix: les vignettes des fichiers partagés depuis Android sont correctement générées.
+
 ## 0.1.40 — 2026-11-24
 - Une vignette permet de prévisualiser les images sans les télécharger.
 - Aperçu des images JPEG, PNG, GIF, WebP, AVIF, SVG et HEIC.

@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.42 — 2026-11-24
+- Fix: thumbnails of files shared from Android are now generated correctly.
+
 ## 0.1.40 — 2026-11-24
 - A thumbnail lets you preview images without downloading them.
 - Preview of JPEG, PNG, GIF, WebP, AVIF, SVG and HEIC images.
