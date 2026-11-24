@@ -182,6 +182,9 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
 .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .thumb.doc { background: var(--bg); border: 1px solid var(--line); }
 .thumb.doc.video { background: #1b1b1a; border: 0; }
+.thumb.doc.audio { background: var(--accent-soft); border: 0; }
+.thumb .note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.thumb .note svg { width: 26px; height: 26px; margin-bottom: 8px; stroke: var(--accent); stroke-width: 2; fill: none; }
 .thumb .page { position: absolute; inset: 9px 8px; display: flex; flex-direction: column; gap: 4px; }
 .thumb .page i { display: block; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 45%, transparent); }
 .thumb .page i:first-child { height: 4px; width: 70%; background: var(--text); }
@@ -196,7 +199,7 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
   position: absolute; right: 4px; bottom: 4px; padding: 0 4px; border-radius: 4px; font-size: 10px; line-height: 15px;
   font-weight: 600; font-variant-numeric: tabular-nums; background: rgb(0 0 0 / .6); color: #fff;
 }
-.thumb.doc:not(.video) .badge { background: var(--accent); color: var(--accent-text); font-size: 9px; letter-spacing: .04em; }
+.thumb.doc:not(.video):not(.audio) .badge { background: var(--accent); color: var(--accent-text); font-size: 9px; letter-spacing: .04em; }
 .excerpt {
   margin: 2px 0 0; color: var(--muted); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
@@ -304,6 +307,14 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .viewer-image { max-width: 100%; max-height: 100%; object-fit: contain; position: relative; }
 .viewer-blur { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: blur(14px); opacity: .7; }
 .viewer-video { width: 100%; max-height: 100%; border-radius: 12px; background: #000; }
+/* a song: its note, its player */
+.viewer-audio { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.viewer-audio .note {
+  width: 140px; height: 140px; border-radius: 28px; background: var(--accent-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.viewer-audio .note svg { width: 64px; height: 64px; stroke: var(--accent); stroke-width: 1.6; fill: none; }
+.viewer-audio audio { width: 100%; }
 .viewer-state { position: absolute; padding: 8px 14px; border-radius: 10px; background: rgb(0 0 0 / .55); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
 .viewer-error { color: var(--muted); text-align: center; max-width: 320px; }
 .viewer .nav {
@@ -313,7 +324,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .viewer .nav.prev { left: 4px; }
 .viewer .nav.next { right: 4px; }
 /* texts scroll, a video has its own controls there: no arrows over them */
-.kind-text .nav, .kind-markdown .nav, .kind-video .nav { display: none; }
+.kind-text .nav, .kind-markdown .nav, .kind-video .nav, .kind-audio .nav { display: none; }
 .viewer-note { margin: 0 4px; color: var(--muted); font-size: 12px; }
 
 /* a text, with its line numbers */

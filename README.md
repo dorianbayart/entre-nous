@@ -20,7 +20,7 @@ sans trace.
   à l'autre, sans passer par internet.
 - **Textes, photos, vidéos, fichiers**, de n'importe quelle taille, et une note partagée en direct.
 - **Aperçus** : prévisualise une photo ou un document Markdown sans le télécharger, et regarde une
-  vidéo pendant qu'elle se télécharge, même en Picture-in-Picture.
+  vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.
 
 Essayer : <https://entrenous.0xdba.dev>
 

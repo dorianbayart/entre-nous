@@ -76,6 +76,7 @@ export const fr = {
 
   // ---------------------------------------------------------------- aperçus
   'open.video': 'Lire',
+  'open.audio': 'Écouter',
   'open.doc': 'Ouvrir',
   'open.image': 'Voir',
   'open.title': 'Ouvrir « {name} »',

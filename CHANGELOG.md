@@ -1,6 +1,10 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.38 — 2026-11-24
+- Écoute des fichiers audio directement dans l'appli.
+- Les MP3, M4A, Opus, FLAC et WAV s'écoutent pendant leur téléchargement.
+
 ## 0.1.35 — 2026-11-23
 - Les réglages montrent l'espace utilisé sur le serveur, avec une jauge.
 - Les tailles sont plus lisibles : 1 Go au lieu de 1022,9 Mo.

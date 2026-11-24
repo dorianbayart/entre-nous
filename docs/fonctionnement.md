@@ -81,12 +81,14 @@ sequenceDiagram
 ```
 
 - **Un élément** = une annonce signée par l'expéditeur, un en-tête chiffré (type, nom, taille,
-  texte court, et l'aperçu : miniature, dimensions, durée d'une vidéo, début d'un texte), une
+  texte court, et l'aperçu : miniature, dimensions, durée d'une vidéo ou d'un fichier audio, début d'un texte), une
   enveloppe par appareil et les blocs du contenu.
-- **Aperçus** : les blocs se lisent dans n'importe quel ordre. Une vidéo se lit donc pendant
-  qu'elle arrive : l'appareil ne déchiffre que les blocs dont le lecteur a besoin (l'index d'un MP4,
+- **Aperçus** : les blocs se lisent dans n'importe quel ordre. Une vidéo ou un fichier audio se lit
+  donc pendant qu'il arrive : l'appareil ne déchiffre que les blocs dont le lecteur a besoin (l'index d'un MP4,
   souvent à la fin, puis la suite), en garde quelques-uns en mémoire et prend les suivants
-  d'avance ; avancer dans la vidéo saute directement au bon bloc. Un texte n'en lit que le premier.
+  d'avance ; avancer dans la lecture saute directement au bon bloc (pour un MP3, d'après sa table des
+  matières ou son débit ; pour un Opus ou un FLAC, d'après la position inscrite
+  dans le fichier). Un texte n'en lit que le premier.
 - **Pendant l'envoi**, l'élément est déjà visible partout, et la progression de l'envoi s'affiche
   au-dessus de l'historique ; un appareil peut lancer le téléchargement avant la fin, il suit
   l'envoi (sa progression s'affiche dans l'élément). La copie, elle, attend la fin de l'envoi.

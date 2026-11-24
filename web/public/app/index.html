@@ -167,7 +167,8 @@
             <button :class="tileClass(item)" @click="openPreview(item)" :disabled="!previewOf(item)"
                     :aria-label="openTitle(item)" :title="openTitle(item)">
               <img x-show="item.thumb" :src="item.thumb" alt="">
-              <span class="page" x-show="!item.thumb && !isVideo(item)" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="page" x-show="!item.thumb && !isVideo(item) && !isAudio(item)" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="note" x-show="!item.thumb && isAudio(item)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
               <span class="play" x-show="isVideo(item)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>
               <span class="badge" x-show="badge(item)" x-text="badge(item)"></span>
             </button>
@@ -384,9 +385,13 @@
       <img class="viewer-blur" x-show="viewerThumb" :src="viewerThumb" alt="">
       <img class="viewer-image" x-show="viewerIs('image') && viewer.src" :src="viewer.src" :alt="viewerName">
       <video x-ref="player" class="viewer-video" x-show="viewerIs('video') && !viewer.error" :controls="videoControls" playsinline preload="metadata"></video>
+      <div class="viewer-audio" x-show="viewerIs('audio') && !viewer.error">
+        <span class="note" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <audio x-ref="audio" controls preload="metadata"></audio>
+      </div>
       <article class="markdown" x-ref="md" x-show="viewerRendered"></article>
       <div class="lines" x-ref="lines" x-show="viewerLines" :aria-label="t('viewer.text')"></div>
-      <div class="viewer-state" x-show="viewer.loading && !viewerIs('video')">
+      <div class="viewer-state" x-show="viewer.loading && !viewerIs('video') && !viewerIs('audio')">
         <span x-text="viewerProgress || t('viewer.loading')"></span>
       </div>
       <p class="viewer-error" x-show="viewer.error" x-text="viewer.error"></p>

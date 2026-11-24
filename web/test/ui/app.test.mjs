@@ -470,6 +470,59 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
   assert.deepEqual(problems, []);
 });
 
+test('songs: MP3, M4A, Opus, FLAC and WAV streamed, jumps to the middle and near the end', { timeout: 180_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  // two chunks each: an MP3 (ID3, Info header), an M4A (its index at the end), Opus in Ogg,
+  // FLAC (its frames as they are), WAV (16 bits, put into FLAC frames)
+  const songs = [
+    { f: 'song.mp3', length: 300, badge: '5:00' },
+    { f: 'song.m4a', length: 300, badge: '5:00' },
+    { f: 'song.opus', length: 300, badge: '5:00' },
+    { f: 'song.flac', length: 110, badge: '1:50' },
+    { f: 'song.wav', length: 80, badge: '1:20' },
+  ];
+  for (const { f } of songs) {
+    await a.page.locator('input[type=file]').setInputFiles(`${FIXTURES}${f}`);
+    await b.page.locator('.history .item', { hasText: f }).waitFor();
+  }
+  await until('uploads over', async () => (await b.page.locator('.transfer').count()) === 0, 90_000);
+
+  const item = (name) => b.page.locator('.history .item', { hasText: name });
+  const viewer = b.page.locator('section.viewer');
+  for (const { f, length, badge } of songs) {
+    // the history: a note, the length given by the sender, Listen
+    await item(f).locator('.thumb.doc.audio .note').waitFor();
+    assert.equal(await item(f).locator('.badge').textContent(), badge, f);
+    await button(item(f), 'Écouter').click();
+    const audio = viewer.locator('audio');
+    await audio.evaluate((el) => {
+      el.muted = true;
+      return el.play().catch(() => {});
+    });
+    await until(`${f} plays`, () => audio.evaluate((el) => el.currentTime > 0.5), 20_000);
+    const duration = await audio.evaluate((el) => el.duration);
+    assert.ok(Math.abs(duration - length) < 2, `${f}: a MediaSource of ${length} s, not ${duration}`);
+    assert.equal(await b.page.evaluate(() => document.querySelectorAll('.transfer').length), 0, 'not downloaded as a whole');
+    const ahead = await audio.evaluate((el) => el.buffered.end(el.buffered.length - 1));
+    assert.ok(ahead < length - 10, `${f}: streamed, ${ahead} s buffered, not the whole song`);
+    const middle = Math.round(length / 2);
+    await audio.evaluate((el, t) => (el.currentTime = t), middle);
+    await until(`${f} plays from the middle`, () => audio.evaluate((el, t) => el.currentTime > t + 1 && el.currentTime < t + 10, middle), 20_000);
+    await audio.evaluate((el, t) => (el.currentTime = t), length - 4);
+    await until(`${f} ends`, () => audio.evaluate((el) => el.ended), 30_000);
+    assert.ok(!(await viewer.locator('.viewer-actions').getByText('Copier le texte').isVisible()), 'no text to copy');
+    await b.page.keyboard.press('Escape');
+    await viewer.waitFor({ state: 'hidden' });
+  }
+  await a.context.close();
+  await b.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('what is new: shown once after an update, from the changelog built in', { timeout: 60_000 }, async () => {
   const d = await device('Fanny');
   await d.page.goto(APP);

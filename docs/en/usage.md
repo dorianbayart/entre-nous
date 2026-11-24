@@ -75,14 +75,15 @@ You can create more groups (one for family, one for work): they're independent o
 
 ### Previews
 
-A photo, a video, a text or a Markdown file opens in the app, without saving it: tap the
-thumbnail, or **View** (image), **Play** (video), **Open** (text, Markdown). The arrows (or a
+A photo, a video, an audio file, a text or a Markdown file opens in the app, without saving it:
+tap the thumbnail, or **View** (image), **Play** (video), **Listen** (audio), **Open** (text,
+Markdown). The arrows (or a
 swipe on a phone, ← → on a keyboard) go from one item to the next; Escape closes.
 
 ![A formatted Markdown document on the Mac; a photo preview on the phone](../images/apercus-en.png)
 
-- **In the history, before any download**: a photo's thumbnail, a video's poster and length, the
-  first words of a text. The sending device makes them and attaches them, encrypted, to the item;
+- **In the history, before any download**: a photo's thumbnail, a video's poster and length, an
+  audio file's length, the first words of a text. The sending device makes them and attaches them, encrypted, to the item;
   the server sees none of it. A thumbnail keeps none of the photo's metadata (place, camera); the
   file itself is sent as it is. In "Local network only" mode none of this goes through the
   server: the item shows without a preview.
@@ -90,6 +91,9 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
   or back at any time (even while the other device is still sending it). MP4 and MOV (what phones
   record); other formats, or an iPhone older than iOS 17.1, download it first. A format the device
   cannot play (HEVC on some PCs, for instance) offers **Save**.
+- **Audio**: it plays while it arrives, without being downloaded whole, and you can jump forward
+  or back at any time. MP3, M4A, Opus, FLAC and WAV (8, 16 or 24 bits); other formats (Ogg
+  Vorbis, floating-point WAV…) download first, then play if the device can play them.
 - **Watch in picture-in-picture**: the video goes on in a small window above the others.
   - **Mac**: the system's own, which goes on when the Entre Nous window closes; coming back from
     it opens the window again.

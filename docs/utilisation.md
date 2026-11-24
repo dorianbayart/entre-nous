@@ -75,14 +75,15 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 
 ### Aperçus
 
-Une photo, une vidéo, un texte ou un fichier Markdown s'ouvrent dans l'appli, sans les enregistrer :
-touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Ouvrir** (texte, Markdown). Les flèches
+Une photo, une vidéo, un fichier audio, un texte ou un fichier Markdown s'ouvrent dans l'appli, sans
+les enregistrer : touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Écouter** (audio),
+**Ouvrir** (texte, Markdown). Les flèches
 (ou un glissement sur téléphone, ← → au clavier) passent d'un élément à l'autre ; Échap ferme.
 
 ![Un document Markdown mis en forme sur le Mac ; une photo en aperçu sur le téléphone](images/apercus.png)
 
 - **Dans l'historique, avant tout téléchargement** : la vignette d'une photo, l'image et la durée
-  d'une vidéo, les premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
+  d'une vidéo, la durée d'un fichier audio, les premiers mots d'un texte. L'appareil qui envoie les prépare et les joint,
   chiffrés, à l'élément ; le serveur n'en voit rien. Une vignette ne garde aucune métadonnée de la
   photo (lieu, appareil) ; le fichier lui-même part tel quel. En mode « Réseau local uniquement »,
   rien de tout ça ne passe par le serveur : l'élément s'affiche sans aperçu.
@@ -91,6 +92,10 @@ touche la vignette, ou **Voir** (image), **Lire** (vidéo), **Ouvrir** (texte, M
   des téléphones) ; les autres formats, ou un iPhone plus ancien qu'iOS 17.1, la téléchargent
   d'abord. Un format que l'appareil ne sait pas lire (HEVC sur certains PC, par exemple) propose
   **Enregistrer**.
+- **Audio** : il s'écoute pendant qu'il arrive, sans être téléchargé en entier, et on peut avancer
+  ou reculer à tout moment. MP3, M4A, Opus, FLAC et WAV (8, 16 ou 24 bits) ; les autres formats
+  (Ogg Vorbis, WAV en virgule flottante…) se téléchargent d'abord, puis s'écoutent si l'appareil
+  sait les lire.
 - **Regarder en incrustation** (picture-in-picture) : la vidéo continue dans une petite fenêtre
   au-dessus des autres.
   - **Mac** : celle du système, qui continue quand la fenêtre d'Entre Nous se ferme ; elle la

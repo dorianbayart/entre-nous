@@ -1,6 +1,10 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.38 — 2026-11-24
+- Listen to audio files right in the app.
+- MP3, M4A, Opus, FLAC and WAV files play while they download.
+
 ## 0.1.35 — 2026-11-23
 - The settings show the space used on the server, with a gauge.
 - Sizes are easier to read: 1 GB instead of 1022.9 MB.

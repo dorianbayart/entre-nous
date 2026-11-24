@@ -147,8 +147,8 @@ flowchart LR
   ou depuis les versions publiées sur GitHub.
 - **Aperçus** : ce qu'un autre appareil du groupe envoie s'affiche sans jamais s'exécuter. Le HTML
   d'un Markdown est écrit comme du texte, ses images ne sont pas chargées (elles diraient à leur
-  serveur qui lit le fichier), seuls les liens `https:`, `http:` et `mailto:` restent ; images et
-  vidéos sont décodées par le navigateur ou la vue web du système, comme sur une page web. Une
+  serveur qui lit le fichier), seuls les liens `https:`, `http:` et `mailto:` restent ; images, vidéos
+  et sons sont décodés par le navigateur ou la vue web du système, comme sur une page web. Une
   miniature est ré-encodée par l'expéditeur : elle ne garde pas les métadonnées de la photo.
 - **Pas d'audit indépendant** à ce jour. Le code est public : chacun peut le vérifier.
 

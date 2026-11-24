@@ -13,7 +13,7 @@ import { webrtcAvailable, webrtcLinks } from '../core/webrtc.ts';
 import { preview } from './previews.ts';
 import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
-import { TEXT_PREVIEW_MAX, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
+import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
 import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
 import { LANGS, duration, humanSize, storageSpace, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
 
@@ -112,7 +112,7 @@ const fingerprint = (o: Outgoing) =>
 
 /** What the open preview holds outside Alpine: stopped and released when it closes. */
 let viewerSeq = 0; // each opening; an older one still loading gives up
-let stopVideo: (() => void) | undefined;
+let stopMedia: (() => void) | undefined;
 let viewerUrl = ''; // object URL of an image or of a whole video
 let textShown = ''; // the text of a text preview, for "Copy the text"
 let swipeX: number | null = null;
@@ -825,17 +825,21 @@ Alpine.data('app', () => ({
     return this.previewOf(item) === 'video';
   },
 
+  isAudio(item: ItemView) {
+    return this.previewOf(item) === 'audio';
+  },
+
   /** The button that opens it: Play, Open or View. */
   openLabel(item: ItemView) {
     const k = this.previewOf(item);
-    return this.t(k === 'video' ? 'open.video' : k === 'image' ? 'open.image' : 'open.doc');
+    return this.t(k === 'video' ? 'open.video' : k === 'audio' ? 'open.audio' : k === 'image' ? 'open.image' : 'open.doc');
   },
 
   openTitle(item: ItemView) {
     return this.t('open.title', { name: this.label(item) });
   },
 
-  /** Videos and documents open first; an image is copied first, then viewed. */
+  /** Videos, songs and documents open first; an image is copied first, then viewed. */
   opensFirst(item: ItemView) {
     const k = this.previewOf(item);
     return !!k && k !== 'image';
@@ -855,12 +859,12 @@ Alpine.data('app', () => ({
   },
 
   tileClass(item: ItemView) {
-    return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (this.isVideo(item) ? ' video' : '');
+    return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (this.isVideo(item) ? ' video' : this.isAudio(item) ? ' audio' : '');
   },
 
-  /** On the tile: a video's length, a document's extension. */
+  /** On the tile: the length of a video or a song, a document's extension. */
   badge(item: ItemView) {
-    if (this.isVideo(item)) return item.duration ? clock(item.duration) : '';
+    if (this.isVideo(item) || this.isAudio(item)) return item.duration ? clock(item.duration) : '';
     if (item.thumb) return '';
     const ext = /\.([a-z0-9]{1,5})$/i.exec(item.name ?? '')?.[1];
     return ext ? ext.toUpperCase() : '';
@@ -956,6 +960,8 @@ Alpine.data('app', () => ({
         this.viewer.src = viewerUrl;
       } else if (kind === 'video') {
         await this.playVideo(groupId, item, stale);
+      } else if (kind === 'audio') {
+        await this.playAudio(groupId, item, stale);
       } else {
         // a text: its start (the first chunk at most)
         const reader = engine.reader(groupId, item.id, { ahead: 0 });
@@ -1000,7 +1006,7 @@ Alpine.data('app', () => ({
     // Mac: back from the picture-in-picture window, the popover shows again
     video.onleavepictureinpicture = () => platform.show?.();
     try {
-      stopVideo = await stream(video, engine.reader(groupId, item.id, { keep: 8, ahead: 3 }));
+      stopMedia = await stream(video, engine.reader(groupId, item.id, { keep: 8, ahead: 3 }));
     } catch (err) {
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
@@ -1018,11 +1024,44 @@ Alpine.data('app', () => ({
     video.play().catch(() => {}); // may wait for a tap (no sound without a gesture)
   },
 
-  /** Stops what the preview holds: video, object URL, picture-in-picture. */
+  /**
+   * Plays a song while it arrives (MP3, M4A, Opus, FLAC, WAV); other formats (Ogg Vorbis,
+   * floating-point WAV…) are downloaded whole first, if this device can play them at all.
+   */
+  async playAudio(groupId: string, item: ItemView, stale: () => boolean) {
+    const audio = this.audioEl()!;
+    const onError = () => {
+      if (!stale()) this.viewer.error = this.t('viewer.unreadable');
+    };
+    audio.onerror = onError;
+    audio.addEventListener('streamerror', onError);
+    try {
+      stopMedia = await stream(audio, engine.reader(groupId, item.id, { keep: 4, ahead: 2 }), { duration: item.duration });
+    } catch (err) {
+      if (stale()) return;
+      if (!(err instanceof NotStreamable)) throw err;
+      if (!audio.canPlayType(item.mime || audioMime(item.name))) {
+        this.viewer.error = this.t('viewer.unreadable');
+        return;
+      }
+      const c = await engine.content(groupId, item.id);
+      if (stale()) return;
+      viewerUrl = URL.createObjectURL(c.blob!);
+      audio.src = viewerUrl;
+    }
+    if (stale()) return;
+    audio.play().catch(() => {}); // may wait for a tap (no sound without a gesture)
+  },
+
+  audioEl(): HTMLAudioElement | undefined {
+    return (this as any).$refs?.audio;
+  },
+
+  /** Stops what the preview holds: video, song, object URL, picture-in-picture. */
   releaseViewer() {
     viewerSeq++;
-    stopVideo?.();
-    stopVideo = undefined;
+    stopMedia?.();
+    stopMedia = undefined;
     const video = this.videoEl();
     if (video) {
       if ((document as any).pictureInPictureElement === video) (document as any).exitPictureInPicture().catch(() => {});
@@ -1032,6 +1071,13 @@ Alpine.data('app', () => ({
       video.removeAttribute('poster');
       video.load();
       platform.pip?.playing?.(false, 16, 9);
+    }
+    const audio = this.audioEl();
+    if (audio) {
+      audio.onerror = null;
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
     }
     if (this.pipMode) this.exitPip();
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
@@ -1069,8 +1115,8 @@ Alpine.data('app', () => ({
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (e.key === 'Escape') this.closeViewer();
-    else if (e.key === 'ArrowLeft' && !this.viewerIs('video')) this.viewerPrev();
-    else if (e.key === 'ArrowRight' && !this.viewerIs('video')) this.viewerNext();
+    else if (e.key === 'ArrowLeft' && !this.viewerIs('video') && !this.viewerIs('audio')) this.viewerPrev();
+    else if (e.key === 'ArrowRight' && !this.viewerIs('video') && !this.viewerIs('audio')) this.viewerNext();
   },
 
   /** Phones: a swipe on an image goes to the next or previous item. */
@@ -1117,7 +1163,8 @@ Alpine.data('app', () => ({
   get viewerCanCopy() {
     const item = this.viewerItem;
     if (!item || this.viewer.loading || this.viewer.error) return false;
-    return this.viewer.kind === 'image' ? this.canCopy(item) : this.viewer.kind !== 'video';
+    if (this.viewer.kind === 'image') return this.canCopy(item);
+    return this.viewer.kind === 'text' || this.viewer.kind === 'markdown';
   },
 
   get viewerCopyLabel() {

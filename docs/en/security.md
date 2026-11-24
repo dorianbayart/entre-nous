@@ -145,8 +145,8 @@ flowchart LR
   relay or from the releases published on GitHub.
 - **Previews**: what another device of the group sends is shown, never run. The HTML in a Markdown
   file is written as text, its images are not loaded (they would tell their server who reads the
-  file), only `https:`, `http:` and `mailto:` links stay; images and videos are decoded by the
-  browser or the system's web view, as on a web page. A thumbnail is re-encoded by the sender: it
+  file), only `https:`, `http:` and `mailto:` links stay; images, videos and sounds are decoded by
+  the browser or the system's web view, as on a web page. A thumbnail is re-encoded by the sender: it
   keeps none of the photo's metadata.
 - **No independent audit** so far. The code is public: anyone can review it.
 

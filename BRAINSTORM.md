@@ -134,11 +134,11 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   (évènement `progress` du relais à chaque bloc reçu) ; « Copier » et « Enregistrer » attendent
   la fin, et la réception automatique (Mac, notification, boîte aux lettres) ne part qu'à ce
   moment-là. Sans nouveau bloc depuis 30 s : « envoi en pause ».
-- **Aperçus** (photo, vidéo, texte, Markdown), dans l'appli, sans enregistrer :
+- **Aperçus** (photo, vidéo, audio, texte, Markdown), dans l'appli, sans enregistrer :
   - faits par l'**émetteur** pour ce qui s'affiche avant tout téléchargement, joints à l'en-tête
     chiffré : miniature 192 px sur le petit côté, 384 au plus sur le grand (64 px × 3 des écrans de
     téléphone), WebP qualité 0,8 (JPEG là où le canvas n'encode pas le WebP : Safari), 12 Ko visés,
-    0,6 au-delà ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; texte : 280 premiers
+    0,6 au-delà ; dimensions ; vidéo : image à 1 s (ou au dixième) et durée ; audio : durée ; texte : 280 premiers
     caractères. L'émetteur est aussi celui qui sait décoder ses fichiers (HEIC d'un iPhone).
     Rien en mode local (l'aperçu est du contenu) ;
   - le **récepteur** lit le contenu à l'ouverture, à la demande : `engine.reader()` déchiffre les
@@ -147,13 +147,22 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   - **vidéo en continu** : MediaSource (ManagedMediaSource sur iPhone, iOS 17.1+) et mp4box.js
     (BSD-3), qui lit l'index d'un MP4/MOV où qu'il soit et le découpe en fragments ; ~30 s
     d'avance en mémoire. Ailleurs (WebM, iOS plus ancien) : téléchargement entier puis lecture ;
+  - **audio en continu** : M4A par le même chemin (mp4box, piste son seule) ; MP3 donné tel quel à
+    MediaSource (`audio/mpeg`, horodaté par le navigateur), un saut part de la trame trouvée à la
+    place du moment (table des matières Xing/Info, sinon débit) ; Opus (Ogg) remballé à la volée
+    en MP4 fragmenté (`audio/mp4; codecs="opus"`), horodaté par la position de chaque page, un saut
+    recule jusqu'à une page qui n'est pas plus tard ; FLAC : ses trames telles quelles en MP4
+    fragmenté (`audio/mp4; codecs="flac"`), chacune bornée par son CRC-16 et horodatée par son
+    numéro, saut par la table de saut ou par recherche ; WAV (entiers 8, 16, 24 bits) : son PCM mis
+    en trames FLAC « verbatim » (rien à compresser), même chemin, saut exact. Ogg Vorbis, WAV en
+    flottants : téléchargés entiers puis lus ;
   - **incrustation** : API standard (navigateurs, Mac avec la préférence
     `allowsPictureInPictureMediaPlayback` du WKWebView, qui continue popover fermé) ; Android :
     PiP natif de l'activité (bouton lecture/pause, entrée automatique en quittant l'appli) ;
     Linux, Windows (aucune API dans WebKitGTK, WebView2 non testé) : la fenêtre se réduit à la
     vidéo, au premier plan ;
   - Markdown : markdown-it (MIT) sans HTML, images non chargées, liens http(s)/mailto seuls.
-    mp4box et markdown-it ne se chargent qu'à l'ouverture d'une vidéo ou d'un Markdown.
+    mp4box et markdown-it ne se chargent qu'à l'ouverture d'une vidéo, d'un M4A ou d'un Markdown.
 - Pendant un transfert : écran maintenu allumé (Wake Lock dans l'appli web, `FLAG_KEEP_SCREEN_ON`
   sur Android), mise en veille du Mac bloquée ; l'appli passée en arrière-plan ne se déconnecte
   qu'une fois le transfert fini.

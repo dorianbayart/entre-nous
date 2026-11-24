@@ -3,6 +3,7 @@
 // also the device most likely to decode its own files (an iPhone's HEIC photo, say).
 //  - image: thumbnail, its size in pixels;
 //  - video: a frame (poster), its size in pixels and its length;
+//  - audio: its length;
 //  - text file: its first characters.
 import type { SendExtra } from '../core/engine.ts';
 import { decodeStart, excerptOf, isText, previewKind } from '../core/media.ts';
@@ -129,6 +130,25 @@ async function videoPreview(blob: Blob): Promise<SendExtra> {
   }
 }
 
+/** An audio file: its length. Nothing when this device cannot decode it. */
+async function audioPreview(blob: Blob): Promise<SendExtra> {
+  const url = URL.createObjectURL(blob);
+  const audio = document.createElement('audio');
+  audio.preload = 'metadata';
+  try {
+    audio.src = url;
+    await once(audio, 'loadedmetadata', VIDEO_WAIT);
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? Math.round(audio.duration * 10) / 10 : undefined;
+    return duration ? { duration } : {};
+  } catch {
+    return {};
+  } finally {
+    audio.removeAttribute('src');
+    audio.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** A text file: its first characters, shown under its name. */
 async function textPreview(blob: Blob): Promise<SendExtra> {
   const head = new Uint8Array(await blob.slice(0, 4096).arrayBuffer());
@@ -145,6 +165,7 @@ export async function preview(blob: Blob, name: string): Promise<{ kind: 'image'
   try {
     if (asImage) extra = await imagePreview(blob);
     else if (kind === 'video') extra = await videoPreview(blob);
+    else if (kind === 'audio') extra = await audioPreview(blob);
     else if (isText(name, blob.type)) extra = await textPreview(blob);
   } catch {
     extra = {}; // not decodable here (a HEIC photo outside Safari…): sent without a preview

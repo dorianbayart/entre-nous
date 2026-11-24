@@ -76,6 +76,7 @@ export const en: Strings = {
 
   // ---------------------------------------------------------------- previews
   'open.video': 'Play',
+  'open.audio': 'Listen',
   'open.doc': 'Open',
   'open.image': 'View',
   'open.title': 'Open “{name}”',

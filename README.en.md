@@ -20,7 +20,7 @@ no trace.
   the other, without going through the internet.
 - **Text, photos, videos, files** of any size, plus a live shared note.
 - **Previews**: preview a photo or a Markdown document without downloading it, and watch a video
-  while it downloads, even in Picture-in-Picture.
+  (even in Picture-in-Picture) or listen to an audio file while it downloads.
 
 Try it: <https://entrenous.0xdba.dev>
 
