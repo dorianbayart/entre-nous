@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.43 — 2026-11-24
+- Création de lien de partage pour une personne hors du groupe.
+
 ## 0.1.42 — 2026-11-24
 - Fix: les vignettes des fichiers partagés depuis Android sont correctement générées.
 

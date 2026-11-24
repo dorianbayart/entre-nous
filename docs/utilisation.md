@@ -134,7 +134,24 @@ clavier) passent d'un élément à l'autre ; Échap ferme.
 - **Nouvelle version** : les applis installées l'annoncent (« Nouvelle version disponible ») avec
   un lien de téléchargement ; l'appli web, elle, se met à jour toute seule.
 
-## 5. Réglages du groupe
+## 5. Partager avec quelqu'un hors du groupe
+
+Pour envoyer un élément de l'historique à quelqu'un qui n'a pas Entre Nous, touche son icône de
+partage. Un lien et son QR code s'affichent tout de suite, valables 1 heure. La personne l'ouvre dans
+son navigateur, sans compte ni installation : elle peut lire le texte, voir la photo, regarder la
+vidéo, écouter la musique ou télécharger le fichier.
+
+- **Durée** : 10 min, 1 h (par défaut), 24 h ou 7 jours, à changer sur la page du lien ; l'adresse
+  du lien ne change pas. Le lien reste valable même si l'élément expire ou est supprimé du groupe
+  avant lui.
+- **Dans l'historique** : le lien apparaît, encadré de pointillés, sur l'appareil qui l'a créé
+  seulement : **Copier le lien**, **QR code**, **Supprimer**. Un lien supprimé ne marche plus, tout
+  de suite.
+- **Chiffré de bout en bout** : la clé est dans le lien, après le `#`, et ne passe jamais par le
+  serveur. Toute personne qui a le lien peut ouvrir l'élément : envoie-le seulement à qui doit le voir.
+- Pas de lien en **Réseau local uniquement** : le contenu n'est pas sur le serveur.
+
+## 6. Réglages du groupe
 
 Modifiables par n'importe quel appareil du groupe :
 
@@ -155,12 +172,12 @@ réseau ; une fois le réglage désactivé, **Envoyer au serveur** permet de le 
 **Langue** : l'appli suit la langue du système ou du navigateur (français ou anglais, l'anglais
 pour les autres langues) ; **Réglages → Langue** permet de la changer.
 
-## 6. Utiliser ton propre serveur
+## 7. Utiliser ton propre serveur
 
 Dans les applis : **Réglages → Serveur → Adresse du serveur**, puis **Changer de serveur**.
 Voir [deploiement.md](deploiement.md) pour héberger un serveur relais.
 
-## 7. Perdre ou retirer un appareil
+## 8. Perdre ou retirer un appareil
 
 **Réglages → Appareils → Retirer**, depuis n'importe quel autre appareil du groupe. Les clés de
 chiffrement sont renouvelées : l'appareil retiré perd l'accès à tout ce que tu partages, historique

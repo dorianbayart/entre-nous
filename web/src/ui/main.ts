@@ -3,7 +3,8 @@
 import Alpine from '@alpinejs/csp';
 import qrcode from 'qrcode-generator';
 import jsQR from 'jsqr';
-import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ChangelogEntry, type ItemView, type Invite } from '../core/engine.ts';
+import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ChangelogEntry, type ItemView, type Invite, type ShareView } from '../core/engine.ts';
+import { SHARE_DEFAULT_TTL, SHARE_TTLS, ShareGoneError } from '../core/share.ts';
 import { hash } from '../core/crypto.ts';
 import { b64, utf8 } from '../core/bytes.ts';
 import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
@@ -213,6 +214,12 @@ Alpine.data('app', () => ({
   inviteQr: '',
   inviteUrl: '',
   inviteLeft: '',
+  // the share link shown (its page: QR code, lifetime)
+  share: null as ShareView | null,
+  shareName: '',
+  shareQr: '',
+  /** Coming back from a page that slid in: the main view slides back. */
+  slide: '',
   joinLink: '',
   newGroupName: '',
   scanError: '',
@@ -366,6 +373,8 @@ Alpine.data('app', () => ({
     if (this.view === 'main' && !this.groups.length) this.view = 'welcome';
     // the item shown was deleted (here or elsewhere) or expired
     if (this.viewer.open && !this.items.some((i) => i.id === this.viewer.id)) this.closeViewer();
+    // the link shown expired (it is created when its page opens: not before)
+    if (this.view === 'share' && this.share && !this.group?.shares.some((s) => s.id === this.share!.id)) this.closeShare();
     this.latest = engine.latest;
     this.announceUpdate();
     this.showNote();
@@ -605,6 +614,12 @@ Alpine.data('app', () => ({
 
   get items(): ItemView[] {
     return this.group?.items ?? [];
+  },
+
+  /** The history as shown: the items, and the share links made here (newest first). */
+  get history(): Array<ItemView | { id: string; createdAt: number; share: ShareView }> {
+    const shares = (this.group?.shares ?? []).map((share) => ({ id: 'share:' + share.id, createdAt: share.createdAt, share }));
+    return [...this.items, ...shares].sort((a, b) => b.createdAt - a.createdAt);
   },
 
   get others() {
@@ -1521,6 +1536,150 @@ Alpine.data('app', () => ({
     }
   },
 
+  // ---------------------------------------------------------------- share links
+
+  /** A link can be made to an item whose content is entirely on the relay. */
+  canShare(item: ItemView) {
+    return !!this.groupId && !this.interrupted(item) && engine.canShare(this.groupId, item.id);
+  },
+
+  /** Makes a link to `item` (valid 1 h), on a page that slides in: QR code, link, lifetime. */
+  async shareItem(item: ItemView) {
+    const groupId = this.groupId;
+    if (!groupId) return;
+    this.confirming = '';
+    this.share = null;
+    this.shareQr = '';
+    this.shareName = this.label(item);
+    this.slide = '';
+    this.view = 'share';
+    try {
+      // the web app: links to where it is served from (the relay may know itself by another name)
+      this.showShare(await engine.createShare(groupId, item.id, SHARE_DEFAULT_TTL, this.native ? undefined : location.origin));
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+      this.closeShare();
+    }
+  },
+
+  /** The page of a link already made (from its entry in the history). */
+  openShare(share: ShareView) {
+    this.confirming = '';
+    this.shareName = this.shareLabel(share);
+    this.slide = '';
+    this.view = 'share';
+    this.showShare(share);
+  },
+
+  showShare(share: ShareView) {
+    this.share = share;
+    const qr = qrcode(0, 'M');
+    qr.addData(share.url);
+    qr.make();
+    this.shareQr = qr.createDataURL(6, 2);
+  },
+
+  closeShare() {
+    this.share = null;
+    this.shareQr = '';
+    this.confirming = '';
+    if (this.view !== 'share') return;
+    this.slide = 'slide-back';
+    this.view = this.groups.length ? 'main' : 'welcome';
+    setTimeout(() => (this.slide = ''), 400);
+  },
+
+  /** The lifetimes offered (no longer than the server allows). */
+  get shareTtls() {
+    const max = this.group?.maxTtl ?? 7 * 86400;
+    const current = this.share?.ttl;
+    return SHARE_TTLS.filter((v) => v <= max).map((value) => ({
+      value,
+      label: this.t(('share.ttl.' + value) as Key),
+      pressed: value === current ? 'true' : 'false',
+    }));
+  },
+
+  get shareLeft() {
+    return this.share ? this.t('share.left', { left: duration(this.share.expiresAt - this.now) }) : '';
+  },
+
+  /** Another lifetime for the link shown, from now: its address does not change. */
+  async setShareTtl(ttl: number) {
+    const share = this.share;
+    if (!share || share.ttl === ttl || !this.groupId) return;
+    try {
+      await engine.setShareTtl(share.id, ttl);
+      const now = engine.shares(this.groupId).find((s) => s.id === share.id);
+      if (now && this.share?.id === share.id) this.share = now;
+      this.now = Date.now();
+    } catch (err: any) {
+      if (err instanceof ShareGoneError) {
+        this.toast(this.t('toast.shareGone'));
+        this.closeShare();
+      } else this.toast(failure('toast.error', err));
+    }
+  },
+
+  /** Copies a link: not shared with the group by the desktop apps (it is not a copy of the user's). */
+  copyShareLink(share: ShareView | null) {
+    if (!share) return;
+    lastShared = b64(hash(utf8(share.url)));
+    platform
+      .copy('text/plain', Promise.resolve({ text: share.url }))
+      .then(() => this.toast(this.t('toast.linkCopied')))
+      .catch((err) => this.toast(failure('toast.copyFailed', err)));
+  },
+
+  copyShownLink() {
+    this.copyShareLink(this.share);
+  },
+
+  /** Deletes a link: it stops working at once (confirmed like a deletion). */
+  async removeShare(share: ShareView) {
+    const key = this.shareKey(share);
+    if (this.prefs.confirmDelete && !this.isConfirming(key)) {
+      this.askConfirm(key);
+      return;
+    }
+    this.confirming = '';
+    try {
+      await engine.deleteShare(share.id);
+      this.toast(this.t('toast.shareDeleted'));
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    }
+  },
+
+  async removeShownShare() {
+    const share = this.share;
+    if (!share) return;
+    await this.removeShare(share);
+    if (!engine.shares(this.groupId ?? '').some((s) => s.id === share.id)) this.closeShare();
+  },
+
+  get removingShownShare() {
+    return !!this.share && this.isConfirming(this.shareKey(this.share));
+  },
+
+  shareKey(share: { id: string }) {
+    return 'share:' + share.id;
+  },
+
+  shareLabel(share: ShareView) {
+    if (share.kind === 'text') return share.text ?? '';
+    return share.name ?? this.t('name.file');
+  },
+
+  shareMeta(share: ShareView) {
+    return this.t('share.label') + ' · ' + this.t('expires', { d: duration(share.expiresAt - this.now) });
+  },
+
+  /** The item's thumbnail, while it is still in the group. */
+  shareThumb(share: ShareView) {
+    return this.items.find((i) => i.id === share.itemId)?.thumb ?? '';
+  },
+
   // ---------------------------------------------------------------- pairing
 
   showInvite() {
@@ -1649,6 +1808,7 @@ Alpine.data('app', () => ({
   onBack() {
     if (this.viewer.open) this.closeViewer();
     else if (this.view === 'scan') this.stopScan();
+    else if (this.view === 'share') this.closeShare();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
     else platform.background?.();
   },

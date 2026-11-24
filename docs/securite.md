@@ -101,6 +101,25 @@ flowchart LR
   de mise en relation (adresses locales comprises) sont chiffrés avec la clé du groupe et liés à
   l'expéditeur et au destinataire.
 
+## Liens de partage
+
+Un lien de partage donne à une personne hors du groupe l'accès à un seul élément, dans un navigateur.
+
+- Le lien est `https://<relais>/s/#<secret>` : un secret aléatoire de 256 bits, après le `#`. Un
+  navigateur n'envoie jamais cette partie au serveur.
+- Le relais ne connaît que l'identifiant du lien, `sha256(HKDF(secret, "share/id"))`, et la clé de
+  l'élément scellée (XChaCha20-Poly1305) avec `HKDF(secret, "share/key")`. Il garde l'en-tête chiffré
+  et les blocs de l'élément, sans pouvoir les lire.
+- La page du lien déchiffre l'en-tête et les blocs dans le navigateur, avec les mêmes vérifications
+  que dans le groupe (blocs ni réordonnables ni tronquables). Elle n'obtient ni le secret du groupe,
+  ni les autres éléments, ni le nom des appareils.
+- Seul l'appareil qui a créé le lien peut changer sa durée ou le supprimer : il garde pour cela un
+  second secret, dont le relais ne connaît que l'empreinte SHA-256.
+- Le relais garde les blocs d'un élément tant que l'élément ou l'un de ses liens existe, au plus
+  `MAX_TTL` (7 jours) après la dernière modification du lien.
+- Toute personne qui a le lien peut ouvrir l'élément. Le relais voit en plus quand un lien est
+  ouvert, et depuis quelle adresse IP.
+
 ## Stockage sur les appareils
 
 | Plateforme | Où sont les clés |
@@ -135,6 +154,8 @@ flowchart LR
 - **Appli web** : son code est servi par le relais. Un relais compromis pourrait servir un code
   malveillant à l'appli web, qui verrait alors ce qu'on y fait (limite de toute appli web). Les applis
   Mac, Android, Linux et Windows embarquent leur interface : le code ne vient jamais du serveur.
+- **Page d'un lien de partage** : servie par le relais, comme l'appli web. Un relais compromis
+  pourrait la modifier pour lire l'élément partagé.
 - **Disponibilité** : le relais peut refuser, retarder ou supprimer des éléments. Il ne peut pas en
   fabriquer ni en lire.
 - **Métadonnées** : voir le tableau plus haut (IP, heures, tailles approximatives, présence).

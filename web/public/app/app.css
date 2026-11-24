@@ -422,3 +422,61 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 @media (max-width: 420px) {
   .app { padding-left: 14px; padding-right: 14px; }
 }
+
+/* ---------------------------------------------------------- share links */
+
+/* an entry of the history holds its parts directly in the item's grid */
+.entry { display: contents; }
+.icon-only { padding: 6px 8px; }
+.icon-only svg { width: 16px; height: 16px; }
+/* a link made here: its tile shows a chain, over the item's thumbnail while it is there */
+.item.shared-link { border-style: dashed; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.link-tile { background: var(--accent-soft); }
+.link-tile img { opacity: .55; }
+.link-mark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.link-mark svg { width: 26px; height: 26px; stroke: var(--accent); stroke-width: 2.2; }
+.link-tile img + .link-mark svg { width: 22px; height: 22px; padding: 5px; box-sizing: content-box; border-radius: 50%; background: var(--surface); }
+.link-meta { color: var(--accent); }
+.share-name { margin: 0; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-page .qr-wait { height: 256px; display: flex; align-items: center; margin: 8px 0; }
+.share-ttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.share-page .link { width: 100%; }
+.share-bottom { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* the share page slides in from the right; the history slides back from the left */
+@keyframes slide-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slide-back { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.share-page { animation: slide-in .26s cubic-bezier(.2, .8, .2, 1); }
+.main.slide-back { animation: slide-back .26s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .share-page, .main.slide-back { animation: none; }
+}
+
+/* ---------------------------------------------------------- share link page (/s/) */
+
+.visit { display: flex; flex-direction: column; gap: 14px; }
+.visit-head { display: flex; justify-content: center; }
+.visit-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; font-size: 17px; }
+.visit-brand .logo { width: 32px; height: 32px; border-radius: 9px; margin: 0; }
+.visit #state { min-height: 40vh; }
+.visit-lead { text-align: center; font-size: 17px; font-weight: 600; margin: 4px 0 12px; }
+.visit-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.visit-media:empty { display: none; }
+.visit-media { display: flex; justify-content: center; margin-bottom: 8px; }
+.visit-image { max-width: 100%; max-height: 60vh; border-radius: 10px; object-fit: contain; }
+.visit-video { width: 100%; max-height: 60vh; border-radius: 10px; background: #000; }
+.visit-audio { width: 100%; }
+.visit-text {
+  margin: 0; width: 100%; max-height: 60vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.visit-name { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.visit-actions { display: flex; gap: 8px; margin-top: 12px; }
+.visit-actions button { flex: 1; padding: 13px 14px; }
+.visit-actions button[hidden] { display: none; }
+.visit-foot { text-align: center; margin-top: 18px; font-size: 13px; }
+.visit-foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
+[hidden] { display: none !important; }

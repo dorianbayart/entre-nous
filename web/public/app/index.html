@@ -59,7 +59,7 @@
   </section>
 
   <!-- Main -->
-  <section class="main" x-show="view === 'main'">
+  <section class="main" :class="slide" x-show="view === 'main'">
     <header class="bar">
       <div class="title">
         <span class="dot" :class="group && group.status === 'online' ? 'on' : 'off'"></span>
@@ -161,8 +161,29 @@
               x-text="t(isConfirming('clear') ? 'clearAll.confirm' : 'clearAll')"></button>
     </div>
     <ul class="history">
-      <template x-for="item in items" :key="item.id">
-        <li class="item" :class="item.error ? 'broken' : ''">
+      <template x-for="item in history" :key="item.id">
+        <li class="item" :class="item.share ? 'shared-link' : (item.error ? 'broken' : '')">
+          <!-- a share link made here: only this device sees it -->
+          <template x-if="item.share">
+            <div class="entry">
+              <button class="thumb link-tile" @click="openShare(item.share)" :aria-label="t('share.show')" :title="t('share.show')">
+                <img x-show="shareThumb(item.share)" :src="shareThumb(item.share)" alt="">
+                <span class="link-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>
+              </button>
+              <div class="body">
+                <p class="content" :class="item.share.kind === 'text' ? 'text' : 'file'" x-text="shareLabel(item.share)"></p>
+                <p class="meta link-meta" x-text="shareMeta(item.share)"></p>
+              </div>
+              <div class="item-actions">
+                <button class="small secondary" @click="copyShareLink(item.share)" x-text="t('share.copyLink')"></button>
+                <button class="small secondary" @click="openShare(item.share)" x-text="t('share.show')"></button>
+                <button class="small ghost danger" @click="removeShare(item.share)"
+                        x-text="t(isConfirming(shareKey(item.share)) ? 'share.deleteConfirm' : 'delete')"></button>
+              </div>
+            </div>
+          </template>
+          <template x-if="!item.share">
+          <div class="entry">
           <template x-if="hasTile(item)">
             <button :class="tileClass(item)" @click="openPreview(item)" :disabled="!previewOf(item)"
                     :aria-label="openTitle(item)" :title="openTitle(item)">
@@ -196,13 +217,18 @@
               </svg>
               <span x-text="downloadProgress(item)"></span>
             </span>
+            <button class="small ghost icon-only" x-show="canShare(item)" @click="shareItem(item)" :aria-label="t('share')" :title="t('share')">
+              <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+            </button>
             <button class="small ghost danger" @click="remove(item)" :title="t('item.deleteTitle')"
                     x-text="t(isConfirming(itemKey(item)) ? 'deleteEverywhere' : 'delete')"></button>
           </div>
+          </div>
+          </template>
         </li>
       </template>
     </ul>
-    <p class="empty" x-show="items.length === 0" x-text="t('empty')"></p>
+    <p class="empty" x-show="history.length === 0" x-text="t('empty')"></p>
     <div class="drop" x-show="dragging" x-text="t('drop')"></div>
   </section>
 
@@ -346,6 +372,32 @@
     <p class="muted small" x-text="t('invite.valid', { left: inviteLeft })"></p>
     <input class="link" type="text" readonly :value="inviteUrl" @focus="$event.target.select()">
     <button class="ghost" @click="back" x-text="t('cancel')"></button>
+  </section>
+
+  <!-- Share link of an item, for someone outside the group: slides in over the history -->
+  <section class="center page share-page" x-show="view === 'share'">
+    <h1 x-text="t('share.title')"></h1>
+    <p class="share-name" x-text="shareName"></p>
+    <p class="muted" x-text="t('share.hint')"></p>
+    <img class="qr" :src="shareQr" :alt="t('share.qrAlt')" x-show="shareQr">
+    <p class="qr-wait muted small" x-show="!shareQr" x-text="t('share.creating')"></p>
+    <div class="share-ttl" x-show="share">
+      <span class="muted small" x-text="t('share.valid')"></span>
+      <div class="segmented" role="group" :aria-label="t('share.valid')">
+        <template x-for="o in shareTtls" :key="o.value">
+          <button :aria-pressed="o.pressed" @click="setShareTtl(o.value)" x-text="o.label"></button>
+        </template>
+      </div>
+    </div>
+    <p class="muted small" x-show="share" x-text="shareLeft"></p>
+    <input class="link" type="text" readonly :value="share ? share.url : ''" @focus="$event.target.select()" x-show="share">
+    <button class="primary" x-show="share" @click="copyShownLink" x-text="t('share.copyLink')"></button>
+    <p class="muted small" x-text="t('share.anyone')"></p>
+    <div class="share-bottom">
+      <button class="ghost" @click="closeShare" x-text="t('back')"></button>
+      <button class="ghost danger" x-show="share" @click="removeShownShare"
+              x-text="t(removingShownShare ? 'share.deleteConfirm' : 'share.delete')"></button>
+    </div>
   </section>
 
   <!-- QR scanner -->

@@ -127,7 +127,23 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
 - **New version**: the installed apps announce it ("New version available") with a download
   link; the web app updates itself.
 
-## 5. Group settings
+## 5. Share with someone outside the group
+
+To send an item of the history to someone who doesn't have Entre Nous, tap its share icon. A link
+and its QR code show up at once, valid for 1 hour. The person opens it in their browser, with no
+account and nothing to install: they can read the text, see the photo, watch the video, listen to
+the music or download the file.
+
+- **Lifetime**: 10 min, 1 h (default), 24 h or 7 days, to change on the link's page; the link's
+  address stays the same. The link keeps working even if the item expires or is deleted from the
+  group before it.
+- **In the history**: the link shows up, with a dashed border, only on the device that created it:
+  **Copy link**, **QR code**, **Delete**. A deleted link stops working at once.
+- **End-to-end encrypted**: the key is in the link, after the `#`, and never goes through the
+  server. Anyone who has the link can open the item: only send it to whoever should see it.
+- No links with **Local network only**: the content isn't on the server.
+
+## 6. Group settings
 
 Any device in the group can change them:
 
@@ -148,12 +164,12 @@ setting is turned off, **Send to server** lets you hand it over to the relay, ma
 **Language**: the app follows the language of your system or browser (French or English, and
 English for any other language); you can change it in **Settings → Language**.
 
-## 6. Use your own server
+## 7. Use your own server
 
 In the apps: **Settings → Server → Server address**, then **Change server**.
 See [deployment.md](deployment.md) to host a relay server.
 
-## 7. Losing or removing a device
+## 8. Losing or removing a device
 
 **Settings → Devices → Remove**, from any other device in the group. The encryption keys are
 renewed: the removed device loses access to everything you share, history included; the others

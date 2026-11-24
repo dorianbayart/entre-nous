@@ -277,6 +277,29 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   Pas de publication sur le registre npm : double authentification matérielle obligatoire et jetons
   à renouveler, trop lourd pour ce que ça apporte.
 
+## 8 sexies. Liens de partage
+
+- **Pourquoi** : donner un élément à quelqu'un hors du groupe (un ami, un collègue), sans l'inviter
+  dans le groupe (il verrait tout l'historique) ni passer par un autre service.
+- **Lien vers un élément de l'historique** (pas d'envoi à part) : rien n'est renvoyé, c'est
+  instantané même pour un gros fichier. Bouton discret (icône de partage, info-bulle « Partager ») ;
+  la vue glisse vers une page proche de l'invitation : QR code, lien, durée.
+- **Créé tout de suite, valable 1 h** ; durées 10 min, 1 h, 24 h, 7 j (bornées par `MAX_TTL`), comptées
+  à partir du choix ; changer la durée garde la même adresse. Pas d'option « une seule ouverture » :
+  10 min ou 1 h en tiennent lieu. Pas de signalement de lien, pas de nouveau réglage du serveur.
+- **Indépendant de l'élément** : un élément qui expire ou est supprimé du groupe garde ses blocs pour
+  ses liens (`r:{salle}:sh:{id}`, durée des blocs = la plus tardive), et ses liens le suivent quand
+  l'historique change de salle (`items.move`), ou restent dans l'ancienne après une dissolution.
+- **Seulement sur l'appareil qui l'a créé** : une entrée de son historique (encadrée de pointillés),
+  qui disparaît à l'expiration. Lui seul peut changer la durée ou supprimer le lien (second secret,
+  empreinte sur le relais) ; re-partager un élément crée un nouveau lien.
+- **Cryptographie** : `https://<relais>/s/#<secret>` ; le relais voit `sha256(kdf(secret, "share/id"))`
+  et la clé de l'élément scellée avec `kdf(secret, "share/key")` ; l'en-tête et les blocs sont ceux de
+  l'élément, inchangés.
+- **Page `/s/`** (`src/share/`, servie par le relais seulement) : DOM simple, sans Alpine ; texte à
+  copier, aperçu d'une image ou d'un PDF (fait par l'émetteur), vidéo et audio en continu (même lecteur
+  que l'appli), début d'un fichier texte, téléchargement.
+
 ## 9. Relais
 
 - Un conteneur `node:lts-alpine` : Node (HTTP + WebSocket, fichiers statiques) et Redis

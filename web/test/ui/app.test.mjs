@@ -96,7 +96,7 @@ async function rename(d, name) {
 async function pair(host, guest, join) {
   await host.page.getByLabel('Réglages').click();
   await button(host.page, 'Inviter un appareil').click();
-  const link = await until('invitation link', () => host.page.locator('input.link').inputValue());
+  const link = await until('invitation link', () => host.page.locator('input.link:visible').inputValue());
   await join(link);
   await guest.page.locator('section.main').waitFor();
   await host.page.locator('section.main').waitFor();
@@ -316,7 +316,7 @@ test('the command line and the browser: one group, both ways', { timeout: 60_000
   // the browser invites, the terminal joins with the link shown under the QR code
   await a.page.getByLabel('Réglages').click();
   await button(a.page, 'Inviter un appareil').click();
-  const link = await until('invitation link', () => a.page.locator('input.link').inputValue());
+  const link = await until('invitation link', () => a.page.locator('input.link:visible').inputValue());
   await cli('join', '--name', 'serveur', link);
   await a.page.locator('section.main').waitFor();
   // the terminal sends, the browser receives
@@ -649,5 +649,98 @@ test('what is new: shown once after an update, from the changelog built in', { t
   await sleep(500);
   assert.ok(await news.isHidden(), 'shown once');
   await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+test('share links: made from the history, opened outside the group, kept for the link alone, deleted', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  const visitor = await device('Visiteur');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await rename(a, 'Alice');
+  await pair(a, b, (link) => b.page.goto(link));
+
+  // a text and a text file, sent by Alice
+  await a.page.locator('.note textarea').fill('Rendez-vous à 18 h');
+  await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  const content = Buffer.from('Liste des courses\n- pain\n- fromage\n'.repeat(200));
+  await a.page.locator('input[type=file]').setInputFiles({ name: 'courses.txt', mimeType: 'text/plain', buffer: content });
+  const textA = a.page.locator('.history .item:not(.shared-link)', { hasText: 'Rendez-vous à 18 h' });
+  const fileA = a.page.locator('.history .item:not(.shared-link)', { hasText: 'courses.txt' });
+  await textA.waitFor();
+  await until('file complete', async () => !/envoi/.test(await fileA.locator('.meta').textContent()));
+
+  // ---- the share button: discreet, an icon; the page slides in, the link is made at once, 1 h
+  const share = button(textA, 'Partager');
+  assert.ok(await share.isVisible(), 'a share button on an item');
+  assert.equal((await share.textContent()).trim(), '', 'an icon only');
+  await share.click();
+  const page = a.page.locator('section.share-page');
+  await page.waitFor();
+  assert.ok(await a.page.locator('section.main').isHidden());
+  const link = await until('share link', () => page.locator('input.link').inputValue());
+  assert.match(link, /^http:\/\/127\.0\.0\.1:8080\/s\/#[A-Za-z0-9_-]{43}$/);
+  assert.ok(await page.locator('img.qr').isVisible(), 'a QR code');
+  assert.equal(await button(page, '1 h').getAttribute('aria-pressed'), 'true');
+  assert.match(await page.textContent(), /Expire dans 1 h/);
+  // another lifetime: the same link
+  await button(page, '7 j').click();
+  await until('7 days', async () => /Expire dans 7 j/.test(await page.textContent()));
+  assert.equal(await page.locator('input.link').inputValue(), link, 'the address does not change');
+  assert.ok((await page.locator('.segmented button').allTextContents()).join() === '10 min,1 h,24 h,7 j');
+  await button(page, 'Retour').click();
+  await a.page.locator('section.main').waitFor();
+
+  // ---- in Alice's history, and only there
+  const entry = a.page.locator('.history .item.shared-link', { hasText: 'Rendez-vous à 18 h' });
+  await entry.waitFor();
+  assert.match(await entry.locator('.meta').textContent(), /Lien de partage · expire dans 7 j/);
+  assert.ok(await button(entry, 'Copier le lien').isVisible());
+  await sleep(500);
+  assert.equal(await b.page.locator('.history .item.shared-link').count(), 0, 'not on the other devices');
+
+  // ---- opened outside the group, without an account
+  await visitor.page.goto(link);
+  await visitor.page.locator('.visit-lead', { hasText: 'Quelqu’un partage un texte avec toi.' }).waitFor();
+  assert.equal(await visitor.page.locator('pre.visit-text').textContent(), 'Rendez-vous à 18 h');
+  assert.ok(await button(visitor.page, 'Copier').isVisible());
+  assert.match(await visitor.page.locator('#meta').textContent(), /expire dans 7 j/);
+
+  // ---- a file: its start shown, downloaded whole
+  await button(fileA, 'Partager').click();
+  const fileLink = await until('file link', () => page.locator('input.link').inputValue());
+  assert.notEqual(fileLink, link);
+  await button(page, 'Retour').click();
+  await visitor.page.goto(fileLink);
+  await visitor.page.locator('.visit-name', { hasText: 'courses.txt' }).waitFor();
+  assert.match(await visitor.page.locator('pre.visit-text').textContent(), /^Liste des courses\n- pain/);
+  const download = visitor.page.waitForEvent('download');
+  await button(visitor.page, 'Télécharger').click();
+  const saved = await readFile(await (await download).path());
+  assert.ok(saved.equals(content), 'the downloaded file is the one sent');
+
+  // ---- the item leaves the group: the link still works
+  await fileA.locator('button.danger').click();
+  await fileA.locator('button.danger').click();
+  await b.page.locator('.history .item', { hasText: 'courses.txt' }).waitFor({ state: 'detached' });
+  await visitor.page.reload();
+  await visitor.page.locator('.visit-name', { hasText: 'courses.txt' }).waitFor();
+  const fileEntry = a.page.locator('.history .item.shared-link', { hasText: 'courses.txt' });
+  assert.ok(await fileEntry.isVisible(), 'the link stays in the history');
+
+  // ---- deleted by Alice: it stops working
+  await fileEntry.locator('button.danger').click();
+  assert.equal(await fileEntry.locator('button.danger').textContent(), 'Confirmer : supprimer le lien');
+  await fileEntry.locator('button.danger').click();
+  await fileEntry.waitFor({ state: 'detached' });
+  await visitor.page.reload();
+  await visitor.page.getByText('Ce lien n’est plus valable : il a expiré ou il a été supprimé.').waitFor();
+
+  // ---- a link cut short
+  await visitor.page.goto(link.slice(0, -5));
+  await visitor.page.getByText('Ce lien est incomplet. Vérifie qu’il a été copié en entier.').waitFor();
+
+  for (const d of [a, b, visitor]) await d.context.close();
   assert.deepEqual(problems, []);
 });

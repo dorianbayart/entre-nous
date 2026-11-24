@@ -1,5 +1,5 @@
-// Builds dist/: the landing page (/, landing.js) and the PWA (/app/, app/app.js), plus the
-// static files of public/.
+// Builds dist/: the landing page (/, landing.js), the PWA (/app/, app/app.js) and the page of
+// a share link (/s/, s/share.js), plus the static files of public/.
 import * as esbuild from 'esbuild';
 import { execSync } from 'node:child_process';
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
@@ -98,6 +98,8 @@ const options = {
   entryPoints: [
     { in: 'src/ui/main.ts', out: 'app/app' },
     { in: 'src/landing/main.ts', out: 'landing' },
+    // the page of a share link (/s/), served by the relay only
+    { in: 'src/share/main.ts', out: 's/share' },
   ],
   bundle: true,
   format: 'esm',

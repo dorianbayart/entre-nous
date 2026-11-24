@@ -1,7 +1,7 @@
 // Entre Nous relay: serves the PWA and relays end-to-end encrypted blobs between the
 // devices of a group. It can read nothing, and forgets everything (RAM only by default).
 import { createServer } from 'node:http';
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -212,7 +212,7 @@ async function serveStatic(req, res) {
     res.writeHead(302, { Location: `https://github.com/${RELEASES}/releases/latest/download/${download[1]}` }).end();
     return;
   }
-  if (['/app', '/fr', '/en', '/nouveautes', '/en/changelog'].includes(url.pathname)) {
+  if (['/app', '/s', '/fr', '/en', '/nouveautes', '/en/changelog'].includes(url.pathname)) {
     res.writeHead(301, { Location: url.pathname + '/' }).end();
     return;
   }
@@ -327,6 +327,30 @@ function requireRoom(ws) {
   if (!ws.room) throw new Error('no room');
   return ws.room;
 }
+
+// Share links: `share` is sha256(kdf(link secret)), never the secret; `del` is a second secret,
+// kept by the device that made the link, the only one that can change or delete it.
+const shareId = (s) => b64(s, 64) && s.length >= 40;
+const delHash = (del) => createHash('sha256').update(Buffer.from(del, 'base64url')).digest('base64url');
+
+async function ownedShare(msg) {
+  if (!shareId(msg.share) || !b64(msg.del, 64)) throw new Error('bad share');
+  const s = await store.getShare(msg.share);
+  if (!s) return null;
+  const a = Buffer.from(delHash(msg.del));
+  const b = Buffer.from(s.del);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new Error('not allowed');
+  return s;
+}
+
+async function liveShare(msg) {
+  if (!shareId(msg.share)) throw new Error('bad share');
+  const s = await store.getShare(msg.share);
+  if (!s || s.expiresAt <= Date.now()) throw new Error('unknown share');
+  return s;
+}
+
+const shareTtl = (ttl) => Math.min(Math.max(Number(ttl) || 0, 60), MAX_TTL);
 
 const handlers = {
   /** What the versions after `since` bring (an app about to update shows it). */
@@ -534,6 +558,47 @@ const handlers = {
     const to = roomId(msg.roomKey);
     if (to === room) throw new Error('same room');
     return { moved: await store.moveItems(room, to, except) };
+  },
+
+  /**
+   * A share link to an item of the room, for people outside the group. It may outlive the
+   * item in the group: its content stays for the link alone.
+   */
+  async 'share.create'(ws, msg) {
+    const room = requireRoom(ws);
+    if (!shareId(msg.share) || !safeId(msg.item) || !b64(msg.header, META_MAX) || !b64(msg.box, 256) || !b64(msg.del, 64)) {
+      throw new Error('bad share');
+    }
+    const expiresAt = Date.now() + shareTtl(msg.ttl) * 1000;
+    return store.createShare(room, { share: msg.share, item: msg.item, header: msg.header, box: msg.box, del: delHash(msg.del), expiresAt });
+  },
+
+  /** New lifetime of a link, from now (its maker only). */
+  async 'share.expire'(ws, msg) {
+    if (!(await ownedShare(msg))) throw new Error('unknown share');
+    const expiresAt = Date.now() + shareTtl(msg.ttl) * 1000;
+    await store.setShareExpiry(msg.share, expiresAt);
+    return { expiresAt };
+  },
+
+  /** Deletes a link (its maker only); a link already gone is fine. */
+  async 'share.delete'(ws, msg) {
+    if (await ownedShare(msg)) await store.deleteShare(msg.share);
+    return {};
+  },
+
+  /** Opens a link: what it holds, still encrypted. No group needed. */
+  async 'share.open'(ws, msg) {
+    const s = await liveShare(msg);
+    return { item: s.item, header: s.header, chunks: s.chunks, size: s.size, box: s.box, expiresAt: s.expiresAt };
+  },
+
+  async 'share.chunk'(ws, msg) {
+    const s = await liveShare(msg);
+    if (!Number.isInteger(msg.idx) || msg.idx < 0 || msg.idx >= s.chunks) throw new Error('bad chunk');
+    const data = await store.getChunk(s.room, s.item, msg.idx);
+    if (!data) throw new Error('unknown chunk');
+    return { $binary: data };
   },
 
   async 'room.delete'(ws) {

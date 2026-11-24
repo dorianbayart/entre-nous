@@ -11,6 +11,15 @@
 //                                   so far (an item is listed while it is being uploaded); note: live
 //                                   note (not counted in the history size), live = its latest text
 //   r:{room}:c:{id}:{idx}   bytes one encrypted chunk
+//   r:{room}:sh:{id}        zset  share id -> expiresAt (ms): the share links of an item
+//   s:{share}               hash  { room, item, header, chunks, size, box, del, createdAt, expiresAt }
+//                                   a share link: read access to one item for people outside the
+//                                   group. header: the item's encrypted header; box: the item key,
+//                                   sealed with a key only the link holds; del: sha256 of the secret
+//                                   that deletes it (kept by the device that made it)
+//
+// The chunks of a shared item live as long as the item or its last share link, whichever ends
+// last: an item may leave the group (expiry, deletion) while a link to it still works.
 
 const ROOM_IDLE_TTL = 30 * 24 * 3600; // a group unused for 30 days is forgotten (devices keep their copy)
 
@@ -193,10 +202,95 @@ export class Store {
 
   async deleteItem(room, id) {
     const item = await this.getItem(room, id);
-    const keys = [this.k(room, 'i', id)];
-    for (let i = 0; i < (item?.chunks ?? 0); i++) keys.push(this.k(room, 'c', id, i));
-    await this.redis.multi().del(...keys).zrem(this.k(room, 'items'), id).exec();
+    await this.redis.multi().del(this.k(room, 'i', id)).zrem(this.k(room, 'items'), id).exec();
+    // its chunks stay for the share links that still need them
+    if (item) await this.retainChunks(room, id, item.chunks, 0);
     return !!item;
+  }
+
+  // ---- share links ----
+
+  /** When the last live share link of an item ends (0: none). */
+  async sharedUntil(room, id) {
+    const zkey = this.k(room, 'sh', id);
+    await this.redis.zremrangebyscore(zkey, '-inf', Date.now());
+    const last = await this.redis.zrange(zkey, -1, -1, 'WITHSCORES');
+    return last.length ? Number(last[1]) : 0;
+  }
+
+  /**
+   * The chunks of an item live until `itemExpiresAt` (0: the item is gone) or until its last
+   * share link ends; when both are over, they are deleted.
+   */
+  async retainChunks(room, id, chunks, itemExpiresAt) {
+    const until = Math.max(itemExpiresAt, await this.sharedUntil(room, id));
+    const keys = [...Array(chunks).keys()].map((i) => this.k(room, 'c', id, i));
+    if (until <= Date.now()) {
+      await this.redis.del(this.k(room, 'sh', id), ...keys);
+      return;
+    }
+    const multi = this.redis.multi();
+    for (const key of keys) multi.pexpireat(key, until);
+    multi.pexpireat(this.k(room, 'sh', id), until);
+    await multi.exec();
+  }
+
+  /** A share link to a complete item of `room`, until `expiresAt`. */
+  async createShare(room, { share, item: id, header, box, del, expiresAt }) {
+    const key = 's:' + share;
+    if (await this.redis.exists(key)) throw new Error('exists');
+    const item = await this.getItem(room, id);
+    if (!item) throw new Error('unknown item');
+    const note = (await this.redis.hget(this.k(room, 'i', id), 'note')) === '1';
+    if (!item.complete || item.local || note) throw new Error('not shareable');
+    const createdAt = Date.now();
+    await this.redis
+      .multi()
+      .hset(key, { room, item: id, header, chunks: item.chunks, size: item.size, box, del, createdAt, expiresAt })
+      .pexpireat(key, expiresAt)
+      .zadd(this.k(room, 'sh', id), expiresAt, share)
+      .exec();
+    await this.retainChunks(room, id, item.chunks, item.expiresAt);
+    return { createdAt, expiresAt };
+  }
+
+  async getShare(share) {
+    const h = await this.redis.hgetall('s:' + share);
+    if (!h.room) return null;
+    return {
+      room: h.room,
+      item: h.item,
+      header: h.header,
+      chunks: Number(h.chunks),
+      size: Number(h.size),
+      box: h.box,
+      del: h.del,
+      createdAt: Number(h.createdAt),
+      expiresAt: Number(h.expiresAt),
+    };
+  }
+
+  /** New end of a share link (shorter or longer); its chunks follow. */
+  async setShareExpiry(share, expiresAt) {
+    const s = await this.getShare(share);
+    if (!s) throw new Error('unknown share');
+    await this.redis
+      .multi()
+      .hset('s:' + share, 'expiresAt', expiresAt)
+      .pexpireat('s:' + share, expiresAt)
+      .zadd(this.k(s.room, 'sh', s.item), expiresAt, share)
+      .exec();
+    const item = await this.getItem(s.room, s.item);
+    await this.retainChunks(s.room, s.item, s.chunks, item?.expiresAt ?? 0);
+  }
+
+  async deleteShare(share) {
+    const s = await this.getShare(share);
+    if (!s) return false;
+    await this.redis.multi().del('s:' + share).zrem(this.k(s.room, 'sh', s.item), share).exec();
+    const item = await this.getItem(s.room, s.item);
+    await this.retainChunks(s.room, s.item, s.chunks, item?.expiresAt ?? 0);
+    return true;
   }
 
   /** Keeps the `max` most recent items (live notes aside). Returns the deleted ids. */
@@ -234,11 +328,13 @@ export class Store {
       if (expiresAt <= Date.now()) {
         await this.deleteItem(room, id);
       } else {
-        const multi = this.redis.multi();
-        multi.hset(this.k(room, 'i', id), { expiresAt, ttl }).pexpireat(this.k(room, 'i', id), expiresAt);
-        for (let i = 0; i < item.chunks; i++) multi.pexpireat(this.k(room, 'c', id, i), expiresAt);
-        multi.zadd(this.k(room, 'items'), expiresAt, id);
-        await multi.exec();
+        await this.redis
+          .multi()
+          .hset(this.k(room, 'i', id), { expiresAt, ttl })
+          .pexpireat(this.k(room, 'i', id), expiresAt)
+          .zadd(this.k(room, 'items'), expiresAt, id)
+          .exec();
+        await this.retainChunks(room, id, item.chunks, expiresAt);
       }
       changed++;
     }
@@ -264,6 +360,10 @@ export class Store {
         if (await this.redis.exists(this.k(room, 'c', id, c))) m.rename(this.k(room, 'c', id, c), this.k(to, 'c', id, c));
       }
       m.zadd(this.k(to, 'items'), expiresAt, id).zrem(this.k(room, 'items'), id);
+      // its share links follow it
+      const shares = await this.redis.zrange(this.k(room, 'sh', id), 0, -1);
+      if (shares.length) m.rename(this.k(room, 'sh', id), this.k(to, 'sh', id));
+      for (const share of shares) m.hset('s:' + share, 'room', to);
       await m.exec();
       moved++;
     }
@@ -283,14 +383,16 @@ export class Store {
     await this.redis.set(this.k(room, 'gone'), 1, 'EX', ROOM_IDLE_TTL);
   }
 
-  /** Is any content (item, live note) still held, in any group? */
+  /** Is any content (item, live note, share link) still held, in any group? */
   async hasItems() {
-    let cursor = '0';
-    do {
-      const [next, keys] = await this.redis.scan(cursor, 'MATCH', 'r:*:i:*', 'COUNT', 1000);
-      if (keys.length) return true;
-      cursor = next;
-    } while (cursor !== '0');
+    for (const pattern of ['r:*:i:*', 's:*']) {
+      let cursor = '0';
+      do {
+        const [next, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 1000);
+        if (keys.length) return true;
+        cursor = next;
+      } while (cursor !== '0');
+    }
     return false;
   }
 

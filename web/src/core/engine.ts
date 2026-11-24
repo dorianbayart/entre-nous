@@ -45,6 +45,10 @@ import { RelayConnection, type RelayEvent } from './relay.ts';
 import { type LinkFactory, Peers } from './peers.ts';
 import type { KV } from './storage.ts';
 import { t } from '../i18n/index.ts';
+import { ChunkReader, type ContentReader, type ReaderOptions } from './reader.ts';
+import { SHARE_DEFAULT_TTL, ShareGoneError, newShare, shareUrl } from './share.ts';
+
+export type { ContentReader, ReaderOptions };
 
 export interface Host {
   kv: KV;
@@ -125,176 +129,6 @@ export interface SendExtra {
   pages?: number;
   excerpt?: string;
   text?: string;
-}
-
-/**
- * Random access to an item's content, for previews and streaming: the chunks are fetched
- * (straight from the sender on the same network, otherwise from the relay) and decrypted
- * on demand, a few kept in memory, the next ones fetched ahead.
- */
-export interface ContentReader {
-  readonly size: number;
-  readonly name?: string;
-  readonly mime?: string;
-  /** Bytes [start, end) of the content. */
-  read(start: number, end: number): Promise<Uint8Array>;
-  /** Stops: what is still being read fails, nothing more is fetched. */
-  close(): void;
-}
-
-export interface ReaderOptions {
-  /** Decrypted chunks kept in memory (default 16, i.e. 16 MB). */
-  keep?: number;
-  /** Chunks fetched ahead of the last read (default 4). */
-  ahead?: number;
-}
-
-interface Slot {
-  promise: Promise<Uint8Array>;
-  resolve(data: Uint8Array): void;
-  reject(err: unknown): void;
-  state: 'queued' | 'fetching' | 'done';
-  /** Reads waiting for it: never evicted, never dropped from the queue meanwhile. */
-  waiting: number;
-  urgent: boolean;
-}
-
-/** The chunks of one content: a queue (urgent first), a few fetches at once, a small cache. */
-class ChunkReader implements ContentReader {
-  private slots = new Map<number, Slot>(); // least recently used first
-  private queue: number[] = [];
-  private running = 0;
-  private closed = false;
-
-  constructor(
-    readonly size: number,
-    private chunks: number,
-    private fetch: (idx: number) => Promise<Uint8Array>,
-    private opts: { keep: number; ahead: number; workers: number },
-    private onClose: () => void,
-    readonly name?: string,
-    readonly mime?: string,
-  ) {}
-
-  /** Chunk `idx`, decrypted. */
-  chunk(idx: number, urgent = true): Promise<Uint8Array> {
-    if (this.closed) {
-      const failed = Promise.reject(new Error('closed'));
-      failed.catch(() => {}); // a prefetch: nobody waits for it
-      return failed;
-    }
-    let s = this.slots.get(idx);
-    if (s) {
-      this.slots.delete(idx);
-      this.slots.set(idx, s);
-    } else {
-      let resolve!: Slot['resolve'];
-      let reject!: Slot['reject'];
-      const promise = new Promise<Uint8Array>((res, rej) => ((resolve = res), (reject = rej)));
-      promise.catch(() => {}); // a prefetch nobody waits for may fail quietly
-      s = { promise, resolve, reject, state: 'queued', waiting: 0, urgent };
-      this.slots.set(idx, s);
-      this.enqueue(idx, s);
-    }
-    if (urgent && s.state === 'queued' && !s.urgent) {
-      // a prefetched chunk now awaited: to the front
-      s.urgent = true;
-      this.queue.splice(this.queue.indexOf(idx), 1);
-      this.enqueue(idx, s);
-    }
-    if (!urgent) return s.promise;
-    s.waiting++;
-    const slot = s;
-    return s.promise.finally(() => {
-      slot.waiting--;
-      this.evict();
-    });
-  }
-
-  private enqueue(idx: number, s: Slot) {
-    // urgent: after the other urgent ones, before the prefetches
-    const at = s.urgent ? this.queue.findIndex((i) => !this.slots.get(i)?.urgent) : -1;
-    if (at < 0) this.queue.push(idx);
-    else this.queue.splice(at, 0, idx);
-    this.pump();
-  }
-
-  async read(start: number, end: number): Promise<Uint8Array> {
-    start = Math.max(0, Math.min(start, this.size));
-    end = Math.max(start, Math.min(end, this.size));
-    if (end === start) return new Uint8Array(0);
-    const first = Math.floor(start / CHUNK_SIZE);
-    const last = Math.floor((end - 1) / CHUNK_SIZE);
-    // a jump (seek): the prefetches nobody waits for give way to the new position
-    this.queue = this.queue.filter((i) => {
-      const s = this.slots.get(i)!;
-      if (s.waiting > 0 || (i >= first && i <= last + this.opts.ahead)) return true;
-      this.slots.delete(i);
-      return false;
-    });
-    const parts = [];
-    for (let i = first; i <= last; i++) parts.push(this.chunk(i));
-    for (let i = last + 1; i <= last + this.opts.ahead && i < this.chunks; i++) this.chunk(i, false);
-    const got = await Promise.all(parts);
-    const out = new Uint8Array(end - start);
-    let at = 0;
-    for (let i = first; i <= last; i++) {
-      const data = got[i - first];
-      const from = i === first ? start - i * CHUNK_SIZE : 0;
-      const to = Math.min(data.length, end - i * CHUNK_SIZE);
-      out.set(data.subarray(from, to), at);
-      at += to - from;
-    }
-    return out;
-  }
-
-  private pump() {
-    while (!this.closed && this.running < this.opts.workers && this.queue.length) {
-      const idx = this.queue.shift()!;
-      const s = this.slots.get(idx);
-      if (!s || s.state !== 'queued') continue;
-      s.state = 'fetching';
-      this.running++;
-      this.fetch(idx)
-        .then(
-          (data) => {
-            s.state = 'done';
-            s.resolve(data);
-          },
-          (err) => {
-            // failed: fetched again by the next read that needs it
-            if (this.slots.get(idx) === s) this.slots.delete(idx);
-            s.reject(err);
-          },
-        )
-        .finally(() => {
-          this.running--;
-          this.evict();
-          this.pump();
-        });
-    }
-  }
-
-  /** Keeps at most `keep` decrypted chunks, the least recently used go first. */
-  private evict() {
-    let done = 0;
-    for (const s of this.slots.values()) if (s.state === 'done') done++;
-    for (const [i, s] of this.slots) {
-      if (done <= this.opts.keep) break;
-      if (s.state !== 'done' || s.waiting > 0) continue;
-      this.slots.delete(i);
-      done--;
-    }
-  }
-
-  close() {
-    if (this.closed) return;
-    this.closed = true;
-    for (const s of this.slots.values()) if (s.state !== 'done') s.reject(new Error('closed'));
-    this.slots.clear();
-    this.queue = [];
-    this.onClose();
-  }
 }
 
 export interface Transfer {
@@ -384,6 +218,33 @@ interface Outgoing {
   text?: string; // local text: its content, for this device's own history
 }
 
+/** A share link made by this device (only this device knows it). */
+export interface ShareView {
+  id: string;
+  groupId: string;
+  itemId: string;
+  url: string;
+  kind: Header['kind'];
+  name?: string;
+  /** A text: its start. */
+  text?: string;
+  mime?: string;
+  size?: number;
+  createdAt: number;
+  expiresAt: number;
+  /** Lifetime chosen last, in seconds. */
+  ttl: number;
+}
+
+interface LocalShare extends ShareView {
+  relay: string;
+  secret: Uint8Array;
+  /** Changes or deletes the link on the relay. */
+  del: Uint8Array;
+}
+
+const SHARE_TEXT_MAX = 200;
+
 export type EngineEvent =
   | { type: 'change' }
   | { type: 'incoming'; groupId: string; item: ItemView }
@@ -422,6 +283,8 @@ export class Engine {
   /** Sent to the background during a transfer: disconnects once it is over. */
   private stopWhenIdle = false;
   private sweeper?: ReturnType<typeof setInterval>;
+  /** The share links made here, until they expire or are deleted. */
+  private shareList: LocalShare[] = [];
 
   private constructor(private host: Host) {}
 
@@ -433,6 +296,7 @@ export class Engine {
       await host.kv.set('device', device);
     }
     e.device = device;
+    e.shareList = (await host.kv.get<LocalShare[]>('shares')) ?? [];
     const ids = (await host.kv.get<string[]>('groups')) ?? [];
     for (const id of ids) {
       const g = await host.kv.get<LocalGroup>('group:' + id);
@@ -489,6 +353,12 @@ export class Engine {
           removed = true;
         }
       }
+    }
+    const shares = this.shareList.filter((s) => s.expiresAt > now);
+    if (shares.length !== this.shareList.length) {
+      this.shareList = shares;
+      this.saveShares();
+      removed = true;
     }
     if (removed) this.changed();
   }
@@ -552,6 +422,7 @@ export class Engine {
         .filter((v) => v.kind !== 'note')
         .sort((a, b) => b.createdAt - a.createdAt),
       note: this.noteView(rt),
+      shares: this.shares(rt.g.id),
     };
   }
 
@@ -1833,6 +1704,107 @@ export class Engine {
     });
   }
 
+  // ------------------------------------------------------------ share links
+
+  /** The share links of a group made by this device, newest first. */
+  shares(groupId: string): ShareView[] {
+    const now = Date.now();
+    return this.shareList
+      .filter((s) => s.groupId === groupId && s.expiresAt > now)
+      .map(({ relay, secret, del, ...view }) => ({ ...view }))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  private saveShares() {
+    this.host.kv.set('shares', this.shareList).catch(() => {});
+  }
+
+  /** Can this item be shared by a link? Its content must be complete on the relay. */
+  canShare(groupId: string, itemId: string): boolean {
+    const e = this.runtimes.get(groupId)?.items.get(itemId);
+    if (!e?.opened || !e.relay.complete || e.relay.local) return false;
+    return ['text', 'image', 'file'].includes(e.opened.header.kind);
+  }
+
+  /**
+   * A new link to an item, for someone outside the group, valid `ttl` seconds: even if the
+   * item leaves the group before, its content stays for the link. `publicUrl`: the address
+   * the link uses (the web app: the one it is served from).
+   */
+  async createShare(groupId: string, itemId: string, ttl = SHARE_DEFAULT_TTL, publicUrl?: string): Promise<ShareView> {
+    const rt = this.rt(groupId);
+    const entry = rt.items.get(itemId);
+    if (!entry) throw new ItemGoneError();
+    if (!this.canShare(groupId, itemId)) throw new Error('item unavailable');
+    const { header, key, meta } = entry.opened!;
+    const s = newShare(key);
+    const res = await rt.conn.request('share.create', { share: s.id, item: itemId, header: meta.header, box: s.box, del: b64(s.del), ttl });
+    const share: LocalShare = {
+      id: s.id,
+      groupId,
+      itemId,
+      url: shareUrl(publicUrl ?? rt.g.relay, s.secret),
+      kind: header.kind,
+      name: header.name,
+      text: header.kind === 'text' ? header.text?.slice(0, SHARE_TEXT_MAX) : undefined,
+      mime: header.mime,
+      size: header.size,
+      createdAt: res.createdAt,
+      expiresAt: res.expiresAt,
+      ttl,
+      relay: rt.g.relay,
+      secret: s.secret,
+      del: s.del,
+    };
+    this.shareList.push(share);
+    this.saveShares();
+    this.changed();
+    const { relay, secret, del, ...view } = share;
+    return view;
+  }
+
+  /** A request about a link of ours, on its group's connection (or a short one of its own). */
+  private async shareRequest(s: LocalShare, op: string, payload: Record<string, unknown>) {
+    const rt = this.runtimes.get(s.groupId);
+    if (rt && rt.g.relay === s.relay) return rt.conn.request(op, payload);
+    const conn = new RelayConnection(s.relay, async () => {}, () => {});
+    try {
+      await conn.start();
+      return await conn.request(op, payload);
+    } finally {
+      conn.stop();
+    }
+  }
+
+  /** A link of ours lives `ttl` seconds more, from now. */
+  async setShareTtl(id: string, ttl: number) {
+    const s = this.shareList.find((x) => x.id === id);
+    if (!s) throw new ShareGoneError();
+    try {
+      const res = await this.shareRequest(s, 'share.expire', { share: s.id, del: b64(s.del), ttl });
+      s.expiresAt = res.expiresAt;
+      s.ttl = ttl;
+    } catch (err: any) {
+      if (err.message !== 'unknown share') throw err;
+      // gone from the relay (restarted without its data): gone here too
+      this.shareList = this.shareList.filter((x) => x !== s);
+      throw new ShareGoneError();
+    } finally {
+      this.saveShares();
+      this.changed();
+    }
+  }
+
+  /** Deletes a link of ours: it stops working at once. */
+  async deleteShare(id: string) {
+    const s = this.shareList.find((x) => x.id === id);
+    if (!s) return;
+    await this.shareRequest(s, 'share.delete', { share: s.id, del: b64(s.del) });
+    this.shareList = this.shareList.filter((x) => x !== s);
+    this.saveShares();
+    this.changed();
+  }
+
   /** Erases every group and the identity of this device (local only). */
   async reset() {
     for (const rt of [...this.runtimes.values()]) {
@@ -1840,6 +1812,8 @@ export class Engine {
     }
     await this.host.kv.del('device');
     await this.host.kv.del('groups');
+    await this.host.kv.del('shares');
+    this.shareList = [];
   }
 }
 

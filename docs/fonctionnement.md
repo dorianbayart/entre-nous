@@ -222,6 +222,23 @@ sequenceDiagram
 - **Note en direct** : un champ texte synchronisé à chaque frappe, chiffré comme le reste.
   « Envoyer » en fait un élément de l'historique, la note restant en place.
 
+## Liens de partage
+
+Un lien de partage ouvre un élément de l'historique à une personne hors du groupe, dans un
+navigateur, sans compte (`https://<relais>/s/#<secret>`).
+
+1. L'appareil qui crée le lien tire un secret ; il envoie au relais l'identifiant qui en découle,
+   l'en-tête chiffré de l'élément et la clé de l'élément scellée avec le secret (`share.create`).
+2. La page `/s/` lit le secret après le `#`, demande le lien (`share.open`), ouvre la clé, puis lit
+   les blocs à la demande (`share.chunk`) : une vidéo se lit pendant son téléchargement, comme dans
+   l'appli.
+3. Le relais garde les blocs tant que l'élément ou l'un de ses liens existe. Un élément supprimé
+   du groupe, ou expiré, reste lisible par ses liens jusqu'à leur fin ; ses liens le suivent quand
+   l'historique change de salle (retrait d'un appareil).
+
+Le lien n'existe que sur l'appareil qui l'a créé, avec le second secret qui permet de changer sa
+durée (`share.expire`) ou de le supprimer (`share.delete`).
+
 ## Protocole du relais
 
 WebSocket sur `/ws`. Requêtes JSON `{ rid, op, … }`, réponses `{ rid, ok, … }`, évènements
@@ -239,6 +256,8 @@ messages et une seconde, réservée aux blocs, pour qu'un gros envoi ne retarde 
 | `signal` | mise en relation WebRTC (transmis, jamais stocké) |
 | `items.move`, `room.purge`, `room.delete` | retrait d'un appareil, dissolution |
 | `pair.join`, `pair.send`, `pair.leave` | canal d'association temporaire |
+| `share.create`, `share.expire`, `share.delete` | lien de partage : création, durée, suppression (par son créateur) |
+| `share.open`, `share.chunk` | ouverture d'un lien et lecture de ses blocs, sans salle |
 
 Évènements : `item`, `progress`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.

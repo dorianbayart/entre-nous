@@ -230,6 +230,38 @@ export const fr = {
   'err.badLink': 'lien invalide',
   'err.inviteExpired': 'invitation expirée',
   'err.useSave': 'utilise « Enregistrer »',
+
+  // share links (for someone outside the group)
+  share: 'Partager',
+  'share.title': 'Lien de partage',
+  'share.hint': 'Envoie ce lien ou fais scanner le QR code. Il s’ouvre dans un navigateur, sans compte ni installation.',
+  'share.anyone': 'Toute personne qui a ce lien peut ouvrir l’élément.',
+  'share.qrAlt': 'QR code du lien de partage',
+  'share.creating': 'Création du lien…',
+  'share.valid': 'Valable',
+  'share.left': 'Expire dans {left}',
+  'share.copyLink': 'Copier le lien',
+  'share.show': 'QR code',
+  'share.delete': 'Supprimer le lien',
+  'share.deleteConfirm': 'Confirmer : supprimer le lien',
+  'share.label': 'Lien de partage',
+  'share.ttl.600': '10 min',
+  'share.ttl.3600': '1 h',
+  'share.ttl.86400': '24 h',
+  'share.ttl.604800': '7 j',
+  'toast.linkCopied': 'Lien copié',
+  'toast.shareDeleted': 'Lien supprimé',
+  'toast.shareGone': 'Ce lien n’existe plus',
+
+  // the page of a share link, for someone outside the group
+  'visit.file': 'Quelqu’un partage un fichier avec toi.',
+  'visit.text': 'Quelqu’un partage un texte avec toi.',
+  'visit.gone': 'Ce lien n’est plus valable : il a expiré ou il a été supprimé.',
+  'visit.bad': 'Ce lien est incomplet. Vérifie qu’il a été copié en entier.',
+  'visit.error': 'Impossible d’ouvrir ce lien : {msg}',
+  'visit.download': 'Télécharger',
+  'visit.e2e': 'Chiffré de bout en bout : le serveur ne peut pas lire ce contenu.',
+  'visit.cta': 'Partage toi aussi avec Entre Nous',
 };
 
 export type Strings = typeof fr;

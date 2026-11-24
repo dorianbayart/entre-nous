@@ -100,6 +100,25 @@ flowchart LR
   messages (local addresses included) are encrypted with the group key and bound to the sender
   and the recipient.
 
+## Share links
+
+A share link gives someone outside the group access to a single item, in a browser.
+
+- The link is `https://<relay>/s/#<secret>`: a random 256-bit secret, after the `#`. A browser
+  never sends that part to the server.
+- The relay only knows the link's identifier, `sha256(HKDF(secret, "share/id"))`, and the item's
+  key sealed (XChaCha20-Poly1305) with `HKDF(secret, "share/key")`. It keeps the item's encrypted
+  header and chunks, without being able to read them.
+- The link's page decrypts the header and the chunks in the browser, with the same checks as in
+  the group (chunks can be neither reordered nor truncated). It gets neither the group secret, nor
+  the other items, nor the devices' names.
+- Only the device that created the link can change its lifetime or delete it: it keeps a second
+  secret for that, of which the relay only knows the SHA-256 hash.
+- The relay keeps an item's chunks as long as the item or one of its links exists, at most
+  `MAX_TTL` (7 days) after the link was last changed.
+- Anyone who has the link can open the item. The relay also sees when a link is opened, and from
+  which IP address.
+
 ## Storage on the devices
 
 | Platform | Where the keys live |
@@ -133,6 +152,8 @@ flowchart LR
 - **Web app**: its code is served by the relay. A compromised relay could serve malicious code to
   the web app, which would then see what you do in it (a limitation of any web app). The Mac,
   Android, Linux and Windows apps ship their own interface: their code never comes from the server.
+- **Share link page**: served by the relay, like the web app. A compromised relay could change it
+  to read the shared item.
 - **Availability**: the relay can refuse, delay or delete items. It can't forge or read them.
 - **Metadata**: see the table above (IP addresses, times, approximate sizes, presence).
 - **Compromised device**: a device in the group can read everything the group shares for as long as

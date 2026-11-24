@@ -127,9 +127,12 @@ export function openItem(g: LocalGroup, device: Device, item: RelayItem): Opened
   const prekey = g.prekeys.find((p) => prekeyTag(p.pk) === e.tag);
   if (!prekey) throw new Error('prekey no longer available');
   const key = unwrapKey(prekey, { kem: unb64(e.kem), box: unb64(e.box) }, envAad(item.id, device.id));
-  const header: Header = JSON.parse(fromUtf8(unpad(open(kdf(key, 'header'), unb64(meta.header), utf8(item.id)))));
-  return { meta, header, key };
+  return { meta, header: openHeader(key, item.id, meta.header), key };
 }
+
+/** The encrypted header of an item (`Meta.header`), with its key. */
+export const openHeader = (key: Uint8Array, id: string, header: string): Header =>
+  JSON.parse(fromUtf8(unpad(open(kdf(key, 'header'), unb64(header), utf8(id)))));
 
 export const sealContentChunk = (key: Uint8Array, id: string, idx: number, chunks: number, data: Uint8Array) =>
   sealChunk(key, id, idx, idx === chunks - 1, data);

@@ -19,6 +19,7 @@ no trace.
 - **Direct on your Wi-Fi**: on the same network, what you share goes straight from one device to
   the other, without going through the internet.
 - **Text, photos, videos, files** of any size, plus a live shared note.
+- **Share a file with anyone**, with a simple link (or a QR code).
 - **Previews**: preview a photo, a PDF or a Markdown document without downloading it, and watch a video
   (even in Picture-in-Picture) or listen to an audio file while it downloads.
 

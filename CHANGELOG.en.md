@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.43 — 2026-11-24
+- Share links for people outside the group.
+
 ## 0.1.42 — 2026-11-24
 - Fix: thumbnails of files shared from Android are now generated correctly.
 

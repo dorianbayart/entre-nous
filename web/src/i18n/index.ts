@@ -71,7 +71,7 @@ export function storageSpace(used: number, limit: number) {
 export function duration(ms: number) {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `${s} s`;
-  if (s < 3600) return `${Math.round(s / 60)} min`;
+  if (Math.round(s / 60) < 60) return `${Math.round(s / 60)} min`; // 59 min 40 s: 1 h, not 60 min
   if (s < 2 * 86400) return `${Math.round(s / 3600)} h`;
   return `${Math.round(s / 86400)} ${current === 'fr' ? 'j' : 'd'}`;
 }

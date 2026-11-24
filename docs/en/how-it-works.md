@@ -221,6 +221,22 @@ sequenceDiagram
 - **Live note**: a text field synced as you type, encrypted like everything else. "Send" turns
   it into a history item, leaving the note in place.
 
+## Share links
+
+A share link opens an item of the history to someone outside the group, in a browser, with no
+account (`https://<relay>/s/#<secret>`).
+
+1. The device that creates the link draws a secret; it sends the relay the identifier derived from
+   it, the item's encrypted header and the item's key sealed with the secret (`share.create`).
+2. The `/s/` page reads the secret after the `#`, asks for the link (`share.open`), opens the key,
+   then reads the chunks on demand (`share.chunk`): a video plays while it downloads, as in the app.
+3. The relay keeps the chunks as long as the item or one of its links exists. An item deleted from
+   the group, or expired, stays readable through its links until they end; its links follow it when
+   the history moves to another room (a device removed).
+
+The link only exists on the device that created it, with the second secret that changes its
+lifetime (`share.expire`) or deletes it (`share.delete`).
+
 ## Relay protocol
 
 WebSocket on `/ws`. JSON requests `{ rid, op, … }`, responses `{ rid, ok, … }`, events
@@ -238,6 +254,8 @@ second one, reserved for chunks, so that a large upload never holds up anything 
 | `signal` | WebRTC connection setup (forwarded, never stored) |
 | `items.move`, `room.purge`, `room.delete` | removing a device, dissolving a group |
 | `pair.join`, `pair.send`, `pair.leave` | temporary pairing channel |
+| `share.create`, `share.expire`, `share.delete` | share link: creation, lifetime, deletion (by its creator) |
+| `share.open`, `share.chunk` | opening a link and reading its chunks, without a room |
 
 Events: `item`, `progress`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.
