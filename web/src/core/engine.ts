@@ -477,8 +477,8 @@ export class Engine {
 
   /**
    * The recipients of an item (the devices it was sealed for, but its sender), still in the
-   * group, and their receipts: the same on every device. A received item whose only recipient
-   * is this device shows none (they would only tell what this device did).
+   * group, and their receipts: the same on every device, this one included even when it is
+   * the only recipient.
    */
   private receipts(rt: Runtime, e: Entry): Receipts | undefined {
     if (!e.opened || e.view.error || e.view.kind === 'note') return;
@@ -497,7 +497,7 @@ export class Engine {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    if (!devices.some((d) => d.id !== me)) return;
+    if (!devices.length) return;
     return {
       total: devices.length,
       delivered: devices.filter((d) => d.delivered).length,

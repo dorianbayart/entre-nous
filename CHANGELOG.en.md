@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.48 — 2026-11-24
+- Fix: read receipts also show on the receiving device in a group of two.
+
 ## 0.1.47 — 2026-11-24
 - Search and filters in your history.
 

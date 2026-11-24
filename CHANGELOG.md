@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.48 — 2026-11-24
+- Fix: accusés de réception visibles aussi sur l'appareil qui reçoit, dans un groupe de deux appareils.
+
 ## 0.1.47 — 2026-11-24
 - Recherche et filtres dans l'historique.
 

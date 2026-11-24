@@ -27,6 +27,32 @@ const group = (e: Engine, id: string) => e.groups.find((g) => g.id === id);
 const item = (e: Engine, gid: string, id: string) => group(e, gid)?.items.find((i) => i.id === id);
 const keys = (e: Engine, gid: string) => (e as any).runtimes.get(gid)?.bundles.size ?? 0;
 
+test('receipts with two devices: the receiving one shows its own ticks too', { timeout: 30_000 }, async () => {
+  const mac = await device('Mac', 'mac');
+  const phone = await device('Pixel', 'android');
+  const gid = await mac.e.createGroup('À deux');
+  mac.e.start();
+  await until('mac online', () => group(mac.e, gid)?.status === 'online');
+  const inv = mac.e.invite(gid, () => {});
+  await new Promise((r) => setTimeout(r, 200));
+  await phone.e.join(inv.url);
+  phone.e.start();
+  await until('two members', () => group(mac.e, gid)?.members.length === 2);
+  await until('mac knows every key', () => keys(mac.e, gid) === 2);
+
+  const id = await mac.e.sendText(gid, 'rendez-vous à 18 h');
+  await until('delivered, seen by the sender', () => item(mac.e, gid, id)?.receipts?.delivered === 1);
+  const got = await until('delivered, seen by the phone', () => item(phone.e, gid, id)?.receipts?.delivered === 1 && item(phone.e, gid, id));
+  assert.equal(got.receipts!.total, 1);
+  assert.deepEqual(got.receipts!.devices.map((d) => [d.name, !!d.me]), [['Pixel', true]]);
+  phone.e.markRead(gid, id);
+  assert.equal(item(phone.e, gid, id)!.receipts!.read, 1);
+  await until('read, seen by the sender', () => item(mac.e, gid, id)?.receipts?.read === 1);
+
+  mac.e.stop();
+  phone.e.stop();
+});
+
 test('receipts: delivered, read, offline devices, relay knows nothing', { timeout: 60_000 }, async () => {
   const mac = await device('Mac', 'mac');
   const phone = await device('Pixel', 'android');
