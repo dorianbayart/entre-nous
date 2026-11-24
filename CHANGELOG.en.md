@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.47 — 2026-11-24
+- Search and filters in your history.
+
 ## 0.1.46 — 2026-11-24
 - Fix: "Offline" shows when the network is down, and a note is no longer sent twice.
 

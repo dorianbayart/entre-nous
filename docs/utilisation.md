@@ -171,6 +171,17 @@ dossier. On peut le parcourir pendant qu'il est encore en cours d'envoi.
   recréent le dossier, tel quel ; Chrome et Edge sur ordinateur aussi. Ailleurs (Firefox, Safari,
   navigateurs des téléphones), il arrive en ZIP. Un seul fichier s'enregistre comme d'habitude.
 
+### Rechercher
+
+La loupe, en haut, ouvre la recherche (⌘F ou Ctrl+F sur ordinateur). Tape quelques lettres :
+l'historique n'affiche plus que les éléments qui les contiennent, dans leur texte, le nom du
+fichier, le début d'un fichier texte ou le nom de l'appareil. Les accents et les majuscules ne
+comptent pas. Les puces sous le champ n'affichent qu'un type : textes, liens, images, vidéos,
+audio, documents ou dossiers. Un dossier se trouve par son nom, pas par les fichiers qu'il contient.
+
+Sur ordinateur, les flèches choisissent un résultat et Entrée le copie. Échap efface, puis ferme la
+recherche. Tout se passe sur l'appareil : le serveur ne voit ni ce que tu cherches, ni le contenu.
+
 ## 5. Partager avec quelqu'un hors du groupe
 
 Pour envoyer un élément de l'historique à quelqu'un qui n'a pas Entre Nous, touche son icône de

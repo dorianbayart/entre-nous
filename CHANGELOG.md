@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.47 — 2026-11-24
+- Recherche et filtres dans l'historique.
+
 ## 0.1.46 — 2026-11-24
 - Fix: « Hors ligne » quand le réseau est coupé, et une note n'est plus envoyée en double.
 

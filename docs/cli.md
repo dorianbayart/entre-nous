@@ -89,7 +89,7 @@ exemples.
 |---|---|
 | `send [FICHIER…]` | envoie des fichiers ou des dossiers, un texte (`-m TEXTE`), le presse-papier de l'ordinateur (`-c`), ou l'entrée standard |
 | `get [ÉLÉMENT]` | affiche un texte, ou enregistre un fichier ou un dossier dans le dossier courant (`-o` pour ailleurs) |
-| `list` | l'historique, du plus récent au plus ancien (`-n N` pour les N derniers) |
+| `list` | l'historique, du plus récent au plus ancien (`-n N` pour les N derniers, `-s MOTS` pour chercher, `-t TYPE` pour un seul type : `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
 | `wait` | attend le prochain élément envoyé par un autre appareil, puis fait comme `get` ; `--note` attend une modification de la note |
 | `watch` | affiche les éléments à leur arrivée, jusqu'à Ctrl-C ; `-o DOSSIER` enregistre aussi les fichiers |
 | `note [TEXTE \| -]` | affiche la note partagée, ou la remplace (`-` lit l'entrée standard) ; `--clear` l'efface |
@@ -225,6 +225,10 @@ if path=$(entrenous wait --timeout 10m -o ~/Downloads/); then open "$path"; fi
 
 # le dernier texte reçu, en JSON
 entrenous list --json | jq -r 'map(select(.kind == "text"))[0].text'
+
+# retrouver le code Wi-Fi, puis le dernier lien envoyé
+entrenous list -s wifi
+entrenous get $(entrenous list -t link -n 1 --json | jq '.[0].position')
 
 # un dossier qui se remplit des fichiers envoyés au groupe
 entrenous watch -o ~/Downloads/entrenous/

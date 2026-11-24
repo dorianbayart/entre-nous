@@ -23,6 +23,7 @@ sans trace.
   que ce que tu veux.
 - **Accusés de réception** : vois d'un coup d'œil si ce que tu as envoyé est arrivé sur tes autres appareils, et s'il a été lu.
 - **Partage un fichier à n'importe qui**, avec un simple lien (ou un QR code).
+- **Retrouve un texte ou un fichier en quelques lettres.**
 - **Aperçus** : prévisualise une photo, un PDF ou un document Markdown sans le télécharger, et regarde une
   vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.
 

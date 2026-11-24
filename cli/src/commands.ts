@@ -8,6 +8,7 @@ import { pipeline } from 'node:stream/promises';
 import type { ItemView, NoteView } from '../../web/src/core/engine.ts';
 import { duration, storageSpace, t, tn } from '../../web/src/i18n/index.ts';
 import { decodeStart, excerptOf, isText } from '../../web/src/core/media.ts';
+import { SEARCH_TYPES, matches, type SearchType } from '../../web/src/core/search.ts';
 import { readClipboard, writeClipboard } from './clipboard.ts';
 import { type Context, DEFAULT_RELAY, type GroupView, relayUrl } from './context.ts';
 import { CliError, EXIT, usageError } from './errors.ts';
@@ -318,8 +319,12 @@ const list: Command = {
   args: '',
   summary: 'cmd.list',
   long: 'cmd.list.long',
-  options: { limit: { type: 'string', short: 'n', arg: 'N', desc: 'opt.list.limit' } },
-  examples: ['entrenous list', 'entrenous list -n 3', "entrenous list --json | jq -r '.[0].text'"],
+  options: {
+    limit: { type: 'string', short: 'n', arg: 'N', desc: 'opt.list.limit' },
+    search: { type: 'string', short: 's', arg: 'TEXT', desc: 'opt.list.search' },
+    type: { type: 'string', short: 't', arg: 'TYPE', desc: 'opt.list.type' },
+  },
+  examples: ['entrenous list', 'entrenous list -n 3', 'entrenous list --search wifi', 'entrenous list --type image -n 1', "entrenous list --json | jq -r '.[0].text'"],
   async run(ctx, args, o) {
     needArgs(args, 0, 0, 'entrenous list');
     let limit = Infinity;
@@ -327,14 +332,21 @@ const list: Command = {
       limit = Number(o.limit);
       if (!Number.isInteger(limit) || limit < 0) throw usageError(tr('err.badNumber', { value: o.limit }));
     }
+    const type = (o.type ?? '') as SearchType | '';
+    if (type && !SEARCH_TYPES.includes(type)) throw usageError(tr('err.badType', { value: type, types: SEARCH_TYPES.join(', ') }));
+    const query = (o.search ?? '') as string;
     const group = await ctx.group();
     await ctx.connect(group.id);
-    const items = (await ctx.view(group.id)).items.slice(0, limit);
-    if (ctx.g.json) return void (await json(items.map((it, i) => itemJSON(it, i + 1))));
-    if (!items.length) return say(tr('msg.noItem', { group: group.name }));
+    // positions stay those of the whole history: `get 3` is still the third item
+    const items = (await ctx.view(group.id)).items
+      .map((it, i) => ({ it, position: i + 1 }))
+      .filter(({ it }) => matches(it, query, type))
+      .slice(0, limit);
+    if (ctx.g.json) return void (await json(items.map(({ it, position }) => itemJSON(it, position))));
+    if (!items.length) return say(tr(query || type ? 'msg.noMatch' : 'msg.noItem', { group: group.name }));
     const width = Math.max(20, (process.stdout.columns || 100) - 40);
-    const rows = items.map((it, i) => [
-      out.bold(String(i + 1)),
+    const rows = items.map(({ it, position }) => [
+      out.bold(String(position)),
       it.mine ? out.dim(t('me')) : it.fromName,
       out.dim(ago(it.createdAt)) + ticks(it, out.green, out.dim),
       summary(it, width) + (it.pending ? out.dim(' · ' + t('left.sending')) : ''),

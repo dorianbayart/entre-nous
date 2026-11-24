@@ -41,6 +41,8 @@ const en = {
   'cmd.list': 'Show the history',
   'cmd.list.long': 'The items of the group, the latest first, with their position (for get and rm), their sender and their expiry; ✓ or ✓✓: delivered to one device or to all (green once read).',
   'opt.list.limit': 'show only the N latest',
+  'opt.list.search': 'only the items holding these words (text, file name, sender; accents and case ignored)',
+  'opt.list.type': 'only this type: text, link, image, video, audio, doc or folder',
 
   'cmd.wait': 'Wait for the next item sent by another device, then get it',
   'cmd.wait.long':
@@ -88,6 +90,7 @@ const en = {
   'msg.sentText': 'text',
   'msg.saved': 'Saved: {path}',
   'msg.noItem': 'No item in “{group}”.',
+  'msg.noMatch': 'Nothing found in “{group}”.',
   'msg.noNote': 'No note in “{group}”.',
   'msg.noteSet': 'Note updated on every device of “{group}”.',
   'msg.noteCleared': 'Note cleared on every device of “{group}”.',
@@ -148,6 +151,7 @@ const en = {
   'err.needsYes': 'This needs a confirmation: add --yes.',
   'err.badDuration': 'Invalid duration “{value}” (examples: 45s, 10m, 2h).',
   'err.badNumber': 'Invalid number “{value}”.',
+  'err.badType': 'Unknown type “{value}”: {types}.',
   'err.inviteExpired': 'The invitation expired: nobody joined.',
   'err.noteTooLong': 'The note is too long ({n} characters, at most {max}).',
 } as const;
@@ -193,6 +197,8 @@ const fr: Strings = {
   'cmd.list': 'Affiche l’historique',
   'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien, avec leur position (pour get et rm), leur expéditeur et leur expiration ; ✓ ou ✓✓ : reçu par un appareil ou par tous (en vert une fois lu).',
   'opt.list.limit': 'n’affiche que les N plus récents',
+  'opt.list.search': 'seulement les éléments qui contiennent ces mots (texte, nom de fichier, appareil ; sans tenir compte des accents ni des majuscules)',
+  'opt.list.type': 'seulement ce type : text, link, image, video, audio, doc ou folder',
 
   'cmd.wait': 'Attend le prochain élément envoyé par un autre appareil, puis le récupère',
   'cmd.wait.long':
@@ -239,6 +245,7 @@ const fr: Strings = {
   'msg.sentText': 'texte',
   'msg.saved': 'Enregistré : {path}',
   'msg.noItem': 'Aucun élément dans « {group} ».',
+  'msg.noMatch': 'Aucun résultat dans « {group} ».',
   'msg.noNote': 'Aucune note dans « {group} ».',
   'msg.noteSet': 'Note mise à jour sur tous les appareils de « {group} ».',
   'msg.noteCleared': 'Note effacée sur tous les appareils de « {group} ».',
@@ -298,6 +305,7 @@ const fr: Strings = {
   'err.needsYes': 'Il faut une confirmation : ajoute --yes.',
   'err.badDuration': 'Durée invalide « {value} » (exemples : 45s, 10m, 2h).',
   'err.badNumber': 'Nombre invalide « {value} ».',
+  'err.badType': 'Type inconnu « {value} » : {types}.',
   'err.inviteExpired': 'L’invitation a expiré : personne ne l’a utilisée.',
   'err.noteTooLong': 'La note est trop longue ({n} caractères, {max} au plus).',
 };

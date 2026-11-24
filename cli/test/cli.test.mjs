@@ -133,6 +133,14 @@ test('two terminals: pairing, texts, files, stdin, wait, watch, note, rm', { tim
   assert.equal(items[0].name, '../../.evil.sh');
   assert.equal(items[1].name, 'big.bin');
   assert.equal(items[1].size, big.length);
+  // searched: positions stay those of the whole history
+  const found = JSON.parse((await ok('bob', ['list', '--search', 'BIG', '--json'])).stdout);
+  assert.deepEqual(found.map((i) => [i.name, i.position]), [['big.bin', 2]]);
+  assert.match((await ok('bob', ['list', '-s', 'evil'])).stdout, /^1 /m);
+  const docs = JSON.parse((await ok('bob', ['list', '--type', 'doc', '-n', '1', '--json'])).stdout);
+  assert.deepEqual(docs.map((i) => i.position), [1]);
+  assert.match((await ok('bob', ['list', '--search', 'introuvable'])).stderr, /Nothing found/);
+  assert.equal((await run('bob', ['list', '--type', 'photo'])).code, 2, 'unknown type: usage error');
 
   // ---- wait: the next item from another device; a timeout is exit code 124
   const waiting = run('bob', ['wait', '--timeout', '30s', '--json']);

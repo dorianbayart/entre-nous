@@ -128,4 +128,7 @@ export interface PlatformApi {
   };
   /** Mac: shows the window (popover) again: back from the browser's picture-in-picture. */
   show?(): void;
+  /** Mac: the keystrokes go to the page (its window key, the web view first responder), for a
+   *  field it focuses. */
+  focus?(): void;
 }

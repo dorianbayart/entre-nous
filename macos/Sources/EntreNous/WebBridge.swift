@@ -23,6 +23,8 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
     var onModal: ((Bool) -> Void)?
     /// Shows the popover (back from a video in picture-in-picture).
     var show: (() -> Void)?
+    /// Keystrokes to the web view (a field of the page is focused: the search).
+    var focus: (() -> Void)?
 
     static var relayURL: String {
         UserDefaults.standard.string(forKey: "relay") ?? "https://entrenous.0xdba.dev"
@@ -161,6 +163,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         // back from picture-in-picture: the popover shows again, with the video
         case "show":
             if !isVisible() { show?() }
+            return true
+
+        // a field of the page takes the focus: the keystrokes must reach the web view
+        case "focus":
+            focus?()
             return true
 
         // the language of the UI, for the menu of the icon

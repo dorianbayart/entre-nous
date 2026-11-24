@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
         bridge.isVisible = { [weak self] in self?.popover.isShown ?? false }
         bridge.onModal = { [weak self] active in self?.popover.behavior = active ? .applicationDefined : .transient }
         bridge.show = { [weak self] in self?.toggle() }
+        bridge.focus = { [weak self] in self?.focusWebView() }
         UNUserNotificationCenter.current().delegate = self
         bridge.load()
     }
@@ -88,8 +89,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
         } else if let button = statusItem.button {
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            focusWebView()
         }
+    }
+
+    /// Keystrokes go to the web view: the popover's window key, the web view its first responder.
+    /// Without it, ⌘F still reaches the page (key equivalents go through every view), but what
+    /// is typed next does not reach the field it focused.
+    private func focusWebView() {
+        guard popover.isShown, let window = popover.contentViewController?.view.window else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKey()
+        window.makeFirstResponder(bridge.webView)
     }
 
     private func showMenu() {

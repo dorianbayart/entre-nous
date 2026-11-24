@@ -107,6 +107,14 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   chiffré, sauf l'expéditeur, encore dans le groupe. Un élément reçu dont on est le seul
   destinataire (groupe de deux) n'en a pas : elles ne diraient que ce qu'on a fait. L'accusé est chiffré avec la clé de l'élément et gardé par le
   relais avec l'élément (champ `a:{appareil}`) : l'expéditeur hors ligne le retrouve plus tard.
+- **Recherche** : sur l'appareil seulement (`core/search.ts`, partagé avec le CLI), dans ce que
+  l'en-tête donne déjà : texte, nom de fichier, extrait d'un fichier texte, appareil. Sans accents,
+  majuscules, tirets ni apostrophes ; tous les mots doivent y être. Loupe dans la barre du haut
+  (⌘F / Ctrl+F), qui devient le champ ; puces par type (textes, liens, images, vidéos, audio,
+  documents, dossiers), seulement celles présentes. Mots surlignés ; un long texte s'affiche à
+  partir du mot trouvé. Ordinateur : ↑↓ choisit, Entrée copie, Échap efface puis ferme. Pas
+  cherché : les fichiers d'un dossier (index dans l'archive), le texte des images. Rien n'est
+  gardé des recherches.
 
 ## 6. Note en direct
 

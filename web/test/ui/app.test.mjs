@@ -850,3 +850,130 @@ test('share links: made from the history, opened outside the group, kept for the
   for (const d of [a, b, visitor]) await d.context.close();
   assert.deepEqual(problems, []);
 });
+
+test('search: words without accents, highlighted, a long text from its match, type chips, keyboard, phone', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob', { phone: true });
+  await a.context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(APP).origin });
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  const loupe = a.page.locator('.bar-actions').getByRole('button', { name: 'Rechercher' });
+  assert.ok(await loupe.isHidden(), 'no magnifier while the history is empty');
+
+  const texts = ['Code Wi-Fi invités : Merlin-étoile-2026', 'Le train : https://example.org/billet', 'ligne\n'.repeat(10) + 'le digicode est 4B71'];
+  for (const text of texts) {
+    await a.page.locator('.note textarea').fill(text);
+    await button(a.page.locator('.note-bar'), 'Envoyer').click();
+    await a.page.locator('.history .item', { hasText: text.trim().split('\n').pop() }).waitFor();
+  }
+  await a.page.locator('input[type=file][multiple]').setInputFiles([
+    { name: 'photo.jpg', mimeType: 'image/jpeg', buffer: await readFile(FIXTURES + 'photo.jpg') },
+    { name: 'clip.mp4', mimeType: 'video/mp4', buffer: await readFile(FIXTURES + 'clip.mp4') },
+    { name: 'Facture-novembre.pdf', mimeType: 'application/pdf', buffer: await readFile(FIXTURES + 'doc.pdf') },
+    { name: 'notes.md', mimeType: 'text/markdown', buffer: Buffer.from('# Réunion du 18 novembre\n\nBudget.') },
+  ]);
+  const items = a.page.locator('.history .item');
+  await until('7 items', async () => (await items.count()) === 7, 30_000);
+  await until('uploads done', async () => (await a.page.locator('.transfer').count()) === 0, 30_000);
+
+  // ---- open: the bar becomes the field, what is above the history goes away
+  await loupe.click();
+  const field = a.page.locator('.search-field input');
+  await until('the field has the focus', () => field.evaluate((el) => el === document.activeElement));
+  assert.ok(await a.page.locator('.status').isHidden(), 'no status line while searching');
+  assert.ok(await a.page.locator('.note textarea').isHidden(), 'no note while searching');
+
+  // ---- words: accents, case, hyphens do not count; every word is needed; highlighted
+  await field.fill('wifi');
+  await until('one result', async () => (await items.count()) === 1);
+  assert.equal(await items.locator('.content .hit').textContent(), 'Wi-Fi');
+  assert.equal(await a.page.locator('.search-count').textContent(), '1 résultat');
+  await field.fill('ETOILE merlin');
+  await until('still one', async () => (await items.count()) === 1 && (await items.locator('.hit').count()) === 2);
+  await field.fill('merlin lyon');
+  await until('none', async () => (await items.count()) === 0);
+  assert.equal(await a.page.locator('.search-empty p').textContent(), 'Aucun résultat pour « merlin lyon ».');
+  // a long text shows from where the word is
+  await field.fill('digicode');
+  await until('the long text', async () => (await items.count()) === 1);
+  assert.match(await items.locator('.content').textContent(), /^…le digicode est 4B71/);
+  // file names, the start of a text file, the sender
+  await field.fill('facture');
+  await until('the PDF', async () => (await items.count()) === 1 && /Facture/.test(await items.textContent()));
+  await field.fill('reunion');
+  await until('the Markdown file', async () => (await items.count()) === 1 && /notes\.md/.test(await items.textContent()));
+
+  // ---- Escape clears, the field stays open; the chips: only the types in the history
+  await field.press('Escape');
+  await until('all back', async () => (await items.count()) === 7);
+  assert.ok(await field.isVisible(), 'Escape first clears the field');
+  const chips = a.page.locator('.search-tools .chip');
+  assert.deepEqual(await chips.allTextContents(), ['Tout', 'Textes', 'Liens', 'Images', 'Vidéos', 'Documents']);
+  const only = async (chip, n) => {
+    await chips.getByText(chip, { exact: true }).click();
+    await until(chip, async () => (await items.count()) === n);
+  };
+  await only('Images', 1);
+  await only('Vidéos', 1);
+  await only('Liens', 1);
+  await only('Documents', 2);
+  await only('Textes', 3);
+  await field.fill('zzz');
+  await until('nothing', async () => (await items.count()) === 0);
+  await button(a.page.locator('.search-empty'), 'Effacer la recherche').click();
+  await until('all again', async () => (await items.count()) === 7);
+  assert.equal(await field.inputValue(), '');
+
+  // ---- keyboard: the first result chosen, the arrows move, Enter copies
+  await field.fill('e');
+  await until('a selection', async () => (await a.page.locator('.history .item.selected').count()) === 1);
+  const first = await items.first().getAttribute('class');
+  assert.match(first, /selected/);
+  await field.fill('code');
+  await until('the code', async () => (await items.count()) === 2); // Wi-Fi code and the digicode
+  await field.press('ArrowDown');
+  await until('second chosen', async () => /selected/.test(await items.nth(1).getAttribute('class')));
+  await field.press('ArrowUp');
+  await until('first chosen', async () => /selected/.test(await items.nth(0).getAttribute('class')));
+  const firstText = (await items.nth(0).locator('.content').textContent()).replace(/^…/, '');
+  await field.press('Enter');
+  await a.page.locator('.toast', { hasText: 'Copié' }).waitFor();
+  assert.ok(texts.some((t) => t.endsWith(firstText.trim()) || t === firstText), 'a text is copied');
+  const copied = await a.page.evaluate(() => navigator.clipboard.readText());
+  assert.ok(texts.includes(copied), 'the chosen text is in the clipboard: ' + copied);
+
+  // ---- Escape twice closes; Ctrl+F opens again, focused
+  await field.press('Escape');
+  await field.press('Escape');
+  await until('closed', async () => await field.isHidden());
+  assert.ok(await a.page.locator('.status').isVisible());
+  assert.equal(await items.count(), 7);
+  await a.page.locator('.note textarea').focus(); // the focus elsewhere: Ctrl+F still lands in the field
+  await a.page.keyboard.press('Control+f');
+  await until('open again', async () => (await field.isVisible()) && (await field.evaluate((el) => el === document.activeElement)));
+  await field.fill('train');
+  await items.first().locator('.content').click(); // the focus leaves the field
+  await a.page.keyboard.press('Control+f');
+  await until('back in the field, its text selected', () =>
+    field.evaluate((el) => el === document.activeElement && el.selectionStart === 0 && el.selectionEnd === el.value.length));
+  await a.page.keyboard.type('wifi');
+  assert.equal(await field.inputValue(), 'wifi', 'typing replaces the query');
+  await a.page.locator('.search-bar').getByRole('button', { name: 'Fermer la recherche' }).click();
+  await until('closed by its button', () => field.isHidden());
+
+  // ---- a phone: the same search, no chosen result (no keyboard to act on it)
+  await pair(a, b, (link) => b.page.goto(link));
+  // what was sent before it joined is not for it: something new
+  await a.page.locator('.note textarea').fill('Wi-Fi du salon : Hibou');
+  await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  await a.page.locator('.note textarea').fill('Rien à voir');
+  await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  await b.page.locator('.history .item', { hasText: 'Rien à voir' }).waitFor();
+  await b.page.locator('.bar-actions').getByRole('button', { name: 'Rechercher' }).click();
+  await b.page.locator('.search-field input').fill('wifi');
+  await until('found on the phone', async () => (await b.page.locator('.history .item').count()) === 1);
+  assert.equal(await b.page.locator('.history .item.selected').count(), 0, 'no chosen result on a phone');
+
+  for (const d of [a, b]) await d.context.close();
+  assert.deepEqual(problems, []);
+});

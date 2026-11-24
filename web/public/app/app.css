@@ -9,6 +9,8 @@
   --accent-soft: #e3ece8;
   --danger: #b3412e;
   --on: #3c9a6f;
+  --mark: #f4e2a1; /* words found by the search */
+  --mark-text: #1b1b1a;
   --radius: 14px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
   color-scheme: light dark;
@@ -26,6 +28,8 @@
     --accent-soft: #233630;
     --danger: #e0806e;
     --on: #6fcf9f;
+    --mark: #5b4d1c;
+    --mark-text: #f5ecc9;
     --shadow: none;
   }
 }
@@ -116,6 +120,34 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
 /* ---------------------------------------------------------- main */
 
 .bar-actions { display: flex; gap: 2px; }
+
+/* search in the history: the bar becomes its field, the type chips under it */
+.search-bar { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.search-field {
+  display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; padding: 0 2px 0 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; color: var(--muted);
+}
+.search-field:focus-within { border-color: var(--accent); }
+.search-field > svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.search-field input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text);
+  font: inherit; font-size: 16px; padding: 8px 0; -webkit-appearance: none; appearance: none;
+}
+.search-field input:focus { outline: 0; }
+.search-field input::-webkit-search-cancel-button { display: none; }
+.search-field .icon { padding: 6px; }
+.search-field .icon svg { width: 16px; height: 16px; }
+.search-tools .chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
+.search-tools .chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; padding: 5px 12px; border-radius: 999px; font-size: 13px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--text);
+}
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.search-count { margin: 8px 0 -8px; color: var(--muted); font-size: 12px; }
+.hit { background: var(--mark); color: var(--mark-text); border-radius: 3px; }
+.item.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.search-empty p { margin: 0 0 12px; overflow-wrap: anywhere; }
 .icon.paused { color: var(--accent); background: var(--accent-soft); }
 .icon.paused svg { fill: currentColor; }
 .hint.paused { color: var(--accent); font-weight: 500; }

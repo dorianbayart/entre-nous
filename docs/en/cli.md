@@ -86,7 +86,7 @@ entrenous wait                         # waits for the next item sent by another
 |---|---|
 | `send [FILE…]` | sends files or folders, a text (`-m TEXT`), this computer's clipboard (`-c`), or standard input |
 | `get [ITEM]` | prints a text, or saves a file or a folder in the current folder (`-o` for elsewhere) |
-| `list` | the history, latest first (`-n N` for the N latest) |
+| `list` | the history, latest first (`-n N` for the N latest, `-s WORDS` to search, `-t TYPE` for one type: `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
 | `wait` | waits for the next item sent by another device, then does what `get` does; `--note` waits for the note to change |
 | `watch` | prints items as they arrive, until Ctrl-C; `-o FOLDER` also saves the files |
 | `note [TEXT \| -]` | prints the shared note, or replaces it (`-` reads standard input); `--clear` clears it |
@@ -220,6 +220,10 @@ if path=$(entrenous wait --timeout 10m -o ~/Downloads/); then open "$path"; fi
 
 # the latest text received, through JSON
 entrenous list --json | jq -r 'map(select(.kind == "text"))[0].text'
+
+# find the Wi-Fi code, then the latest link sent
+entrenous list -s wifi
+entrenous get $(entrenous list -t link -n 1 --json | jq '.[0].position')
 
 # a folder that fills up with the files sent to the group
 entrenous watch -o ~/Downloads/entrenous/

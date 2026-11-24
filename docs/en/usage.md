@@ -162,6 +162,17 @@ still being sent.
   the folder as it is; so do Chrome and Edge on a computer. Elsewhere (Firefox, Safari, phone
   browsers), it arrives as a ZIP. A single file is saved as usual.
 
+### Search
+
+The magnifier at the top opens the search (⌘F or Ctrl+F on a computer). Type a few letters: the
+history only shows the items holding them, in their text, the file name, the start of a text file
+or the device name. Accents and case do not matter. The chips under the field show only one type:
+texts, links, images, videos, audio, documents or folders. A folder is found by its name, not by
+the files inside it.
+
+On a computer, the arrow keys choose a result and Enter copies it. Escape clears, then closes the
+search. Everything happens on the device: the server sees neither what you look for nor the content.
+
 ## 5. Share with someone outside the group
 
 To send an item of the history to someone who doesn't have Entre Nous, tap its share icon. A link

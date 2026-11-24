@@ -212,6 +212,9 @@ export function desktopPlatform(): PlatformApi {
           show() {
             call('show').catch(() => {});
           },
+          focus() {
+            call('focus').catch(() => {});
+          },
         }
       : {
           // Linux and Windows: no picture-in-picture in their web views (WebKitGTK, WebView2):

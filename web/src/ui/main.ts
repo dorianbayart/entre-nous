@@ -16,6 +16,7 @@ import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
 import { drawLayers, drawPage, openPdf, pageSize, type PdfDocument } from './pdf.ts';
 import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
+import { SEARCH_TYPES, highlight, isType, matches, snippet, type Part, type SearchType } from '../core/search.ts';
 import type { FolderSource, LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
 import { type ContentReader } from '../core/reader.ts';
 import { type FolderFile, type FolderIndex, baseName, emptyDirs, fileReader, readBlob, readIndex, safePath } from '../core/folder.ts';
@@ -249,6 +250,9 @@ Alpine.data('app', () => ({
   confirming: '' as string,
   /** The item whose receipts are shown (detail by device). */
   receiptsOpen: '',
+  /** Search in the history (on this device only): the query, the type chosen, and on a computer
+   *  the result chosen with the arrow keys (Enter copies it). */
+  search: { open: false, q: '', type: '' as SearchType | '', sel: '' },
   inviteQr: '',
   inviteUrl: '',
   inviteLeft: '',
@@ -694,6 +698,145 @@ Alpine.data('app', () => ({
     return [...this.items, ...shares].sort((a, b) => b.createdAt - a.createdAt);
   },
 
+  /** The history shown: what the search finds, when there is one. */
+  get shown() {
+    if (!this.searchActive) return this.history;
+    const { q, type } = this.search;
+    return this.history.filter((e: any) => matches(e.share ?? e, q, type));
+  },
+
+  // ---------------------------------------------------------------- search
+
+  /** A query or a type: the history is filtered. */
+  get searchActive() {
+    return this.search.open && (!!this.search.q.trim() || !!this.search.type);
+  },
+
+  /** The type chips: only the types found in the history, if there are at least two. */
+  get searchTypes() {
+    void this.lang;
+    const all = this.history.map((e: any) => e.share ?? e);
+    const types = SEARCH_TYPES.filter((type) => all.some((e) => isType(e, type)));
+    if (types.length < 2 && !this.search.type) return [];
+    return [{ value: '', label: this.t('search.all') }, ...types.map((value) => ({ value, label: this.t(('search.type.' + value) as Key) }))];
+  },
+
+  /** The magnifier's tooltip: its shortcut on a computer. */
+  get searchTitle() {
+    if (this.mobile) return this.t('search');
+    return this.t('search.title', { key: /Mac/.test(navigator.platform) ? '⌘F' : 'Ctrl+F' });
+  },
+
+  /** Opens the search, the field focused (its text selected: ⌘F again replaces the query). */
+  openSearch() {
+    this.search.open = true;
+    platform.focus?.();
+    (this as any).$nextTick(() => {
+      const field = (this as any).$refs.search as HTMLInputElement | undefined;
+      field?.focus();
+      field?.select();
+    });
+  },
+
+  closeSearch() {
+    this.search = { open: false, q: '', type: '', sel: '' };
+  },
+
+  clearSearch() {
+    this.search.q = '';
+    this.search.sel = '';
+    ((this as any).$refs.search as HTMLInputElement | undefined)?.focus();
+  },
+
+  /** Nothing found: back to the whole history, the field still open. */
+  clearSearchAll() {
+    this.search.type = '';
+    this.clearSearch();
+  },
+
+  onSearchInput(e: Event) {
+    this.search.q = (e.target as HTMLInputElement).value;
+    this.search.sel = '';
+  },
+
+  setSearchType(type: SearchType | '') {
+    this.search.type = type;
+    this.search.sel = '';
+  },
+
+  searchTypeClass(c: { value: string }) {
+    return 'chip' + (this.search.type === c.value ? ' on' : '');
+  },
+
+  /** On a computer: the result Enter acts on (the first one, until the arrows choose another). */
+  get searchSelected() {
+    if (this.mobile || !this.searchActive) return '';
+    const shown = this.shown;
+    return shown.some((e) => e.id === this.search.sel) ? this.search.sel : (shown[0]?.id ?? '');
+  },
+
+  /** In the search field: Escape clears, then closes; the arrows choose a result, Enter copies it. */
+  onSearchKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.search.q) this.clearSearch();
+      else this.closeSearch();
+      return;
+    }
+    const shown = this.shown;
+    if (!this.searchSelected || !shown.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const i = shown.findIndex((x) => x.id === this.searchSelected);
+      const next = shown[(i + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length];
+      this.search.sel = next.id;
+      (this as any).$nextTick(() => document.querySelector('.history .item.selected')?.scrollIntoView({ block: 'nearest' }));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const entry: any = shown.find((x) => x.id === this.searchSelected);
+      if (entry.share) this.copyShareLink(entry.share);
+      else if (this.canCopy(entry)) this.copy(entry);
+      else if (this.canBrowse(entry)) this.openFolder(entry);
+      else if (this.previewOf(entry)) this.openPreview(entry);
+    }
+  },
+
+  /** A text cut into found and not found pieces (the whole text when nothing is searched). */
+  marked(s: string): Part[] {
+    return this.search.open && this.search.q.trim() ? highlight(s, this.search.q) : [{ text: s, hit: false }];
+  },
+
+  /** The item's text or name: a long text shows from where the query is found. */
+  labelParts(item: ItemView) {
+    const label = this.label(item);
+    return this.marked(item.kind === 'text' && this.search.open ? snippet(label, this.search.q) : label);
+  },
+
+  excerptParts(item: ItemView) {
+    return this.marked(item.excerpt ?? '');
+  },
+
+  fromParts(item: ItemView) {
+    return this.marked(item.mine ? this.t('me') : item.fromName);
+  },
+
+  shareParts(share: ShareView) {
+    return this.marked(this.shareLabel(share));
+  },
+
+  hitClass(p: Part) {
+    return p.hit ? 'hit' : '';
+  },
+
+  get searchCount() {
+    return this.tn('search.results', this.shown.length);
+  },
+
+  get searchNone() {
+    return this.search.q.trim() ? this.t('search.none', { q: this.search.q.trim() }) : this.t('search.noneType');
+  },
+
   get others() {
     return (this.group?.members ?? []).filter((m) => !m.me);
   },
@@ -726,6 +869,7 @@ Alpine.data('app', () => ({
   },
 
   selectGroup(id: string) {
+    if (id !== this.groupId) this.closeSearch();
     this.groupId = id;
     this.prefs.groupId = id;
     this.savePrefs();
@@ -747,8 +891,9 @@ Alpine.data('app', () => ({
   },
 
   itemClass(item: any) {
-    if (item.share) return 'shared-link';
-    return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '');
+    const selected = item.id === this.searchSelected ? ' selected' : '';
+    if (item.share) return 'shared-link' + selected;
+    return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '') + selected;
   },
 
   // ---------------------------------------------------------------- receipts
@@ -1470,6 +1615,16 @@ Alpine.data('app', () => ({
   },
 
   onKey(e: KeyboardEvent) {
+    // ⌘F / Ctrl+F: the search, from the history
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'f' && this.view === 'main' && !this.viewer.open && !this.folderView.open) {
+      e.preventDefault();
+      if (this.history.length) this.openSearch();
+      return;
+    }
+    if (!this.viewer.open && !this.folderView.open && this.view === 'main' && this.search.open && e.key === 'Escape') {
+      this.closeSearch();
+      return;
+    }
     if (!this.viewer.open) {
       if (this.folderView.open && e.key === 'Escape') this.closeFolder();
       return;
@@ -2343,6 +2498,7 @@ Alpine.data('app', () => ({
     else if (this.view === 'scan') this.stopScan();
     else if (this.view === 'share') this.closeShare();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
+    else if (this.search.open) this.closeSearch();
     else platform.background?.();
   },
 

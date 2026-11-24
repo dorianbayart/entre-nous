@@ -61,7 +61,21 @@
   <!-- Main -->
   <section class="main" :class="slide" x-show="view === 'main'">
     <header class="bar">
-      <div class="title">
+      <!-- search in the history: the bar becomes its field -->
+      <div class="search-bar" x-show="search.open" x-cloak>
+        <button class="icon" @click="closeSearch" :aria-label="t('search.close')" :title="t('search.close')">
+          <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="search-field">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" x-ref="search" :value="search.q" @input="onSearchInput($event)" @keydown="onSearchKey($event)"
+                 :placeholder="t('search')" :aria-label="t('search')" enterkeyhint="search" autocomplete="off" spellcheck="false">
+          <button class="icon" x-show="search.q" @click="clearSearch" :aria-label="t('search.clear')" :title="t('search.clear')">
+            <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="title" x-show="!search.open">
         <span class="dot" :class="group && group.status === 'online' ? 'on' : 'off'"></span>
         <template x-if="groups.length > 1">
           <select class="group-select" :value="groupId" @change="selectGroup($event.target.value)">
@@ -74,18 +88,31 @@
           <strong x-text="group ? group.name : ''"></strong>
         </template>
       </div>
-      <div class="bar-actions">
+      <div class="bar-actions" x-show="!search.open">
       <button class="icon" x-show="desktop && prefs.autoShare" @click="togglePause" :class="prefs.paused ? 'paused' : ''"
               :aria-label="t(prefs.paused ? 'pause.resume' : 'pause.pause')"
               :title="t(prefs.paused ? 'pause.resume' : 'pause.pause')">
         <svg viewBox="0 0 24 24" x-show="!prefs.paused"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
         <svg viewBox="0 0 24 24" x-show="prefs.paused"><path d="M7 4.5v15l12-7.5z"/></svg>
       </button>
+      <button class="icon" x-show="history.length" @click="openSearch" :aria-label="t('search')" :title="searchTitle">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
       <button class="icon" @click="openSettings" :aria-label="t('settings')" :title="t('settings')">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       </button>
       </div>
     </header>
+    <!-- searching: the type chips and the count, instead of what is above the history -->
+    <div class="search-tools" x-show="search.open" x-cloak>
+      <div class="chips" x-show="searchTypes.length" role="group" :aria-label="t('search.types')">
+        <template x-for="c in searchTypes" :key="c.value">
+          <button :class="searchTypeClass(c)" @click="setSearchType(c.value)" :aria-pressed="search.type === c.value ? 'true' : 'false'" x-text="c.label"></button>
+        </template>
+      </div>
+      <p class="search-count" x-show="searchActive && shown.length" x-text="searchCount"></p>
+    </div>
+    <div class="above-history" x-show="!search.open">
     <p class="status" x-text="statusText"></p>
     <div class="update" x-show="update">
       <span x-text="t('update.available', { v: update })"></span>
@@ -180,8 +207,9 @@
       <button class="ghost danger small" @click="clearAll"
               x-text="t(isConfirming('clear') ? 'clearAll.confirm' : 'clearAll')"></button>
     </div>
+    </div>
     <ul class="history">
-      <template x-for="item in history" :key="item.id">
+      <template x-for="item in shown" :key="item.id">
         <li class="item" :class="itemClass(item)">
           <!-- a share link made here: only this device sees it -->
           <template x-if="item.share">
@@ -191,7 +219,7 @@
                 <span class="link-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>
               </button>
               <div class="body">
-                <p class="content" :class="item.share.kind === 'text' ? 'text' : 'file'" x-text="shareLabel(item.share)"></p>
+                <p class="content" :class="item.share.kind === 'text' ? 'text' : 'file'"><template x-for="(p, i) in shareParts(item.share)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
                 <p class="meta link-meta" x-text="shareMeta(item.share)"></p>
               </div>
               <div class="item-actions">
@@ -231,10 +259,10 @@
             </button>
           </template>
           <div class="body">
-            <p class="content" :class="item.kind === 'text' ? 'text' : 'file'" x-text="label(item)"></p>
-            <p class="excerpt" x-show="item.excerpt" x-text="item.excerpt"></p>
+            <p class="content" :class="item.kind === 'text' ? 'text' : 'file'"><template x-for="(p, i) in labelParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
+            <p class="excerpt" x-show="item.excerpt"><template x-for="(p, i) in excerptParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
             <p class="meta">
-              <span x-text="item.mine ? t('me') : item.fromName"></span> ·
+              <span><template x-for="(p, i) in fromParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></span> ·
               <span x-text="ago(item)"></span> ·
               <span x-show="item.kind === 'folder'" x-text="folderCount(item) + ' ·'"></span>
               <span x-show="sizeOf(item)" x-text="sizeOf(item) + ' ·'"></span>
@@ -267,7 +295,11 @@
         </li>
       </template>
     </ul>
-    <p class="empty" x-show="history.length === 0" x-text="t('empty')"></p>
+    <p class="empty" x-show="history.length === 0 && !search.open" x-text="t('empty')"></p>
+    <div class="empty search-empty" x-show="searchActive && !shown.length">
+      <p x-text="searchNone"></p>
+      <button class="small secondary" @click="clearSearchAll" x-text="t('search.reset')"></button>
+    </div>
     <div class="drop" x-show="dragging" x-text="t('drop')"></div>
   </section>
 
