@@ -17,7 +17,8 @@ await esbuild.build({
   logLevel: 'warning',
 });
 
-const res = spawnSync(process.execPath, ['--test', '--test-force-exit', ...tests.map((f) => outdir + f.replace(/\.ts$/, '.mjs'))], {
+// a few files at once: the relay accepts 32 connections per address, each device opens two
+const res = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-concurrency=4', ...tests.map((f) => outdir + f.replace(/\.ts$/, '.mjs'))], {
   stdio: 'inherit',
 });
 process.exit(res.status ?? 1);

@@ -29,14 +29,14 @@ const en = {
 
   'cmd.send': 'Send files, a text (-m) or the standard input',
   'cmd.send.long':
-    'Sends to every device of the group. Files are encrypted here, then uploaded in chunks; a text up to 64 KB travels in its announcement.\nWith no argument, sends what arrives on the standard input: a text, or a file if it is not UTF-8 text.',
+    'Sends to every device of the group. Files are encrypted here, then uploaded in chunks; a text up to 64 KB travels in its announcement. A folder goes as one item, with its subfolders: the apps browse it.\nWith no argument, sends what arrives on the standard input: a text, or a file if it is not UTF-8 text.',
   'opt.send.message': 'send this text',
   'opt.send.clipboard': 'send the text of this computer’s clipboard',
   'opt.send.name': 'name of the file read on the standard input (it is then sent as a file)',
 
   'cmd.get': 'Print the latest text, or save the latest file',
   'cmd.get.long':
-    'ITEM is a position in the history (1 = the latest, as in `entrenous list`) or the beginning of an id. Without ITEM: the latest item.\nA text is printed on the standard output. A file is saved in the current folder under its own name (never overwriting one: “name (2).pdf”), and its path is printed.',
+    'ITEM is a position in the history (1 = the latest, as in `entrenous list`) or the beginning of an id. Without ITEM: the latest item.\nA text is printed on the standard output. A file is saved in the current folder under its own name (never overwriting one: “name (2).pdf”), and its path is printed. A folder is recreated there the same way (-o - writes it as a ZIP).',
 
   'cmd.list': 'Show the history',
   'cmd.list.long': 'The items of the group, the latest first, with their position (for get and rm), their sender and their expiry.',
@@ -137,7 +137,6 @@ const en = {
   'err.noSuchItem': 'No item “{item}” in “{group}” (see entrenous list).',
   'err.ambiguousItem': '“{item}” matches several items: give more of its id.',
   'err.noSuchFile': '{path}: no such file. To send a text: entrenous send -m "…"',
-  'err.isDir': '{path} is a folder: send an archive of it (zip, tar).',
   'err.nothingToSend': 'Nothing to send: give files, -m "text", or pipe something in.',
   'err.exists': '{path} already exists (--force to overwrite).',
   'err.textOnly': '--clipboard only takes a text: this item is a file.',
@@ -182,14 +181,14 @@ const fr: Strings = {
 
   'cmd.send': 'Envoie des fichiers, un texte (-m) ou l’entrée standard',
   'cmd.send.long':
-    'Envoie à tous les appareils du groupe. Les fichiers sont chiffrés ici, puis envoyés par morceaux ; un texte de 64 Ko au plus voyage dans son annonce.\nSans argument, envoie ce qui arrive sur l’entrée standard : un texte, ou un fichier si ce n’est pas du texte UTF-8.',
+    'Envoie à tous les appareils du groupe. Les fichiers sont chiffrés ici, puis envoyés par morceaux ; un texte de 64 Ko au plus voyage dans son annonce. Un dossier part en un seul élément, avec ses sous-dossiers : les applis le parcourent.\nSans argument, envoie ce qui arrive sur l’entrée standard : un texte, ou un fichier si ce n’est pas du texte UTF-8.',
   'opt.send.message': 'envoie ce texte',
   'opt.send.clipboard': 'envoie le texte du presse-papier de cet ordinateur',
   'opt.send.name': 'nom du fichier lu sur l’entrée standard (il est alors envoyé comme fichier)',
 
   'cmd.get': 'Affiche le dernier texte, ou enregistre le dernier fichier',
   'cmd.get.long':
-    'ÉLÉMENT est une position dans l’historique (1 = le plus récent, comme dans `entrenous list`) ou le début d’un identifiant. Sans ÉLÉMENT : le plus récent.\nUn texte s’affiche sur la sortie standard. Un fichier est enregistré dans le dossier courant sous son nom (sans jamais en remplacer un : « nom (2).pdf »), et son chemin s’affiche.',
+    'ÉLÉMENT est une position dans l’historique (1 = le plus récent, comme dans `entrenous list`) ou le début d’un identifiant. Sans ÉLÉMENT : le plus récent.\nUn texte s’affiche sur la sortie standard. Un fichier est enregistré dans le dossier courant sous son nom (sans jamais en remplacer un : « nom (2).pdf »), et son chemin s’affiche. Un dossier y est recréé de la même façon (-o - l’écrit en ZIP).',
 
   'cmd.list': 'Affiche l’historique',
   'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien, avec leur position (pour get et rm), leur expéditeur et leur expiration.',
@@ -288,7 +287,6 @@ const fr: Strings = {
   'err.noSuchItem': 'Aucun élément « {item} » dans « {group} » (voir entrenous list).',
   'err.ambiguousItem': '« {item} » correspond à plusieurs éléments : donne plus de caractères de son identifiant.',
   'err.noSuchFile': '{path} : fichier introuvable. Pour envoyer un texte : entrenous send -m "…"',
-  'err.isDir': '{path} est un dossier : envoie-en une archive (zip, tar).',
   'err.nothingToSend': 'Rien à envoyer : donne des fichiers, -m "texte", ou envoie quelque chose sur l’entrée standard.',
   'err.exists': '{path} existe déjà (--force pour le remplacer).',
   'err.textOnly': '--clipboard ne prend qu’un texte : cet élément est un fichier.',

@@ -5,7 +5,8 @@
 import { b64, fromJSON, toJSON, unb64 } from '../core/bytes.ts';
 import type { KV } from '../core/storage.ts';
 import { utf8 } from '../core/bytes.ts';
-import type { LocalCopy, Outgoing, PlatformApi } from './types.ts';
+import type { FolderSink, LocalCopy, Outgoing, PlatformApi } from './types.ts';
+import { folderFromNative } from '../ui/folder-send.ts';
 import { t } from '../i18n/index.ts';
 
 declare global {
@@ -54,8 +55,36 @@ async function readNativeFile(token: string, size: number, mime: string): Promis
   return new Blob(parts, { type: mime });
 }
 
+/** Bytes of a local file offered by the native side (a file of a folder being sent). */
+const readToken = async (token: string, offset: number, length: number) => unb64(await call('fileRead', { token, offset, length }));
+
+/** A folder being saved by the native side: it asked where, and created it there. */
+async function nativeFolder(name: string): Promise<FolderSink | null> {
+  const r: { token: string; where: string } | null = await call('folderCreate', { name });
+  if (!r) return null;
+  return {
+    where: r.where,
+    async file(path) {
+      const token: string = await call('fileCreate', { name: path.split('/').pop(), folder: r.token, path });
+      return {
+        write: async (data) => {
+          for (let at = 0; at < data.length; at += FILE_PART) await call('fileAppend', { token, data: b64(data.subarray(at, at + FILE_PART)) });
+        },
+        close: async () => {
+          await call('fileClose', { token });
+        },
+      };
+    },
+    async dir(path) {
+      await call('folderMkdir', { folder: r.token, path });
+    },
+  };
+}
+
 /** A payload read by Swift from a pasteboard; `limit`: larger content is not even read. */
 async function fromNative(payload: any, limit: number): Promise<LocalCopy> {
+  // a folder: nothing read yet (its size decides whether it goes by itself)
+  if (payload.kind === 'folder') return { kind: 'folder', folder: folderFromNative(payload, readToken) };
   if (payload.kind === 'text') {
     const size = utf8(payload.text).length;
     return size > limit ? { kind: 'toobig', name: t('name.text'), size } : { kind: 'text', text: payload.text };
@@ -165,6 +194,13 @@ export function desktopPlatform(): PlatformApi {
       const token = await writeNativeFile(blob, name);
       await call('fileSaveAs', { token, name });
     },
+
+    async pickFolder() {
+      const payload = await call('folderPick');
+      return payload ? folderFromNative(payload, readToken) : null;
+    },
+
+    saveFolder: nativeFolder,
 
     onLocalCopy(cb) {
       listeners.push(cb);

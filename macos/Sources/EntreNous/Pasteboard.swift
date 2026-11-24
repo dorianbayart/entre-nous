@@ -49,10 +49,10 @@ final class PasteboardWatcher {
     static func contents(of pb: NSPasteboard, token: (URL) -> String) -> [[String: Any]] {
         let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         let files: [[String: Any]] = urls.compactMap { url in
-            guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey]),
-                  values.isDirectory != true, let size = values.fileSize else { return nil }
-            let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-            return ["kind": "file", "token": token(url), "name": url.lastPathComponent, "size": size, "mime": mime]
+            guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey]) else { return nil }
+            if values.isDirectory == true { return folder(url, token: token) }
+            guard let size = values.fileSize else { return nil }
+            return ["kind": "file", "token": token(url), "name": url.lastPathComponent, "size": size, "mime": mime(url)]
         }
         if !files.isEmpty { return files }
         if let png = pngData(pb), png.count <= maxImage {
@@ -62,6 +62,47 @@ final class PasteboardWatcher {
             return [["kind": "text", "text": text]]
         }
         return []
+    }
+
+    private static func mime(_ url: URL) -> String {
+        UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+    }
+
+    /// Files read in a folder at most (a home folder copied by mistake stops there).
+    static let folderMax = 100_000
+
+    /// A folder, for the web UI: its files (tokens, paths below it, sizes) and its empty
+    /// folders. Hidden files go too (the web UI leaves out the system ones); links are not followed.
+    static func folder(_ root: URL, token: (URL) -> String) -> [String: Any]? {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .isRegularFileKey]
+        guard let walk = FileManager.default.enumerator(at: root, includingPropertiesForKeys: keys, options: [], errorHandler: { _, _ in true }) else { return nil }
+        let base = root.standardizedFileURL.pathComponents.count
+        var files: [[String: Any]] = []
+        var dirs: [String] = []
+        var full: Set<String> = []
+        var truncated = false
+        for case let url as URL in walk {
+            guard let v = try? url.resourceValues(forKeys: Set(keys)), v.isSymbolicLink != true else { continue }
+            let rel = url.standardizedFileURL.pathComponents.dropFirst(base).joined(separator: "/")
+            if v.isDirectory == true {
+                dirs.append(rel)
+                continue
+            }
+            guard v.isRegularFile == true, let size = v.fileSize else { continue }
+            files.append(["token": token(url), "path": rel, "size": size, "mime": mime(url)])
+            var p = (rel as NSString).deletingLastPathComponent
+            while !p.isEmpty, !full.contains(p) {
+                full.insert(p)
+                p = (p as NSString).deletingLastPathComponent
+            }
+            if files.count >= folderMax {
+                // too many: nothing is sent (the web UI says so), nothing more is read
+                truncated = true
+                break
+            }
+        }
+        if truncated { return ["kind": "folder", "name": root.lastPathComponent, "files": [], "dirs": [], "truncated": true] }
+        return ["kind": "folder", "name": root.lastPathComponent, "files": files, "dirs": dirs.filter { !full.contains($0) }]
     }
 
     private static func pngData(_ pb: NSPasteboard) -> Data? {

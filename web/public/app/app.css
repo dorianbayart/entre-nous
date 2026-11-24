@@ -480,3 +480,127 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 .visit-foot { text-align: center; margin-top: 18px; font-size: 13px; }
 .visit-foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
 [hidden] { display: none !important; }
+
+/* ---------------------------------------------------------- shared folders */
+
+/* the File button: on phones, a small menu (files, or a folder) */
+.file-pick { position: relative; display: flex; }
+.file-pick .caret { width: 14px; height: 14px; margin-left: -4px; }
+.menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; min-width: 180px; padding: 5px;
+  display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .14);
+}
+.menu button { justify-content: flex-start; padding: 9px 10px; border-radius: 8px; font-size: 14px; }
+.menu button:hover { background: var(--accent-soft); }
+.menu svg { color: var(--accent); }
+
+/* the tile of a folder: its first previews (made by the sender), or its icon */
+.thumb.folder.doc { background: var(--accent-soft); border: 0; }
+.thumb .folder-mark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.thumb .folder-mark svg { width: 32px; height: 32px; stroke-width: 1.7; margin-bottom: 4px; }
+.thumb.folder .badge { background: var(--accent); color: var(--accent-text); }
+
+/* the browser, over the history (the viewer opens over it) */
+.folder-page {
+  position: fixed; inset: 0; z-index: 14; display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  padding: calc(max(env(safe-area-inset-top), var(--safe-area-inset-top, 0px)) + 10px) 14px
+    calc(max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px)) + 12px);
+}
+.folder-state, .folder-browser { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; max-width: 760px; width: 100%; margin: 0 auto; }
+.folder-state .center { min-height: 40vh; }
+.folder-crumbs { display: flex; align-items: center; gap: 2px; overflow-x: auto; white-space: nowrap; font-size: 13px; scrollbar-width: none; }
+.folder-crumbs .crumb { padding: 4px 6px; border-radius: 6px; color: var(--muted); font-size: 13px; flex: none; }
+.folder-crumbs .crumb[aria-current] { color: var(--text); font-weight: 600; cursor: default; }
+.folder-crumbs .sep { width: 12px; height: 12px; color: var(--muted); flex: none; }
+.folder-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.folder-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; }
+.folder-body .empty { color: var(--muted); text-align: center; margin: 40px 0; }
+
+.fi { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* list: a box to tick, the preview, the name */
+.folder-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.folder-row { display: flex; align-items: center; gap: 2px; padding-left: 8px; border-top: 1px solid var(--line); min-width: 0; }
+.folder-row:first-child { border-top: 0; border-radius: var(--radius) var(--radius) 0 0; }
+.folder-row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.folder-row.picked { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); }
+.tick { width: 30px; height: 30px; padding: 0; flex: none; border-radius: 8px; position: relative; }
+.tick::before {
+  content: ""; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid color-mix(in srgb, var(--muted) 70%, transparent);
+  box-sizing: border-box; position: absolute;
+}
+.tick.on::before { background: var(--accent); border-color: var(--accent); }
+.tick.partial::before { border-color: var(--accent); background: linear-gradient(var(--accent), var(--accent)) center / 8px 2px no-repeat; }
+.tick .fi { position: relative; width: 12px; height: 12px; stroke-width: 3; color: var(--accent-text); }
+.row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 4px; justify-content: flex-start; text-align: left; border-radius: 0; }
+.row-thumb { width: 40px; height: 40px; border-radius: 8px; overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; background: var(--line); }
+.row-thumb img, .tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.row-thumb.folder-icon { background: var(--accent-soft); color: var(--accent); }
+.row-thumb.folder-icon .fi { width: 22px; height: 22px; stroke-width: 1.8; }
+.row-thumb.doc, .tile-img.doc { background: var(--bg); border: 1px solid var(--line); }
+.row-thumb.doc b, .tile-img.doc b { font-size: 9px; letter-spacing: .04em; color: var(--accent); }
+.row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.row-excerpt { color: var(--muted); font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-main .chevron { color: var(--muted); width: 16px; height: 16px; }
+
+/* grid: the previews, folders as chips above */
+.folder-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.folder-chip { background: var(--surface); border: 1px solid var(--line); padding: 7px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; gap: 6px; }
+.folder-chip .fi { color: var(--accent); width: 16px; height: 16px; }
+.folder-chip small { color: var(--muted); font-weight: 400; }
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 3px; border-radius: 12px; overflow: hidden; }
+.folder-grid .tile { padding: 0; border-radius: 0; aspect-ratio: 1; position: relative; display: block; overflow: hidden; background: var(--line); }
+.tile-img { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.tile-badge {
+  position: absolute; left: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px 1px 3px;
+  border-radius: 5px; background: rgb(0 0 0 / .6); color: #fff; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.tile-badge .play { width: 10px; height: 10px; fill: #fff; stroke: none; }
+.tile-mark {
+  position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid #fff; background: rgb(0 0 0 / .25); display: flex; align-items: center; justify-content: center;
+}
+.tile-mark.on { background: var(--accent); border-color: var(--accent); }
+.tile-mark .fi { width: 13px; height: 13px; stroke-width: 3; color: var(--accent-text); }
+.folder-grid .tile.picked .tile-img { opacity: .75; }
+.folder-grid.choosing .tile.picked { outline: 3px solid var(--accent); outline-offset: -3px; }
+
+/* the bar at the bottom: what is downloaded */
+.folder-bottom {
+  display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.folder-sum { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; }
+.folder-sum strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.folder-sum span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.folder-bottom .primary { white-space: nowrap; }
+
+/* a large folder, shown before it is sent */
+.sheet-backdrop {
+  position: fixed; inset: 0; z-index: 18; background: rgb(0 0 0 / .35); display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px 12px calc(max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px)) + 16px);
+}
+.sheet {
+  width: 100%; max-width: 440px; background: var(--surface); color: var(--text); border-radius: 18px; padding: 16px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / .2); display: flex; flex-direction: column; gap: 2px;
+}
+.sheet p { margin: 4px 0; }
+.sheet-head { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.sheet-head strong { min-width: 0; overflow-wrap: anywhere; }
+.sheet-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sheet-note { color: var(--muted); font-size: 13px; }
+.sheet-icon { width: 40px; height: 40px; border-radius: 10px; flex: none; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.sheet .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+@media (min-width: 600px) { .sheet-backdrop { align-items: center; } }
+
+/* a share link's folder: browsed in the page */
+.visit-folder { display: flex; flex-direction: column; gap: 8px; }
+.visit-folder[hidden], .visit-preview[hidden], .visit-card[hidden] { display: none; }
+.visit-folder .center-text { text-align: center; margin: -6px 0 4px; color: var(--muted); }
+.visit-folder .folder-body { max-height: 62vh; }
+.visit-preview .visit-media { width: 100%; height: 100%; align-items: center; margin: 0; }
+.visit-preview .visit-text { max-height: 100%; overflow: auto; width: 100%; }

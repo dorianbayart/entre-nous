@@ -42,10 +42,10 @@ You can create more groups (one for family, one for work): they're independent o
 
 | | How to send |
 |---|---|
-| Mac, Linux, Windows | **just copy**: whatever you copy is sent on its own as soon as another device is connected, and so is a file copied in the file manager. **File** button, or drag a file onto the window (on a Mac, onto the menu bar icon) |
-| Android | **Send clipboard**, **File**, or **Share → Entre Nous** from any app |
+| Mac, Linux, Windows | **just copy**: whatever you copy is sent on its own as soon as another device is connected, and so is a file copied in the file manager. **File** and **Folder** buttons, or drag a file or a folder onto the window (on a Mac, onto the menu bar icon) |
+| Android | **Send clipboard**, **File** (files, or a folder), or **Share → Entre Nous** from any app |
 | iPhone | **Send clipboard** (tap "Paste" in the bubble), **File** |
-| Browser | Ctrl+V in the page, drag and drop, **File** |
+| Browser | Ctrl+V in the page, drag and drop, **File**; **Folder** on a computer |
 
 - **Note**: the text field at the top syncs to every device as you type. **Send** adds it to the
   history and leaves the note in place.
@@ -56,6 +56,22 @@ You can create more groups (one for family, one for work): they're independent o
   disappears).
 - **Automatic sharing limit** (a group setting, 1 MB by default): anything larger isn't sent
   on its own; use **File**. Manual sends have no limit.
+
+### Send a folder
+
+A folder goes just like a file: the **Folder** button on a computer, **File → A folder…** in the
+Android app, or drag it onto the window (on a Mac, onto the menu bar icon too). It shows up in the
+history as a single item, with all its subfolders.
+
+- **More than 10 files or more than 40 MB**: the app first shows you what it holds, and the free
+  space on the server; **Send** sends it.
+- **Copied in the Finder or Explorer**: a small folder goes on its own, like a file; a larger one
+  waits for your OK (a notification tells you).
+- **System files** (.DS_Store, Thumbs.db, desktop.ini) are left out. Other hidden files go.
+- **Previews**: the sending device makes a preview of every photo, video and PDF; for a large
+  folder this takes a few seconds ("Preparing" above the history).
+- An iPhone, or a phone's browser, can't pick a folder: it receives them but can't send one (the
+  Android app can).
 
 ## 4. Receive
 
@@ -127,6 +143,20 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
 - **New version**: the installed apps announce it ("New version available") with a download
   link; the web app updates itself.
 
+### Received folders
+
+**Browse** opens the folder, one level at a time, without downloading anything. A folder that only
+holds photos and videos shows as a grid (**List** to switch back). Tap a file to open it in the
+usual preview; the arrows go to the next file of the same folder. You can browse it while it is
+still being sent.
+
+- **Download part of it**: tick files or folders in the list (**Select** in the grid), then
+  **Download**. With nothing ticked, the bottom button downloads the folder shown; **Download
+  all**, in the history or at the top of the folder, takes all of it.
+- **Where it goes**: the apps (Mac, Linux, Windows, Android) ask you where to save it and recreate
+  the folder as it is; so do Chrome and Edge on a computer. Elsewhere (Firefox, Safari, phone
+  browsers), it arrives as a ZIP. A single file is saved as usual.
+
 ## 5. Share with someone outside the group
 
 To send an item of the history to someone who doesn't have Entre Nous, tap its share icon. A link
@@ -141,6 +171,8 @@ the music or download the file.
   **Copy link**, **QR code**, **Delete**. A deleted link stops working at once.
 - **End-to-end encrypted**: the key is in the link, after the `#`, and never goes through the
   server. Anyone who has the link can open the item: only send it to whoever should see it.
+- **A folder** can be shared the same way: the person browses it in their browser and downloads
+  what they want.
 - No links with **Local network only**: the content isn't on the server.
 
 ## 6. Group settings

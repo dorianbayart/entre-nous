@@ -19,6 +19,8 @@ sans trace.
 - **En direct sur ton Wi-Fi** : sur le même réseau, ce que tu partages va directement d'un appareil
   à l'autre, sans passer par internet.
 - **Textes, photos, vidéos, fichiers**, de n'importe quelle taille, et une note partagée en direct.
+- **Envoie un dossier aussi facilement qu'un fichier.** Tu vois ce qu'il y a dedans, tu ne télécharges
+  que ce que tu veux.
 - **Partage un fichier à n'importe qui**, avec un simple lien (ou un QR code).
 - **Aperçus** : prévisualise une photo, un PDF ou un document Markdown sans le télécharger, et regarde une
   vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.

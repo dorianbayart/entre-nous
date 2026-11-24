@@ -175,7 +175,37 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             return true
 
         case "fileCreate":
+            // a file of a folder being saved, or a received file (temporary folder)
+            if let folder = a["folder"] as? String {
+                return try files.createIn(folder: folder, path: a["path"] as? String ?? "")
+            }
             return try files.create(name: a["name"] as? String ?? "fichier", expiresAt: a["expiresAt"] as? Double)
+
+        // a folder to send: picked here, its files read through tokens
+        case "folderPick":
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.allowsMultipleSelection = false
+            panel.prompt = L10n.t("send")
+            guard let url = modal(panel), let payload = PasteboardWatcher.folder(url, token: { [weak self] in self?.files.register($0) ?? "" }) else {
+                return NSNull()
+            }
+            return payload
+        // a folder to save: where, asked here; created there (another name if it exists)
+        case "folderCreate":
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.canCreateDirectories = true
+            panel.prompt = L10n.t("saveHere")
+            panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            guard let parent = modal(panel) else { return NSNull() }
+            let made = try files.createFolder(in: parent, name: a["name"] as? String ?? "dossier")
+            return ["token": made.token, "where": "\(parent.lastPathComponent)/\(made.url.lastPathComponent)"]
+        case "folderMkdir":
+            try files.mkdir(folder: a["folder"] as? String ?? "", path: a["path"] as? String ?? "")
+            return true
         case "fileAppend":
             guard let data = Data(base64URL: a["data"] as? String ?? "") else { throw BridgeError("bad data") }
             try files.append(a["token"] as! String, data)
@@ -204,6 +234,14 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         default:
             throw BridgeError("unknown command \(cmd)")
         }
+    }
+
+    /// A folder picker, the popover kept open meanwhile; nil: cancelled.
+    private func modal(_ panel: NSOpenPanel) -> URL? {
+        onModal?(true)
+        defer { onModal?(false) }
+        NSApp.activate(ignoringOtherApps: true)
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     /// Notification without the content itself (the Notification Center keeps a history).

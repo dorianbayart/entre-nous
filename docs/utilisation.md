@@ -43,10 +43,10 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 
 | | Comment envoyer |
 |---|---|
-| Mac, Linux, Windows | **copie, c'est tout** : ce que tu copies part tout seul dès qu'un autre appareil est connecté ; un fichier copié dans le gestionnaire de fichiers aussi. Bouton **Fichier**, ou glisse un fichier dans la fenêtre (sur Mac, sur l'icône de la barre des menus) |
-| Android | **Envoyer le presse-papier**, **Fichier**, ou **Partager → Entre Nous** depuis n'importe quelle appli |
+| Mac, Linux, Windows | **copie, c'est tout** : ce que tu copies part tout seul dès qu'un autre appareil est connecté ; un fichier copié dans le gestionnaire de fichiers aussi. Boutons **Fichier** et **Dossier**, ou glisse un fichier ou un dossier dans la fenêtre (sur Mac, sur l'icône de la barre des menus) |
+| Android | **Envoyer le presse-papier**, **Fichier** (des fichiers, ou un dossier), ou **Partager → Entre Nous** depuis n'importe quelle appli |
 | iPhone | **Envoyer le presse-papier** (touche « Coller » dans la bulle), **Fichier** |
-| Navigateur | Ctrl+V dans la page, glisser-déposer, **Fichier** |
+| Navigateur | Ctrl+V dans la page, glisser-déposer, **Fichier** ; **Dossier** sur ordinateur |
 
 - **Note** : le champ texte en haut se synchronise à chaque frappe sur tous les appareils.
   **Envoyer** l'ajoute à l'historique, la note restant en place.
@@ -57,6 +57,23 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
   disparaît alors).
 - **Limite du partage automatique** (réglage du groupe, 1 Mo par défaut) : au-delà, le contenu
   n'est pas envoyé tout seul, passe par **Fichier**. Un envoi manuel n'a pas de limite.
+
+### Envoyer un dossier
+
+Un dossier s'envoie comme un fichier : bouton **Dossier** sur ordinateur, **Fichier → Un dossier…**
+dans l'appli Android, ou glisse-le dans la fenêtre (sur Mac, sur l'icône de la barre des menus
+aussi). Il arrive dans l'historique en un seul élément, avec tous ses sous-dossiers.
+
+- **Plus de 10 fichiers ou plus de 40 Mo** : l'appli te montre d'abord ce qu'il contient, et la
+  place libre sur le serveur ; **Envoyer** le fait partir.
+- **Copié dans le Finder ou l'Explorateur** : un petit dossier part tout seul, comme un fichier ;
+  un plus gros attend ton accord (une notification te prévient).
+- **Fichiers système** (.DS_Store, Thumbs.db, desktop.ini) : laissés de côté. Les autres fichiers
+  cachés partent.
+- **Aperçus** : l'appareil qui envoie prépare un aperçu de chaque photo, vidéo et PDF ; pour un gros
+  dossier, ça prend quelques secondes (« Préparation » au-dessus de l'historique).
+- Un iPhone, ou le navigateur d'un téléphone, ne sait pas choisir un dossier : il les reçoit, mais
+  n'en envoie pas (l'appli Android, si).
 
 ## 4. Recevoir
 
@@ -134,6 +151,20 @@ clavier) passent d'un élément à l'autre ; Échap ferme.
 - **Nouvelle version** : les applis installées l'annoncent (« Nouvelle version disponible ») avec
   un lien de téléchargement ; l'appli web, elle, se met à jour toute seule.
 
+### Dossiers reçus
+
+**Parcourir** ouvre le dossier, un niveau à la fois, sans rien télécharger. Un dossier qui ne
+contient que des photos et des vidéos s'affiche en grille (**Liste** pour revenir à la liste).
+Toucher un fichier l'ouvre dans l'aperçu habituel ; les flèches passent au fichier suivant du même
+dossier. On peut le parcourir pendant qu'il est encore en cours d'envoi.
+
+- **Télécharger une partie** : coche des fichiers ou des dossiers dans la liste (**Choisir** dans la
+  grille), puis **Télécharger**. Sans rien cocher, le bouton du bas télécharge le dossier affiché ;
+  **Tout télécharger**, dans l'historique ou à la racine du dossier, le prend en entier.
+- **Où il arrive** : les applis (Mac, Linux, Windows, Android) te demandent où l'enregistrer et y
+  recréent le dossier, tel quel ; Chrome et Edge sur ordinateur aussi. Ailleurs (Firefox, Safari,
+  navigateurs des téléphones), il arrive en ZIP. Un seul fichier s'enregistre comme d'habitude.
+
 ## 5. Partager avec quelqu'un hors du groupe
 
 Pour envoyer un élément de l'historique à quelqu'un qui n'a pas Entre Nous, touche son icône de
@@ -149,6 +180,8 @@ vidéo, écouter la musique ou télécharger le fichier.
   de suite.
 - **Chiffré de bout en bout** : la clé est dans le lien, après le `#`, et ne passe jamais par le
   serveur. Toute personne qui a le lien peut ouvrir l'élément : envoie-le seulement à qui doit le voir.
+- **Un dossier** se partage de la même façon : la personne le parcourt dans son navigateur et
+  télécharge ce qu'elle veut.
 - Pas de lien en **Réseau local uniquement** : le contenu n'est pas sur le serveur.
 
 ## 6. Réglages du groupe

@@ -1,11 +1,49 @@
 import type { Platform } from '../core/group.ts';
 import type { KV } from '../core/storage.ts';
+import type { ByteSource } from '../core/folder.ts';
+
+/** A file of a folder to send: its path in the folder, its bytes. */
+export interface FolderSourceFile {
+  path: string;
+  size: number;
+  mime: string;
+  src: Blob | ByteSource;
+  /** The whole file, for its preview (read from an app's native side: only when small enough). */
+  blob(): Promise<Blob | null>;
+}
+
+/** A folder to send, as picked, dropped or copied. */
+export interface FolderSource {
+  name: string;
+  files: FolderSourceFile[];
+  /** Empty folders inside (the others come with their files). */
+  dirs: string[];
+  /** System files left out (.DS_Store, Thumbs.db…). */
+  ignored: number;
+  /** Bytes of the files, all together. */
+  bytes: number;
+  /** Read by an app's native side, which stopped at its limit (100,000 files): not sent. */
+  truncated?: boolean;
+}
 
 /** Something to send, read from the local clipboard or picked by the user. */
-export type Outgoing = { kind: 'text'; text: string } | { kind: 'image' | 'file'; blob: Blob; name: string };
+export type Outgoing =
+  | { kind: 'text'; text: string }
+  | { kind: 'image' | 'file'; blob: Blob; name: string }
+  | { kind: 'folder'; folder: FolderSource };
 
 /** A local copy (desktop apps): the content, or just its size when it exceeds the auto-share limit. */
 export type LocalCopy = Outgoing | { kind: 'toobig'; name: string; size: number };
+
+/** A folder being saved by an app: its files are written one after the other. */
+export interface FolderSink {
+  /** Where it went, to say it ("Téléchargements/Vacances"). */
+  readonly where: string;
+  /** A file at `path` in the folder: its bytes are written in order. */
+  file(path: string): Promise<{ write(data: Uint8Array): Promise<void>; close(): Promise<void> }>;
+  /** An empty folder. */
+  dir(path: string): Promise<void>;
+}
 
 export interface PlatformApi {
   kind: Platform;
@@ -34,6 +72,13 @@ export interface PlatformApi {
   read(): Promise<Outgoing | null>;
   /** Saves or shares a received file. */
   save(blob: Blob, name: string): Promise<void>;
+  /** Apps: picks a folder to send (browsers use <input webkitdirectory>); null: cancelled. */
+  pickFolder?(): Promise<FolderSource | null>;
+  /**
+   * Apps: asks where to save a folder named `name` and creates it there (another name if it
+   * exists); null: cancelled. Browsers save it with showDirectoryPicker, or as a ZIP.
+   */
+  saveFolder?(name: string): Promise<FolderSink | null>;
   /** Desktop apps: called when the user copies something locally. */
   onLocalCopy?(cb: (o: LocalCopy) => void): void;
   /** Desktop apps: copies larger than this (bytes) are not read nor shared automatically. */

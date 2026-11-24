@@ -87,8 +87,8 @@ exemples.
 
 | Commande | Ce qu'elle fait |
 |---|---|
-| `send [FICHIER…]` | envoie des fichiers, un texte (`-m TEXTE`), le presse-papier de l'ordinateur (`-c`), ou l'entrée standard |
-| `get [ÉLÉMENT]` | affiche un texte, ou enregistre un fichier dans le dossier courant (`-o` pour ailleurs) |
+| `send [FICHIER…]` | envoie des fichiers ou des dossiers, un texte (`-m TEXTE`), le presse-papier de l'ordinateur (`-c`), ou l'entrée standard |
+| `get [ÉLÉMENT]` | affiche un texte, ou enregistre un fichier ou un dossier dans le dossier courant (`-o` pour ailleurs) |
 | `list` | l'historique, du plus récent au plus ancien (`-n N` pour les N derniers) |
 | `wait` | attend le prochain élément envoyé par un autre appareil, puis fait comme `get` ; `--note` attend une modification de la note |
 | `watch` | affiche les éléments à leur arrivée, jusqu'à Ctrl-C ; `-o DOSSIER` enregistre aussi les fichiers |
@@ -117,6 +117,11 @@ pg_dump app | gzip | entrenous send --name app.sql.gz
 Rien n'est jamais remplacé : un fichier qui existe déjà donne `nom (2).pdf`, et un nom imposé par
 `-o` qui existe déjà est une erreur, sauf avec `--force`. Le chemin du fichier enregistré s'affiche
 sur la sortie standard.
+
+**Un dossier** part en un seul élément, avec ses sous-dossiers (`entrenous send ~/Photos/Vacances/`),
+sans ses fichiers système (.DS_Store, Thumbs.db). `get` le recrée de la même façon : `Vacances`, ou
+`Vacances (2)` s'il existe ; `-o -` l'écrit en ZIP sur la sortie standard
+(`entrenous get -o - > vacances.zip`).
 
 **Le presse-papier de l'ordinateur** (texte seulement) : `send -c` envoie son contenu, `get -c` et
 `wait -c` y mettent le texte reçu. Le CLI passe par `pbcopy`/`pbpaste` sur Mac, `wl-copy`/`wl-paste`,

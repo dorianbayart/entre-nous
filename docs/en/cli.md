@@ -84,8 +84,8 @@ entrenous wait                         # waits for the next item sent by another
 
 | Command | What it does |
 |---|---|
-| `send [FILE…]` | sends files, a text (`-m TEXT`), this computer's clipboard (`-c`), or standard input |
-| `get [ITEM]` | prints a text, or saves a file in the current folder (`-o` for elsewhere) |
+| `send [FILE…]` | sends files or folders, a text (`-m TEXT`), this computer's clipboard (`-c`), or standard input |
+| `get [ITEM]` | prints a text, or saves a file or a folder in the current folder (`-o` for elsewhere) |
 | `list` | the history, latest first (`-n N` for the N latest) |
 | `wait` | waits for the next item sent by another device, then does what `get` does; `--note` waits for the note to change |
 | `watch` | prints items as they arrive, until Ctrl-C; `-o FOLDER` also saves the files |
@@ -114,6 +114,11 @@ pg_dump app | gzip | entrenous send --name app.sql.gz
 Nothing is ever overwritten: a file that already exists gives `name (2).pdf`, and a name given with
 `-o` that already exists is an error, unless `--force`. The path of the saved file is printed on
 standard output.
+
+**A folder** goes as one item, with its subfolders (`entrenous send ~/Photos/Holidays/`), without
+its system files (.DS_Store, Thumbs.db). `get` recreates it the same way: `Holidays`, or
+`Holidays (2)` if it exists; `-o -` writes it as a ZIP on standard output
+(`entrenous get -o - > holidays.zip`).
 
 **This computer's clipboard** (text only): `send -c` sends what it holds, `get -c` and `wait -c` put
 the text received into it. The CLI goes through `pbcopy`/`pbpaste` on a Mac, `wl-copy`/`wl-paste`,

@@ -300,6 +300,39 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   copier, aperçu d'une image ou d'un PDF (fait par l'émetteur), vidéo et audio en continu (même lecteur
   que l'appli), début d'un fichier texte, téléchargement.
 
+## 8 septies. Dossiers
+
+- **Un dossier = un élément** (`kind: 'folder'`) : une seule carte dans l'historique, une seule durée
+  de vie, une seule suppression. Aucun changement du relais ni du protocole.
+- **Une seule archive chiffrée**, découpée en blocs de 1 Mo comme un fichier (`src/core/folder.ts`) :
+  `"ENF1"`, longueur du sommaire, sommaire (JSON : chemins, tailles, positions, aperçus), aperçus,
+  fichiers bout à bout. Le sommaire et les aperçus viennent d'abord : l'autre appareil parcourt le
+  dossier dès les premiers Mo, même pendant l'envoi. Un fichier du dossier n'est qu'une plage du
+  contenu : aperçus, lecture en continu et téléchargement partiel passent par le `ChunkReader`.
+- **L'en-tête** ne garde qu'un résumé (`folder: { files, dirs, bytes }`) et la vignette de la carte :
+  les 4 premiers aperçus en mosaïque (un seul s'il y en a moins de 4), sinon l'icône de dossier.
+- **Aperçus faits par l'émetteur**, comme pour un fichier seul : JPEG progressif de 720 px au plus,
+  qualité 85, pour chaque image, vidéo et PDF ; début des fichiers texte. Ils sont dans l'archive (pas
+  dans l'en-tête, limité par `META_MAX`) et lus seulement pour les lignes à l'écran.
+- **Fichiers système laissés de côté** (.DS_Store, Thumbs.db, desktop.ini, `._*`) ; les autres
+  fichiers cachés partent. Les dossiers vides sont gardés. Les chemins reçus sont vérifiés (`safePath` :
+  ni `..`, ni chemin absolu) avant tout affichage ou écriture.
+- **Envoi** : bouton **Dossier** sur ordinateur, menu **Fichier → Un dossier…** sur téléphone (appli
+  Android seulement : ni Safari sur iPhone ni le navigateur d'Android ne choisissent un dossier),
+  glisser-déposer (`webkitGetAsEntry`). Au-delà de 10 fichiers ou 40 Mo, un résumé à confirmer (avec
+  la place libre du serveur). Un dossier copié dans le gestionnaire de fichiers part seul sous ces
+  mêmes seuils ; au-delà, une notification et le même résumé.
+- **Réception** : navigateur plein écran, un niveau à la fois, fil d'Ariane ; grille (avec « Choisir »)
+  quand le dossier affiché n'a que des images et des vidéos, liste à cases sinon. L'aperçu habituel
+  passe d'un fichier au suivant du même dossier ; pas de suppression depuis l'intérieur.
+- **Enregistrement** : un fichier seul comme d'habitude ; plusieurs, le dossier recréé là où l'appareil
+  sait l'écrire (applis : sélecteur natif ; Chrome et Edge : `showDirectoryPicker`), sinon un ZIP sans
+  compression fabriqué au fil de la lecture (`src/core/zip.ts`, ZIP64 au-delà de 4 Go). Le CLI recrée
+  le dossier, ou écrit un ZIP sur la sortie standard.
+- **Lien de partage d'un dossier** : la page `/s/` montre le même navigateur (`ui/folder-view.ts`, en
+  DOM simple, commun aux deux).
+- **Plus tard** : recherche par nom dans un dossier, avec la recherche dans l'historique.
+
 ## 9. Relais
 
 - Un conteneur `node:lts-alpine` : Node (HTTP + WebSocket, fichiers statiques) et Redis

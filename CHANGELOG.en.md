@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.44 — 2026-11-24
+- Folder sharing, with previews and a choice of which files to download.
+
 ## 0.1.43 — 2026-11-24
 - Share links for people outside the group.
 

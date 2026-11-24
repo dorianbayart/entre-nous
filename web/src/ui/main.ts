@@ -16,7 +16,13 @@ import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
 import { drawLayers, drawPage, openPdf, pageSize, type PdfDocument } from './pdf.ts';
 import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
-import type { LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
+import type { FolderSource, LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
+import { type ContentReader } from '../core/reader.ts';
+import { type FolderFile, type FolderIndex, baseName, emptyDirs, fileReader, readBlob, readIndex, safePath } from '../core/folder.ts';
+import { FolderBrowser } from './folder-view.ts';
+import { droppedEntries, folderFromInput, needsConfirm, prepareFolder } from './folder-send.ts';
+import { chooseTarget, writeFolder } from './folder-save.ts';
+import { CHUNK_SIZE } from '../core/crypto.ts';
 import { LANGS, duration, humanSize, storageSpace, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
 
 const platform: PlatformApi = isDesktopApp() ? desktopPlatform() : isAndroidApp() ? androidPlatform() : webPlatform();
@@ -110,7 +116,35 @@ const CONFIRM_FOR = 4000;
 const STALLED_AFTER = 30_000;
 
 const fingerprint = (o: Outgoing) =>
-  o.kind === 'text' ? b64(hash(utf8(o.text))) : `${o.kind}:${o.name}:${o.blob.size}:${o.blob.type}`;
+  o.kind === 'text'
+    ? b64(hash(utf8(o.text)))
+    : o.kind === 'folder'
+      ? `folder:${o.folder.name}:${o.folder.files.length}:${o.folder.bytes}`
+      : `${o.kind}:${o.name}:${o.blob.size}:${o.blob.type}`;
+
+/** A file of a shared folder, shown in the viewer like an item: `folder` is its folder's item. */
+type FileView = ItemView & { folder?: string; path?: string };
+
+/** The folder open in its browser (over the history). */
+let folderOpen: { groupId: string; item: ItemView; reader?: ContentReader; index: FolderIndex; browser?: FolderBrowser; thumbs: Map<string, string> } | undefined;
+
+/** The open folder's reader (its previews): opened again after the app came back to the front. */
+function folderReader(open: NonNullable<typeof folderOpen>): ContentReader {
+  return (open.reader ??= engine.reader(open.groupId, open.item.id, { keep: 6, ahead: 1 }));
+}
+/** A folder waiting for a confirmation before it is sent (large, or copied). */
+let pendingFolder: FolderSource | undefined;
+let prepareSeq = 0;
+
+/** Chunks to read for these files of a folder (each counted once). */
+function chunksOf(files: FolderFile[]) {
+  const seen = new Set<number>();
+  for (const f of files) {
+    if (!f.size) continue;
+    for (let i = Math.floor(f.offset / CHUNK_SIZE); i <= Math.floor((f.offset + f.size - 1) / CHUNK_SIZE); i++) seen.add(i);
+  }
+  return seen.size;
+}
 
 /** What the open preview holds outside Alpine: stopped and released when it closes. */
 let viewerSeq = 0; // each opening; an older one still loading gives up
@@ -246,6 +280,16 @@ Alpine.data('app', () => ({
   },
   /** Picture-in-picture by the app itself (Android, Linux, Windows): only the video shows. */
   pipMode: false,
+  /** The browser of a shared folder (over the history), and its viewer's files. */
+  folderView: { open: false, id: '', loading: false, error: '' },
+  viewerFiles: [] as FileView[],
+  /** A folder shown before it is sent (large, or copied): what it holds. */
+  folderAsk: null as null | { name: string; files: number; dirs: number; bytes: number; ignored: number; copied: boolean },
+  /** Folders being prepared here (their previews), before their upload. */
+  preparing: [] as Array<{ id: string; name: string; done: number; total: number }>,
+  /** Phones: the File button's small menu (files, or a folder). */
+  fileMenu: false,
+  canPickFolder: !!platform.pickFolder || (!isIOS && !(platform.kind === 'android') && 'webkitdirectory' in document.createElement('input')),
   /** Language of the interface: read by t(), so that the texts follow a change. */
   lang: currentLang() as Lang,
   langNames: { fr: 'Français', en: 'English' } as Record<Lang, string>,
@@ -320,7 +364,14 @@ Alpine.data('app', () => ({
       if (active) {
         engine.start();
         engine.reconnect();
-      } else engine.background(); // a transfer in progress goes on, then it disconnects
+      } else {
+        // a folder left open does not keep the phone connected (its reader opens again later)
+        if (folderOpen?.reader) {
+          folderOpen.reader.close();
+          folderOpen.reader = undefined;
+        }
+        engine.background(); // a transfer in progress goes on, then it disconnects
+      }
     };
     if (platform.onAppState) platform.onAppState(onForeground); // Android app
     else document.addEventListener('visibilitychange', () => onForeground(document.visibilityState === 'visible'));
@@ -372,7 +423,9 @@ Alpine.data('app', () => ({
     if (this.group) platform.setAutoLimit?.(this.group.autoMax);
     if (this.view === 'main' && !this.groups.length) this.view = 'welcome';
     // the item shown was deleted (here or elsewhere) or expired
-    if (this.viewer.open && !this.items.some((i) => i.id === this.viewer.id)) this.closeViewer();
+    const shown = this.viewerFiles.length ? this.folderView.id : this.viewer.id;
+    if (this.viewer.open && !this.items.some((i) => i.id === shown)) this.closeViewer();
+    if (this.folderView.open && !this.items.some((i) => i.id === this.folderView.id)) this.closeFolder();
     // the link shown expired (it is created when its page opens: not before)
     if (this.view === 'share' && this.share && !this.group?.shares.some((s) => s.id === this.share!.id)) this.closeShare();
     this.latest = engine.latest;
@@ -692,7 +745,7 @@ Alpine.data('app', () => ({
    * (or this one, before a restart). An interrupted upload is no longer shown.
    */
   get transfers() {
-    const lines: any[] = [...this.sending];
+    const lines: any[] = [...this.preparing.map((p) => ({ ...p, direction: 'up', preparing: true })), ...this.sending];
     const shown = new Set(lines.map((t) => t.itemId).filter(Boolean));
     for (const item of this.items) {
       if (!item.pending || shown.has(item.id) || this.interrupted(item)) continue;
@@ -712,8 +765,9 @@ Alpine.data('app', () => ({
     return lines;
   },
 
-  transferState(t: { error?: string; paused?: boolean; done: number; total: number; rate?: number }) {
+  transferState(t: { error?: string; paused?: boolean; preparing?: boolean; done: number; total: number; rate?: number }) {
     if (t.error) return t.error;
+    if (t.preparing) return this.t('folder.preparing', { n: t.done, total: t.total });
     return t.paused ? this.t('transfer.paused', { p: this.progress(t) }) : this.progress(t);
   },
 
@@ -734,6 +788,7 @@ Alpine.data('app', () => ({
 
   label(item: ItemView) {
     if (item.error) return this.t('item.undecryptable');
+    if (item.kind === 'folder') return item.name ?? this.t('name.folder');
     if (item.kind === 'text') return item.text ?? this.t('item.localText');
     return item.name ?? this.t('name.file');
   },
@@ -750,6 +805,7 @@ Alpine.data('app', () => ({
     // being received: the clipboard would only be written at the end of the upload, long
     // after the tap (refused by browsers); the apps copy it by themselves once complete
     if (item.pending && !item.mine) return false;
+    if (item.kind === 'folder') return false;
     if (item.kind === 'text') return true;
     if (item.kind === 'image') return !platform.imageCopyMax || (item.size ?? 0) <= platform.imageCopyMax;
     return this.desktop; // desktop apps paste any file
@@ -757,7 +813,17 @@ Alpine.data('app', () => ({
 
   /** Also while it is being uploaded: the download follows the upload. */
   canSave(item: ItemView) {
-    return !item.error && !item.unavailable && !this.interrupted(item) && item.kind !== 'text';
+    return !item.error && !item.unavailable && !this.interrupted(item) && item.kind !== 'text' && item.kind !== 'folder';
+  },
+
+  /** A folder can be browsed (and downloaded) while it is still being sent. */
+  canBrowse(item: ItemView) {
+    return item.kind === 'folder' && !item.error && !item.unavailable && !this.interrupted(item);
+  },
+
+  /** "248 fichiers" */
+  folderCount(item: ItemView) {
+    return this.tn('folder.files', item.files ?? 0);
   },
 
   /** Copy keeps the user gesture: the content is passed as a promise. */
@@ -765,14 +831,14 @@ Alpine.data('app', () => ({
     const groupId = this.groupId!;
     const mime = item.kind === 'text' ? 'text/plain' : (item.mime ?? 'application/octet-stream');
     platform
-      .copy(mime, engine.content(groupId, item.id).then((c) => ({ ...c, expiresAt: item.expiresAt })))
+      .copy(mime, this.contentOf(groupId, item).then((c) => ({ ...c, expiresAt: item.expiresAt })))
       .then(() => this.toast(this.t('toast.copied')))
       .catch((err) => this.toast(failure('toast.copyFailed', err)));
   },
 
   async save(item: ItemView) {
     try {
-      const c = await engine.content(this.groupId!, item.id);
+      const c = await this.contentOf(this.groupId!, item);
       await platform.save(c.blob!, c.name ?? this.t('name.file'));
     } catch (err: any) {
       this.toast(failure('toast.error', err));
@@ -814,7 +880,7 @@ Alpine.data('app', () => ({
   onIncoming(groupId: string, item: ItemView) {
     if (groupId !== this.groupId || !platform.autoWrite || copiedIds.has(item.id)) return;
     copiedIds.add(item.id);
-    if (item.kind === 'file' && !this.desktop) return;
+    if (item.kind === 'folder' || (item.kind === 'file' && !this.desktop)) return;
     if (!this.native && !document.hasFocus()) return;
     const mime = item.kind === 'text' ? 'text/plain' : (item.mime ?? 'application/octet-stream');
     if (item.kind === 'text') lastShared = b64(hash(utf8(item.text ?? '')));
@@ -832,7 +898,7 @@ Alpine.data('app', () => ({
   /** Mac: a notification while the window is closed (never the content itself). */
   notifyIncoming(item: ItemView) {
     if (!this.prefs.notify || !platform.notify) return;
-    const what = item.kind === 'text' ? 'notify.text' : item.kind === 'image' ? 'notify.image' : 'notify.file';
+    const what = item.kind === 'text' ? 'notify.text' : item.kind === 'image' ? 'notify.image' : item.kind === 'folder' ? 'notify.folder' : 'notify.file';
     platform.notify('Entre Nous', this.t(what, { name: item.fromName }));
   },
 
@@ -840,7 +906,7 @@ Alpine.data('app', () => ({
 
   /** How an item opens in the preview, or undefined (saved only). */
   previewOf(item: ItemView): PreviewKind | undefined {
-    if (item.error || item.unavailable || item.kind === 'text' || this.interrupted(item)) return undefined;
+    if (item.error || item.unavailable || item.kind === 'text' || item.kind === 'folder' || this.interrupted(item)) return undefined;
     return previewKind(item.name, item.mime);
   },
 
@@ -878,16 +944,28 @@ Alpine.data('app', () => ({
 
   /** A tile at the left of the item: its thumbnail, or a drawn page for a document. */
   hasTile(item: ItemView) {
-    return !!item.thumb || !!this.previewOf(item);
+    return !!item.thumb || !!this.previewOf(item) || item.kind === 'folder';
+  },
+
+  /** The tile opens the preview, or a folder's browser. */
+  openTile(item: ItemView) {
+    if (item.kind === 'folder') this.openFolder(item);
+    else this.openPreview(item);
+  },
+
+  tileDisabled(item: ItemView) {
+    return item.kind === 'folder' ? !this.canBrowse(item) : !this.previewOf(item);
   },
 
   tileClass(item: ItemView) {
+    if (item.kind === 'folder') return 'thumb folder ' + (item.thumb ? 'pic' : 'doc');
     const k = this.previewOf(item);
     return 'thumb ' + (item.thumb ? 'pic' : 'doc') + (k === 'video' || k === 'audio' || k === 'pdf' ? ' ' + k : '');
   },
 
   /** On the tile: the length of a video or a song, a document's extension. */
   badge(item: ItemView) {
+    if (item.kind === 'folder') return String(item.files ?? 0);
     if (this.isVideo(item) || this.isAudio(item)) return item.duration ? clock(item.duration) : '';
     if (this.previewOf(item) === 'pdf') return 'PDF';
     if (item.thumb) return '';
@@ -896,11 +974,18 @@ Alpine.data('app', () => ({
   },
 
   get previewable(): ItemView[] {
+    if (this.viewerFiles.length) return this.viewerFiles;
     return this.items.filter((i) => this.previewOf(i));
   },
 
-  get viewerItem(): ItemView | undefined {
-    return this.viewer.open ? this.items.find((i) => i.id === this.viewer.id) : undefined;
+  get viewerItem(): FileView | undefined {
+    if (!this.viewer.open) return undefined;
+    return (this.viewerFiles.length ? this.viewerFiles : this.items).find((i) => i.id === this.viewer.id);
+  },
+
+  /** A file of a folder: no deletion from the viewer (the folder goes as a whole). */
+  get viewerInFolder() {
+    return this.viewerFiles.length > 0;
   },
 
   get viewerName() {
@@ -941,7 +1026,7 @@ Alpine.data('app', () => ({
   },
 
   get viewerProgress() {
-    const d = this.downloads[this.viewer.id];
+    const d = this.downloads[this.viewerInFolder ? this.folderView.id : this.viewer.id];
     return d ? this.progress(d) : '';
   },
 
@@ -993,7 +1078,7 @@ Alpine.data('app', () => ({
           this.viewer.src = item.thumb;
         } else if (item.previewless) {
           // the local mode sends no preview: the image itself
-          const c = await engine.content(groupId, item.id);
+          const c = await this.contentOf(groupId, item);
           if (stale()) return;
           viewerUrl = URL.createObjectURL(c.blob!);
           this.viewer.src = viewerUrl;
@@ -1006,7 +1091,7 @@ Alpine.data('app', () => ({
         await this.showPdf(groupId, item, stale);
       } else {
         // a text: its start (the first chunk at most)
-        const reader = engine.reader(groupId, item.id, { ahead: 0 });
+        const reader = this.readerOf(groupId, item, { ahead: 0 });
         let bytes: Uint8Array;
         try {
           bytes = await reader.read(0, TEXT_PREVIEW_MAX);
@@ -1048,7 +1133,7 @@ Alpine.data('app', () => ({
     // Mac: back from the picture-in-picture window, the popover shows again
     video.onleavepictureinpicture = () => platform.show?.();
     try {
-      stopMedia = await stream(video, engine.reader(groupId, item.id, { keep: 8, ahead: 3 }));
+      stopMedia = await stream(video, this.readerOf(groupId, item, { keep: 8, ahead: 3 }));
     } catch (err) {
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
@@ -1056,7 +1141,7 @@ Alpine.data('app', () => ({
         this.viewer.error = this.t('viewer.unreadable');
         return;
       }
-      const c = await engine.content(groupId, item.id);
+      const c = await this.contentOf(groupId, item);
       if (stale()) return;
       viewerUrl = URL.createObjectURL(c.blob!);
       video.src = viewerUrl;
@@ -1078,7 +1163,7 @@ Alpine.data('app', () => ({
     audio.onerror = onError;
     audio.addEventListener('streamerror', onError);
     try {
-      stopMedia = await stream(audio, engine.reader(groupId, item.id, { keep: 4, ahead: 2 }), { duration: item.duration });
+      stopMedia = await stream(audio, this.readerOf(groupId, item, { keep: 4, ahead: 2 }), { duration: item.duration });
     } catch (err) {
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
@@ -1086,7 +1171,7 @@ Alpine.data('app', () => ({
         this.viewer.error = this.t('viewer.unreadable');
         return;
       }
-      const c = await engine.content(groupId, item.id);
+      const c = await this.contentOf(groupId, item);
       if (stale()) return;
       viewerUrl = URL.createObjectURL(c.blob!);
       audio.src = viewerUrl;
@@ -1100,7 +1185,7 @@ Alpine.data('app', () => ({
    * when it comes near the screen, and forgotten far from it.
    */
   async showPdf(groupId: string, item: ItemView, stale: () => boolean) {
-    const opened = await openPdf(engine.reader(groupId, item.id, { keep: 8, ahead: 0 }));
+    const opened = await openPdf(this.readerOf(groupId, item, { keep: 8, ahead: 0 }));
     if (stale()) return opened.close();
     pdf = { ...opened, drawing: Promise.resolve() };
     this.viewer.pages = opened.doc.numPages;
@@ -1273,13 +1358,15 @@ Alpine.data('app', () => ({
     this.viewer.open = false;
     this.viewer.kind = '';
     this.viewer.id = '';
+    this.viewerFiles = [];
   },
 
   /** The previous (-1) or next (1) item that has a preview. */
   viewerStep(delta: number) {
     const list = this.previewable;
     const next = list[this.viewerIndex + delta];
-    if (next) this.openPreview(next);
+    if (next && this.viewerInFolder) this.openFolderFile(next as FileView);
+    else if (next) this.openPreview(next);
   },
 
   viewerPrev() {
@@ -1291,7 +1378,10 @@ Alpine.data('app', () => ({
   },
 
   onKey(e: KeyboardEvent) {
-    if (!this.viewer.open) return;
+    if (!this.viewer.open) {
+      if (this.folderView.open && e.key === 'Escape') this.closeFolder();
+      return;
+    }
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     if (e.key === 'Escape') this.closeViewer();
@@ -1359,7 +1449,7 @@ Alpine.data('app', () => ({
 
   viewerRemove() {
     const item = this.viewerItem;
-    if (item) this.remove(item);
+    if (item && !this.viewerInFolder) this.remove(item);
   },
 
   get viewerRemoving() {
@@ -1414,6 +1504,7 @@ Alpine.data('app', () => ({
 
   async send(o: Outgoing) {
     if (!this.groupId) return;
+    if (o.kind === 'folder') return this.sendFolder(o.folder);
     try {
       if (o.kind === 'text') {
         await engine.sendText(this.groupId, o.text);
@@ -1443,21 +1534,356 @@ Alpine.data('app', () => ({
   },
 
   pickFiles() {
+    this.fileMenu = false;
     ((this as any).$refs.file as HTMLInputElement).click();
+  },
+
+  /** Phones: the File button opens a choice (files, or a folder) where a folder can be sent. */
+  onFileButton() {
+    if (this.mobile && this.canPickFolder) this.fileMenu = !this.fileMenu;
+    else this.pickFiles();
+  },
+
+  closeFileMenu() {
+    this.fileMenu = false;
+  },
+
+  /** A folder to send: the apps' own picker, or the browser's. */
+  async pickFolder() {
+    this.fileMenu = false;
+    if (!platform.pickFolder) {
+      ((this as any).$refs.folder as HTMLInputElement).click();
+      return;
+    }
+    try {
+      const src = await platform.pickFolder();
+      if (src) await this.sendFolder(src);
+    } catch (err: any) {
+      this.toast(this.t('toast.error', { msg: err?.message ?? err }));
+    }
+  },
+
+  async onFolderInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const src = folderFromInput(input.files ?? []);
+    input.value = '';
+    if (src) await this.sendFolder(src);
+  },
+
+  /**
+   * Sends a folder: at once when small, otherwise after a look at what it holds. `copied`: it
+   * was copied (desktop apps), not picked: a notification asks.
+   */
+  async sendFolder(src: FolderSource, copied = false) {
+    if (!this.groupId) return;
+    if (src.truncated) {
+      this.toast(this.t('folder.tooMany', { name: src.name }));
+      return;
+    }
+    if (!src.files.length && !src.dirs.length) {
+      this.toast(this.t('folder.nothing', { name: src.name }));
+      return;
+    }
+    if (needsConfirm(src) || copied) {
+      pendingFolder = src;
+      this.folderAsk = { name: src.name, files: src.files.length, dirs: new Set(src.files.map((f) => f.path.split('/').slice(0, -1).join('/')).filter(Boolean)).size + src.dirs.length, bytes: src.bytes, ignored: src.ignored, copied };
+      platform.show?.(); // Mac: the window, if a folder was dropped on the icon
+      return;
+    }
+    await this.doSendFolder(src);
+  },
+
+  get folderAskText() {
+    const a = this.folderAsk;
+    if (!a) return '';
+    const parts = [this.tn('folder.files', a.files)];
+    if (a.dirs) parts.push(this.tn('folder.dirs', a.dirs));
+    return parts.join(', ') + ' · ' + humanSize(a.bytes);
+  },
+
+  get folderAskIgnored() {
+    return this.folderAsk?.ignored ? this.tn('folder.ignored', this.folderAsk.ignored) : '';
+  },
+
+  get folderAskSpace() {
+    const s = this.group?.storage;
+    if (!s || !s.limit || this.group?.localOnly) return '';
+    return this.t('folder.space', { free: humanSize(Math.max(0, s.limit - s.used)) });
+  },
+
+  get folderAskTooBig() {
+    const s = this.group?.storage;
+    return !!(this.folderAsk && s && s.limit && !this.group?.localOnly && this.folderAsk.bytes > s.limit - s.used);
+  },
+
+  async confirmFolder() {
+    const src = pendingFolder;
+    pendingFolder = undefined;
+    this.folderAsk = null;
+    if (src) await this.doSendFolder(src);
+  },
+
+  cancelFolder() {
+    pendingFolder = undefined;
+    this.folderAsk = null;
+  },
+
+  /** The previews of every image, video and PDF (here, shown as a line), then the upload. */
+  async doSendFolder(src: FolderSource) {
+    const groupId = this.groupId;
+    if (!groupId) return;
+    const id = 'prep:' + ++prepareSeq;
+    const line = { id, name: src.name, done: 0, total: 0 };
+    this.preparing = [...this.preparing, line];
+    let pack: Awaited<ReturnType<typeof prepareFolder>>;
+    try {
+      pack = await prepareFolder(src, (done, total) => {
+        this.preparing = this.preparing.map((p) => (p.id === id ? { ...p, done, total } : p));
+      });
+    } catch (err: any) {
+      this.toast(this.t('toast.error', { msg: err?.message ?? err }));
+      return;
+    } finally {
+      this.preparing = this.preparing.filter((p) => p.id !== id);
+    }
+    try {
+      await engine.sendBlob(groupId, pack.source, src.name, 'folder', { folder: pack.summary, thumb: pack.thumb });
+      this.toast(this.t('toast.sent'));
+    } catch (err: any) {
+      if (err.message === 'full') this.toast(this.t('toast.full'));
+      else if (err instanceof SendCancelledError) this.toast(err.message);
+      else this.toast(this.t('toast.error', { msg: err.message ?? err }));
+    }
+  },
+
+  // ---------------------------------------------------------------- folders received
+
+  /** A content to read: an item, or a file of a folder (a range of the folder's). */
+  readerOf(groupId: string, item: FileView, opts: { keep?: number; ahead?: number } = {}): ContentReader {
+    if (!item.folder || !item.path) return engine.reader(groupId, item.id, opts);
+    const file = folderOpen?.index.files.find((f) => f.path === item.path);
+    if (!file) throw new ItemGoneError();
+    return fileReader(engine.reader(groupId, item.folder, opts), file);
+  },
+
+  /** The whole content of an item, or of a file of a folder (with its download's progress). */
+  async contentOf(groupId: string, item: FileView): Promise<{ text?: string; blob?: Blob; name?: string; mime?: string }> {
+    if (!item.folder || !item.path) return engine.content(groupId, item.id);
+    const file = folderOpen?.index.files.find((f) => f.path === item.path);
+    if (!file) throw new ItemGoneError();
+    const reader = engine.downloadReader(groupId, item.folder, baseName(file.path), chunksOf([file]));
+    try {
+      return { blob: await readBlob(reader, file), name: baseName(file.path), mime: file.mime };
+    } finally {
+      reader.close();
+    }
+  },
+
+  /** Opens a folder's browser: its index comes first, the previews as they show. */
+  async openFolder(item: ItemView) {
+    const groupId = this.groupId;
+    if (!groupId || !this.canBrowse(item)) return;
+    if (this.folderView.open && this.folderView.id === item.id) return; // a second tap
+    this.closeFolder();
+    this.confirming = '';
+    this.folderView = { open: true, id: item.id, loading: true, error: '' };
+    const reader = engine.reader(groupId, item.id, { keep: 6, ahead: 1 });
+    try {
+      const index = await readIndex(reader);
+      if (this.folderView.id !== item.id || !this.folderView.open || folderOpen) return reader.close();
+      folderOpen = { groupId, item, reader, index, thumbs: new Map() };
+      this.folderView.loading = false;
+      await (this as any).$nextTick();
+      const open = folderOpen;
+      open.browser = new FolderBrowser((this as any).$refs.folderBox, {
+        index,
+        thumb: (f) => this.folderThumb(open, f),
+        open: (f, siblings) => this.openFolderFiles(f, siblings),
+        download: (files, dirs, base, name) => this.downloadFolderFiles(open, files, dirs, base, name),
+        close: () => this.closeFolder(),
+      });
+    } catch (err: any) {
+      reader.close();
+      if (this.folderView.id !== item.id) return;
+      this.folderView.loading = false;
+      this.folderView.error = err instanceof ItemGoneError ? err.message : this.t('toast.error', { msg: err?.message ?? err });
+    }
+  },
+
+  closeFolder() {
+    if (this.viewerInFolder) this.closeViewer();
+    if (folderOpen) {
+      folderOpen.browser?.destroy();
+      folderOpen.reader?.close();
+      for (const url of folderOpen.thumbs.values()) URL.revokeObjectURL(url);
+      folderOpen = undefined;
+    }
+    this.folderView = { open: false, id: '', loading: false, error: '' };
+  },
+
+  /** Back in the folder: one level up, or closed. */
+  folderBack() {
+    if (folderOpen?.browser) folderOpen.browser.back();
+    else this.closeFolder();
+  },
+
+  /** A file's preview (made by the sender), as an object URL, read once. */
+  async folderThumb(open: NonNullable<typeof folderOpen>, f: FolderFile): Promise<string | undefined> {
+    if (!f.thumb) return undefined;
+    const known = open.thumbs.get(f.path);
+    if (known) return known;
+    try {
+      const bytes = await folderReader(open).read(f.thumb[0], f.thumb[0] + f.thumb[1]);
+      if (folderOpen !== open) return undefined;
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/jpeg' }));
+      open.thumbs.set(f.path, url);
+      return url;
+    } catch {
+      return undefined;
+    }
+  },
+
+  /** A file of the folder as an item of the viewer. */
+  fileView(open: NonNullable<typeof folderOpen>, f: FolderFile): FileView {
+    const item = open.item;
+    const name = baseName(f.path);
+    const k = previewKind(name, f.mime);
+    return {
+      id: `${item.id}/${f.path}`,
+      folder: item.id,
+      path: f.path,
+      from: item.from,
+      fromName: item.fromName,
+      mine: item.mine,
+      createdAt: item.createdAt,
+      expiresAt: item.expiresAt,
+      kind: k === 'image' ? 'image' : 'file',
+      name,
+      mime: f.mime,
+      size: f.size,
+      thumb: open.thumbs.get(f.path),
+      w: f.w,
+      h: f.h,
+      duration: f.duration,
+      pages: f.pages,
+      excerpt: f.excerpt,
+      chunks: 0,
+      // an image without a preview: the file itself is shown
+      previewless: !f.thumb,
+    };
+  },
+
+  /** Opens a file of the folder; the viewer goes from it to the other files of its folder. */
+  async openFolderFiles(f: FolderFile, siblings: FolderFile[]) {
+    const open = folderOpen;
+    if (!open) return;
+    this.viewerFiles = siblings.map((x) => this.fileView(open, x));
+    await this.openFolderFile(this.viewerFiles.find((v) => v.path === f.path) ?? this.fileView(open, f));
+  },
+
+  /** Its preview read first (an image shows it, a video uses it as its poster). */
+  async openFolderFile(v: FileView) {
+    const open = folderOpen;
+    if (!open) return;
+    const f = open.index.files.find((x) => x.path === v.path);
+    if (f?.thumb && !v.thumb) {
+      const url = await this.folderThumb(open, f);
+      if (folderOpen !== open) return;
+      this.viewerFiles = this.viewerFiles.map((x) => (x.path === v.path ? { ...x, thumb: url } : x));
+      v = { ...v, thumb: url };
+    }
+    await this.openPreview(v);
+  },
+
+  /**
+   * Downloads files of the folder: one alone is saved like a file; several, as a folder (where
+   * the device can write one) or a ZIP. Where it goes is asked first, while the tap counts.
+   */
+  async downloadFolderFiles(open: NonNullable<typeof folderOpen>, files: FolderFile[], dirs: string[], base: string, name: string) {
+    const strip = base ? base.length + 1 : 0;
+    const groupId = open.groupId;
+    const itemId = open.item.id;
+    try {
+      if (files.length === 1 && !dirs.length) {
+        open.browser?.setBusy(this.t('viewer.loading'));
+        const c = await this.contentOf(groupId, this.fileView(open, files[0]));
+        await platform.save(c.blob!, c.name ?? this.t('name.file'));
+        return;
+      }
+      const target = await chooseTarget(name, platform);
+      if (!target) return;
+      const total = files.reduce((n, f) => n + f.size, 0);
+      const reader = engine.downloadReader(groupId, itemId, name, chunksOf(files));
+      try {
+        const pct = (done: number) => (total ? Math.round((done / total) * 100) : 100) + (this.lang === 'fr' ? ' %' : '%');
+        open.browser?.setBusy(pct(0));
+        const res = await writeFolder(
+          target,
+          files.map((f) => ({ path: f.path.slice(strip), size: f.size, read: (s: number, e: number) => reader.read(f.offset + s, f.offset + e) })),
+          dirs.map((d) => d.slice(strip)).filter(Boolean),
+          (done) => open.browser?.setBusy(pct(done)),
+        );
+        if ('zip' in res) await platform.save(res.zip, name + '.zip');
+        else this.toast(this.t('folder.saved', { where: res.where }));
+      } finally {
+        reader.close();
+      }
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    } finally {
+      open.browser?.setBusy('');
+    }
+  },
+
+  /** "Download all" from the history: the folder's index, then all of it. */
+  async downloadFolder(item: ItemView) {
+    const groupId = this.groupId;
+    if (!groupId || !this.canBrowse(item)) return;
+    // a name from another device: made safe before it names anything here
+    const name = safePath(item.name ?? '')?.replace(/\//g, '-') || this.t('name.folder');
+    let reader: ContentReader | undefined;
+    try {
+      // asked first: a browser's folder picker needs the tap
+      const target = await chooseTarget(name, platform);
+      if (!target) return;
+      reader = engine.downloadReader(groupId, item.id, name, item.chunks);
+      const r = reader;
+      const index = await readIndex(r);
+      const res = await writeFolder(
+        target,
+        index.files.map((f) => ({ path: f.path, size: f.size, read: (s: number, e: number) => r.read(f.offset + s, f.offset + e) })),
+        emptyDirs(index),
+      );
+      if ('zip' in res) await platform.save(res.zip, name + '.zip');
+      else this.toast(this.t('folder.saved', { where: res.where }));
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    } finally {
+      reader?.close();
+    }
   },
 
   async onFiles(e: Event) {
     const input = e.target as HTMLInputElement;
-    for (const f of Array.from(input.files ?? [])) await this.send({ kind: 'file', blob: f, name: f.name });
+    const files = Array.from(input.files ?? []);
     input.value = '';
+    for (const f of files) await this.send({ kind: 'file', blob: f, name: f.name });
   },
 
-  /** Files dropped on the main screen (elsewhere, the drop is only kept from opening them). */
+  /** Files and folders dropped on the main screen (elsewhere, the drop is only kept from opening them). */
   onDrop(e: DragEvent) {
     dragDepth = 0;
     this.dragging = false;
     if (this.view !== 'main') return;
-    for (const f of Array.from(e.dataTransfer?.files ?? [])) this.send({ kind: 'file', blob: f, name: f.name });
+    // taken now: the drop's entries are gone after this event
+    const { folders, files } = droppedEntries(e.dataTransfer);
+    for (const f of files) this.send({ kind: 'file', blob: f, name: f.name });
+    folders.then(
+      async (list) => {
+        for (const src of list) await this.sendFolder(src);
+      },
+      (err) => this.toast(this.t('toast.error', { msg: err?.message ?? err })),
+    );
   },
 
   onDragEnter(e: DragEvent) {
@@ -1503,6 +1929,13 @@ Alpine.data('app', () => ({
     const o = c;
     const fp = fingerprint(o);
     if (fp === lastShared) return; // what we just received ourselves
+    if (o.kind === 'folder' && needsConfirm(o.folder)) {
+      // too large to go by itself: shown, and a notification says so (never its content)
+      lastShared = fp;
+      if (platform.notify) platform.notify('Entre Nous', this.t('notify.folderCopied', { name: o.folder.name, what: this.tn('folder.files', o.folder.files.length) }));
+      this.sendFolder(o.folder, true);
+      return;
+    }
     pendingLocal = o;
     if (!this.others.some((m) => m.online)) return;
     lastShared = fp;
@@ -1807,6 +2240,8 @@ Alpine.data('app', () => ({
   /** Android back button: back to the main screen, then to the background. */
   onBack() {
     if (this.viewer.open) this.closeViewer();
+    else if (this.folderAsk) this.cancelFolder();
+    else if (this.folderView.open) folderOpen?.browser ? folderOpen.browser.back() : this.closeFolder();
     else if (this.view === 'scan') this.stopScan();
     else if (this.view === 'share') this.closeShare();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
@@ -2009,13 +2444,13 @@ Alpine.data('app', () => ({
   },
 
   progress(t: { done: number; total: number; rate?: number }) {
-    const pct = (t.total ? Math.round((t.done / t.total) * 100) : 0) + (this.lang === 'fr' ? ' %' : '%');
+    const pct = (t.total ? Math.round(Math.min(1, t.done / t.total) * 100) : 0) + (this.lang === 'fr' ? ' %' : '%');
     return t.rate ? `${pct} · ${humanSize(Math.round(t.rate))}/s` : pct;
   },
 
   /** Progress ring: dash offset of a circle of circumference 100. */
   ringOffset(t: { done: number; total: number }) {
-    return t.total ? 100 - (100 * t.done) / t.total : 100;
+    return t.total ? 100 - 100 * Math.min(1, t.done / t.total) : 100;
   },
 
   deviceCount(g: { members: unknown[] }) {

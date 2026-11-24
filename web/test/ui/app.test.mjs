@@ -143,7 +143,7 @@ test('two devices: note, items, deletion, upload and download', { timeout: 120_0
   // ---- an upload in progress: small line above the history, on both devices
   const content = randomFillSync(Buffer.alloc(3 * 1024 * 1024 + 12345));
   await a.page.evaluate(() => window.__hold());
-  await a.page.locator('input[type=file]').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: content });
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: content });
   const lineA = a.page.locator('.transfer', { hasText: 'photo.png' });
   await lineA.waitFor();
   assert.match(await lineA.textContent(), /↑ photo\.png/);
@@ -230,7 +230,7 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   // ---- Alice uploads: Bob and Carla both download it while it is being sent
   const content = randomFillSync(Buffer.alloc(2 * 1024 * 1024 + 99));
   await a.page.evaluate(() => window.__hold());
-  await a.page.locator('input[type=file]').setInputFiles({ name: 'rapport.pdf', mimeType: 'application/pdf', buffer: content });
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'rapport.pdf', mimeType: 'application/pdf', buffer: content });
   const downloads = [];
   for (const d of [b, c]) {
     const phone = d === c;
@@ -323,7 +323,7 @@ test('the command line and the browser: one group, both ways', { timeout: 60_000
   await cli('send', '-m', 'depuis le terminal');
   await a.page.locator('.history .item', { hasText: 'depuis le terminal' }).waitFor();
   // the browser sends, the terminal gets it
-  await a.page.locator('input[type=file]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('du navigateur') });
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('du navigateur') });
   await a.page.locator('.history .item', { hasText: 'notes.txt' }).waitFor();
   const { stdout } = await cli('get', '-o', '-');
   assert.equal(stdout, 'du navigateur');
@@ -402,7 +402,7 @@ test('previews: tiles, image, Markdown (safe), text, streamed video, deletion', 
     // a HEIC: Chrome cannot read it, sent without a preview
     { name: 'iphone.heic', mimeType: 'image/heic', buffer: Buffer.from('not really a HEIC photo') },
   ]) {
-    await a.page.locator('input[type=file]').setInputFiles(f);
+    await a.page.locator('input[type=file][multiple]').setInputFiles(f);
     await b.page.locator('.history .item', { hasText: typeof f === 'string' ? f.split('/').pop() : f.name }).waitFor();
   }
   await until('uploads over', async () => (await b.page.locator('.transfer').count()) === 0, 20_000);
@@ -498,7 +498,7 @@ test('songs: MP3, M4A, Opus, FLAC and WAV streamed, jumps to the middle and near
     { f: 'song.wav', length: 80, badge: '1:20' },
   ];
   for (const { f } of songs) {
-    await a.page.locator('input[type=file]').setInputFiles(`${FIXTURES}${f}`);
+    await a.page.locator('input[type=file][multiple]').setInputFiles(`${FIXTURES}${f}`);
     await b.page.locator('.history .item', { hasText: f }).waitFor();
   }
   await until('uploads over', async () => (await b.page.locator('.transfer').count()) === 0, 90_000);
@@ -542,7 +542,7 @@ test('PDF: first page and page count from the sender, pages drawn as they show, 
   await a.page.locator('section.main').waitFor();
   await pair(a, b, (link) => b.page.goto(link));
   // 12 pages, two chunks: the text pages, then a big image (last page), the table at the end
-  await a.page.locator('input[type=file]').setInputFiles(`${FIXTURES}doc.pdf`);
+  await a.page.locator('input[type=file][multiple]').setInputFiles(`${FIXTURES}doc.pdf`);
   const item = b.page.locator('.history .item', { hasText: 'doc.pdf' });
   await item.waitFor();
   await until('upload over', async () => (await b.page.locator('.transfer').count()) === 0, 60_000);
@@ -665,7 +665,7 @@ test('share links: made from the history, opened outside the group, kept for the
   await a.page.locator('.note textarea').fill('Rendez-vous à 18 h');
   await button(a.page.locator('.note-bar'), 'Envoyer').click();
   const content = Buffer.from('Liste des courses\n- pain\n- fromage\n'.repeat(200));
-  await a.page.locator('input[type=file]').setInputFiles({ name: 'courses.txt', mimeType: 'text/plain', buffer: content });
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'courses.txt', mimeType: 'text/plain', buffer: content });
   const textA = a.page.locator('.history .item:not(.shared-link)', { hasText: 'Rendez-vous à 18 h' });
   const fileA = a.page.locator('.history .item:not(.shared-link)', { hasText: 'courses.txt' });
   await textA.waitFor();
@@ -681,7 +681,7 @@ test('share links: made from the history, opened outside the group, kept for the
   assert.ok(await a.page.locator('section.main').isHidden());
   const link = await until('share link', () => page.locator('input.link').inputValue());
   assert.match(link, /^http:\/\/127\.0\.0\.1:8080\/s\/#[A-Za-z0-9_-]{43}$/);
-  assert.ok(await page.locator('img.qr').isVisible(), 'a QR code');
+  await page.locator('img.qr').waitFor(); // a QR code
   assert.equal(await button(page, '1 h').getAttribute('aria-pressed'), 'true');
   assert.match(await page.textContent(), /Expire dans 1 h/);
   // another lifetime: the same link

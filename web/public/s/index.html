@@ -29,10 +29,29 @@
       <p class="meta" id="meta"></p>
       <p class="viewer-note" id="note" hidden></p>
     </div>
+    <!-- a folder: browsed here -->
+    <div class="visit-folder" id="folder" hidden>
+      <p class="meta center-text" id="folder-meta"></p>
+      <div class="folder-browser" id="folder-browser"></div>
+    </div>
     <div class="visit-actions">
       <button class="primary" id="copy" hidden></button>
       <button class="secondary" id="download" hidden></button>
     </div>
+  </section>
+  <!-- a file of the folder, over the page -->
+  <section class="viewer visit-preview" id="preview" hidden role="dialog" aria-modal="true">
+    <header class="viewer-bar">
+      <button class="icon" id="preview-close" aria-label="←"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+      <div class="viewer-title"><strong id="preview-name"></strong><span id="preview-meta"></span></div>
+    </header>
+    <div class="viewer-media">
+      <div class="visit-media" id="preview-media"></div>
+      <button class="nav prev" id="preview-prev" aria-label="←"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="nav next" id="preview-next" aria-label="→"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div>
+    <p class="viewer-note" id="preview-note" hidden></p>
+    <div class="viewer-actions"><div class="row"><button class="secondary" id="preview-save"></button></div></div>
   </section>
   <footer class="visit-foot">
     <p class="muted small" id="e2e"></p>

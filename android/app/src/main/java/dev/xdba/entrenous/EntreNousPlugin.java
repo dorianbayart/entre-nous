@@ -20,7 +20,12 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PersistableBundle;
+import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
+import androidx.activity.result.ActivityResult;
+import com.getcapacitor.annotation.ActivityCallback;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -35,7 +40,10 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
@@ -71,6 +79,14 @@ public class EntreNousPlugin extends Plugin {
 
     private SharedPreferences prefs;
     private final Map<String, File> files = new ConcurrentHashMap<>();
+    /** Documents of a folder (Android's folder picker): files read or written, folders created. */
+    private final Map<String, Uri> docs = new ConcurrentHashMap<>();
+    /** A folder being saved: its folders already made, by path ("" is the folder itself). */
+    private final Map<String, Map<String, Uri>> saving = new ConcurrentHashMap<>();
+    /** Files of a folder being saved, open until written (cloud folders refuse appending). */
+    private final Map<String, OutputStream> writing = new ConcurrentHashMap<>();
+    /** Files read in a folder at most (a whole storage picked by mistake stops there). */
+    private static final int FOLDER_MAX = 100_000;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
 
@@ -291,6 +307,30 @@ public class EntreNousPlugin extends Plugin {
     /** A received file, written piece by piece, then offered through the share sheet. */
     @PluginMethod
     public void fileCreate(PluginCall call) {
+        String folder = call.getString("folder");
+        if (folder != null) {
+            // a file of a folder being saved: a document in the folder picked
+            io.execute(() -> {
+                try {
+                    String path = call.getString("path", "");
+                    int slash = path.lastIndexOf('/');
+                    Uri dir = folderDir(folder, slash < 0 ? "" : path.substring(0, slash));
+                    String name = safeName(path.substring(slash + 1));
+                    Uri doc = DocumentsContract.createDocument(getContext().getContentResolver(), dir, mimeOf(name), name);
+                    if (doc == null) throw new Exception("cannot create " + name);
+                    OutputStream out = getContext().getContentResolver().openOutputStream(doc, "w");
+                    if (out == null) throw new Exception("cannot write " + name);
+                    String token = UUID.randomUUID().toString();
+                    writing.put(token, out);
+                    JSObject o = new JSObject();
+                    o.put("token", token);
+                    call.resolve(o);
+                } catch (Exception e) {
+                    call.reject("file: " + e.getMessage());
+                }
+            });
+            return;
+        }
         String token = UUID.randomUUID().toString();
         File dir = new File(new File(getContext().getCacheDir(), "received"), token);
         dir.mkdirs();
@@ -303,6 +343,16 @@ public class EntreNousPlugin extends Plugin {
 
     @PluginMethod
     public void fileAppend(PluginCall call) {
+        OutputStream stream = writing.get(call.getString("token", ""));
+        if (stream != null) {
+            try {
+                stream.write(decode(call.getString("data", "")));
+                call.resolve();
+            } catch (Exception e) {
+                call.reject("file: " + e.getMessage());
+            }
+            return;
+        }
         File f = files.get(call.getString("token", ""));
         if (f == null) {
             call.reject("unknown file");
@@ -338,6 +388,11 @@ public class EntreNousPlugin extends Plugin {
     /** Reads a shared file (from "Share -> Entre Nous"), piece by piece. */
     @PluginMethod
     public void fileRead(PluginCall call) {
+        Uri doc = docs.get(call.getString("token", ""));
+        if (doc != null) {
+            readDocument(call, doc);
+            return;
+        }
         File f = files.get(call.getString("token", ""));
         if (f == null) {
             call.reject("unknown file");
@@ -359,12 +414,204 @@ public class EntreNousPlugin extends Plugin {
         }
     }
 
+    /** A file of a folder being saved is complete. */
+    @PluginMethod
+    public void fileClose(PluginCall call) {
+        OutputStream out = writing.remove(call.getString("token", ""));
+        try {
+            if (out != null) out.close();
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("file: " + e.getMessage());
+        }
+    }
+
     /** A shared file has been sent: its copy goes. */
     @PluginMethod
     public void fileDelete(PluginCall call) {
         File f = files.remove(call.getString("token", ""));
         if (f != null) deleteTree(f.getParentFile());
         call.resolve();
+    }
+
+    // ------------------------------------------------------------------ folders
+
+    /** A folder to send: Android's folder picker, then its files (read later, through tokens). */
+    @PluginMethod
+    public void folderPick(PluginCall call) {
+        startActivityForResult(call, new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), "folderPicked");
+    }
+
+    @ActivityCallback
+    private void folderPicked(PluginCall call, ActivityResult result) {
+        Uri tree = result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null ? result.getData().getData() : null;
+        if (tree == null) {
+            call.resolve(new JSObject());
+            return;
+        }
+        io.execute(() -> {
+            try {
+                String rootId = DocumentsContract.getTreeDocumentId(tree);
+                JSArray list = new JSArray();
+                JSArray empty = new JSArray();
+                JSObject o = new JSObject();
+                o.put("kind", "folder");
+                o.put("name", displayName(DocumentsContract.buildDocumentUriUsingTree(tree, rootId), "dossier"));
+                try {
+                    walk(tree, rootId, "", list, empty);
+                    o.put("files", list);
+                    o.put("dirs", empty);
+                } catch (TooMany e) {
+                    // too many: nothing is sent (the web UI says so)
+                    o.put("files", new JSArray());
+                    o.put("dirs", new JSArray());
+                    o.put("truncated", true);
+                }
+                call.resolve(o);
+            } catch (Exception e) {
+                call.reject("folder: " + e.getMessage());
+            }
+        });
+    }
+
+    /** The files below a folder (depth first), with their paths; its empty folders. */
+    private void walk(Uri tree, String id, String path, JSArray list, JSArray empty) {
+        ContentResolver cr = getContext().getContentResolver();
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, id);
+        String[] cols = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE,
+        };
+        boolean any = false;
+        try (Cursor c = cr.query(children, cols, null, null, null)) {
+            while (c != null && c.moveToNext()) {
+                if (list.length() >= FOLDER_MAX) throw new TooMany();
+                any = true;
+                String child = c.getString(0);
+                String name = c.getString(1) == null ? "fichier" : c.getString(1);
+                String mime = c.getString(2) == null ? "application/octet-stream" : c.getString(2);
+                String p = path.isEmpty() ? name : path + "/" + name;
+                if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                    walk(tree, child, p, list, empty);
+                    continue;
+                }
+                String token = UUID.randomUUID().toString();
+                docs.put(token, DocumentsContract.buildDocumentUriUsingTree(tree, child));
+                JSObject f = new JSObject();
+                f.put("token", token);
+                f.put("path", p);
+                f.put("size", c.isNull(3) ? 0 : c.getLong(3));
+                f.put("mime", mime);
+                list.put(f);
+            }
+        }
+        if (!any && !path.isEmpty()) empty.put(path);
+    }
+
+    private static class TooMany extends RuntimeException {}
+
+    /** A folder to save: where, asked with Android's folder picker; created there. */
+    @PluginMethod
+    public void folderCreate(PluginCall call) {
+        startActivityForResult(call, new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), "folderChosen");
+    }
+
+    @ActivityCallback
+    private void folderChosen(PluginCall call, ActivityResult result) {
+        Uri tree = result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null ? result.getData().getData() : null;
+        if (tree == null) {
+            call.resolve(new JSObject());
+            return;
+        }
+        io.execute(() -> {
+            try {
+                Uri parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree));
+                String name = safeName(call.getString("name", "dossier"));
+                // Android gives another name ("Vacances (1)") if it exists
+                Uri made = DocumentsContract.createDocument(getContext().getContentResolver(), parent, DocumentsContract.Document.MIME_TYPE_DIR, name);
+                if (made == null) throw new Exception("cannot create " + name);
+                String token = UUID.randomUUID().toString();
+                Map<String, Uri> dirs = new ConcurrentHashMap<>();
+                dirs.put("", made);
+                saving.put(token, dirs);
+                JSObject o = new JSObject();
+                o.put("token", token);
+                o.put("where", displayName(parent, "") + "/" + displayName(made, name));
+                call.resolve(o);
+            } catch (Exception e) {
+                call.reject("folder: " + e.getMessage());
+            }
+        });
+    }
+
+    @PluginMethod
+    public void folderMkdir(PluginCall call) {
+        io.execute(() -> {
+            try {
+                folderDir(call.getString("folder", ""), call.getString("path", ""));
+                call.resolve();
+            } catch (Exception e) {
+                call.reject("folder: " + e.getMessage());
+            }
+        });
+    }
+
+    /** The folder at `path` in a folder being saved, made level by level ("..": refused). */
+    private Uri folderDir(String token, String path) throws Exception {
+        Map<String, Uri> dirs = saving.get(token);
+        if (dirs == null) throw new Exception("unknown folder");
+        String at = "";
+        Uri dir = dirs.get("");
+        for (String part : path.split("/")) {
+            if (part.isEmpty()) continue;
+            String name = safeName(part);
+            if (name.equals(".") || name.equals("..")) throw new Exception("bad path");
+            at = at.isEmpty() ? name : at + "/" + name;
+            Uri known = dirs.get(at);
+            if (known == null) {
+                known = DocumentsContract.createDocument(getContext().getContentResolver(), dir, DocumentsContract.Document.MIME_TYPE_DIR, name);
+                if (known == null) throw new Exception("cannot create " + at);
+                dirs.put(at, known);
+            }
+            dir = known;
+        }
+        return dir;
+    }
+
+    /** Bytes of a document, from `offset` (a file of a folder being sent). */
+    private void readDocument(PluginCall call, Uri doc) {
+        long offset = call.getData().optLong("offset", 0L);
+        int length = call.getInt("length", 512 * 1024);
+        try (ParcelFileDescriptor pfd = getContext().getContentResolver().openFileDescriptor(doc, "r");
+             FileInputStream in = new FileInputStream(pfd.getFileDescriptor())) {
+            FileChannel ch = in.getChannel();
+            ch.position(offset);
+            ByteBuffer buf = ByteBuffer.allocate(length);
+            while (buf.hasRemaining() && ch.read(buf) > 0) {}
+            byte[] out = new byte[buf.position()];
+            buf.flip();
+            buf.get(out);
+            JSObject o = new JSObject();
+            o.put("data", encode(out));
+            call.resolve(o);
+        } catch (Exception e) {
+            call.reject("file: " + e.getMessage());
+        }
+    }
+
+    private String displayName(Uri doc, String fallback) {
+        try (Cursor c = getContext().getContentResolver().query(doc, new String[] { DocumentsContract.Document.COLUMN_DISPLAY_NAME }, null, null, null)) {
+            if (c != null && c.moveToFirst() && c.getString(0) != null) return c.getString(0);
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    private static String mimeOf(String name) {
+        int dot = name.lastIndexOf('.');
+        String type = dot < 0 ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot + 1).toLowerCase());
+        return type == null ? "application/octet-stream" : type;
     }
 
     // ------------------------------------------------------------------ picture-in-picture

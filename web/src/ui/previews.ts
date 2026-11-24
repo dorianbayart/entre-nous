@@ -242,3 +242,50 @@ export async function preview(blob: Blob, name: string): Promise<{ kind: 'image'
   }
   return { kind: asImage ? 'image' : 'file', extra };
 }
+
+/** The card of a folder: its first previews, 2 × 2 (one alone fills it). */
+const MOSAIC_SIDE = 360;
+
+/** A data URL (from `preview`) as an image to draw. */
+async function decodeDataUrl(url: string): Promise<ImageBitmap> {
+  return createImageBitmap(new Blob([dataUrlBytes(url) as BlobPart], { type: 'image/jpeg' }));
+}
+
+/** The previews of a folder's first files, as one image (a progressive JPEG), or nothing. */
+export async function mosaicOf(thumbs: string[]): Promise<string | undefined> {
+  const urls = thumbs.length >= 4 ? thumbs.slice(0, 4) : thumbs.slice(0, 1);
+  if (!urls.length) return undefined;
+  const images = await Promise.all(urls.map((u) => decodeDataUrl(u).catch(() => null)));
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = MOSAIC_SIDE;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return undefined;
+    ctx.fillStyle = JPEG_BACKGROUND;
+    ctx.fillRect(0, 0, MOSAIC_SIDE, MOSAIC_SIDE);
+    ctx.imageSmoothingQuality = 'high';
+    const cell = images.length === 1 ? MOSAIC_SIDE : MOSAIC_SIDE / 2;
+    const gap = images.length === 1 ? 0 : 3;
+    images.forEach((img, i) => {
+      if (!img) return;
+      // cropped to a square, from its middle
+      const side = Math.min(img.width, img.height);
+      const x = (i % 2) * cell + (i % 2 ? gap / 2 : 0);
+      const y = Math.floor(i / 2) * cell + (i >= 2 ? gap / 2 : 0);
+      const size = cell - gap / 2;
+      ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, x, y, size, size);
+    });
+    if (images.every((i) => !i)) return undefined;
+    return tryThumbnail(canvas, MOSAIC_SIDE, MOSAIC_SIDE, MOSAIC_SIDE);
+  } finally {
+    for (const i of images) i?.close();
+  }
+}
+
+/** A preview's bytes (the JPEG of a data URL), to go in a folder's archive. */
+export function dataUrlBytes(url: string): Uint8Array {
+  const bin = atob(url.slice(url.indexOf(',') + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}

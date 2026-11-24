@@ -4,6 +4,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { b64, fromJSON, toJSON, unb64 } from '../core/bytes.ts';
 import type { KV } from '../core/storage.ts';
 import type { Outgoing, PlatformApi } from './types.ts';
+import { folderFromNative } from '../ui/folder-send.ts';
 import { t } from '../i18n/index.ts';
 
 const Native = registerPlugin<any>('EntreNous');
@@ -82,6 +83,36 @@ export function androidPlatform(): PlatformApi {
         await Native.fileAppend({ token, data: b64(part) });
       }
       await Native.fileShare({ token, mime: blob.type || 'application/octet-stream' });
+    },
+
+    // a folder: picked with Android's folder picker, its files read through the plugin
+    async pickFolder() {
+      const r = await Native.folderPick();
+      if (!r?.name) return null;
+      return folderFromNative(r, async (token, offset, length) => unb64((await Native.fileRead({ token, offset, length })).data));
+    },
+
+    // saved where the user picks (Android's folder picker), recreated as it is
+    async saveFolder(name) {
+      const r = await Native.folderCreate({ name });
+      if (!r?.token) return null;
+      return {
+        where: r.where,
+        async file(path) {
+          const { token } = await Native.fileCreate({ name: path.split('/').pop(), folder: r.token, path });
+          return {
+            write: async (data: Uint8Array) => {
+              for (let at = 0; at < data.length; at += FILE_PART) await Native.fileAppend({ token, data: b64(data.subarray(at, at + FILE_PART)) });
+            },
+            close: async () => {
+              await Native.fileClose({ token });
+            },
+          };
+        },
+        async dir(path) {
+          await Native.folderMkdir({ folder: r.token, path });
+        },
+      };
     },
 
     onShare(cb) {

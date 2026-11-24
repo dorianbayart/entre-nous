@@ -101,6 +101,9 @@ fn contents(ctx: &ClipboardContext, register: impl Fn(PathBuf) -> String) -> Vec
             .filter_map(|f| {
                 let path = file_path(&f);
                 let meta = std::fs::metadata(&path).ok()?;
+                if meta.is_dir() {
+                    return folder(&path, &register);
+                }
                 if !meta.is_file() {
                     return None;
                 }
@@ -125,6 +128,47 @@ fn contents(ctx: &ClipboardContext, register: impl Fn(PathBuf) -> String) -> Vec
         Ok(text) if !text.is_empty() => vec![json!({ "kind": "text", "text": text })],
         _ => vec![],
     }
+}
+
+/// Files read in a folder at most (a home folder copied by mistake stops there).
+const FOLDER_MAX: usize = 100_000;
+
+/// A folder, for the web UI: its files (tokens, paths below it, sizes) and its empty folders.
+/// Hidden files go too (the web UI leaves out the system ones); links are not followed.
+pub fn folder(root: &Path, register: &dyn Fn(PathBuf) -> String) -> Option<Value> {
+    let mut files = Vec::new();
+    let mut empty = Vec::new();
+    // depth first, by hand: a stack of (folder, its path below the root)
+    let mut stack = vec![(root.to_path_buf(), String::new())];
+    let name = root.file_name()?.to_string_lossy().to_string();
+    while let Some((dir, rel)) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        let mut any = false;
+        for e in entries.flatten() {
+            any = true;
+            let Ok(kind) = e.file_type() else { continue };
+            if kind.is_symlink() {
+                continue;
+            }
+            let name = e.file_name().to_string_lossy().to_string();
+            let path = if rel.is_empty() { name.clone() } else { format!("{rel}/{name}") };
+            if kind.is_dir() {
+                stack.push((e.path(), path));
+            } else if kind.is_file() {
+                if files.len() >= FOLDER_MAX {
+                    // too many: nothing is sent (the web UI says so), nothing more is read
+                    return Some(json!({ "kind": "folder", "name": name, "files": [], "dirs": [], "truncated": true }));
+                }
+                let size = e.metadata().map(|m| m.len()).unwrap_or(0);
+                let mime = mime_guess::from_path(e.path()).first_or_octet_stream().to_string();
+                files.push(json!({ "token": register(e.path()), "path": path, "size": size, "mime": mime }));
+            }
+        }
+        if !any && !rel.is_empty() {
+            empty.push(rel);
+        }
+    }
+    Some(json!({ "kind": "folder", "name": name, "files": files, "dirs": empty }))
 }
 
 /// "file:///home/a%20b.txt" (X11) or "C:\a b.txt" (Windows) → a path.

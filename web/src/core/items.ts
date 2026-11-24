@@ -19,7 +19,7 @@ import {
 } from './crypto.ts';
 import { type Device, type LocalGroup, type PrekeyBundle, prekeyTag } from './group.ts';
 
-export type ItemKind = 'text' | 'image' | 'file' | 'rekey' | 'note';
+export type ItemKind = 'text' | 'image' | 'file' | 'folder' | 'rekey' | 'note';
 
 /** Encrypted part, visible only to members. */
 export interface Header {
@@ -37,6 +37,7 @@ export interface Header {
   excerpt?: string; // the first characters of a text file
   local?: boolean; // content only served directly by the sender (never uploaded to the relay)
   rekey?: { secret: string; state: string }; // key rotation after a removal
+  folder?: { files: number; dirs: number; bytes: number }; // a folder: what it holds (`size`: its archive)
 }
 
 /** Clear part, as stored on the relay (signed). */

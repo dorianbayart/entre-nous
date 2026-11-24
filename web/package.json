@@ -9,7 +9,7 @@
     "dev": "node build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "node test/run.mjs",
-    "test:ui": "node --test --test-force-exit test/ui/",
+    "test:ui": "node --test --test-force-exit --test-concurrency=1 test/ui/",
     "screenshots": "node scripts/screenshots.mjs fr && node scripts/screenshots.mjs en"
   },
   "dependencies": {

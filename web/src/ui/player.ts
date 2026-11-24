@@ -45,7 +45,17 @@ const MP4_BOXES = ['ftyp', 'moov', 'mdat', 'free', 'skip', 'wide', 'pnot'];
  * sender gave it. Resolves once playable, with the function that stops it; rejects with
  * NotStreamable when this browser cannot.
  */
-export async function stream(media: HTMLMediaElement, reader: ContentReader, { duration }: { duration?: number } = {}): Promise<() => void> {
+export async function stream(media: HTMLMediaElement, reader: ContentReader, opts: { duration?: number } = {}): Promise<() => void> {
+  try {
+    return await streamAny(media, reader, opts);
+  } catch (err) {
+    // not played: its reader is closed (the caller downloads it whole, or gives up)
+    reader.close();
+    throw err;
+  }
+}
+
+async function streamAny(media: HTMLMediaElement, reader: ContentReader, { duration }: { duration?: number }): Promise<() => void> {
   const MS = mediaSourceClass();
   if (!MS) throw new NotStreamable('no MediaSource');
   const head = await reader.read(0, Math.min(reader.size, 10));

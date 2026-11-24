@@ -30,6 +30,8 @@ enum L10n {
         "paste": ("Coller", "Paste"),
         "selectAll": ("Tout sélectionner", "Select All"),
         "keychain": ("Trousseau inaccessible", "Keychain unavailable"),
+        "saveHere": ("Enregistrer ici", "Save here"),
+        "send": ("Envoyer", "Send"),
     ]
 
     static func t(_ key: String) -> String {

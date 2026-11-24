@@ -1,18 +1,19 @@
 // The commands. Each one: its help, its options, and what it does. Results go to stdout
 // (plain, or JSON with --json); messages and progress go to stderr.
 import { openAsBlob } from 'node:fs';
-import { rm, rmdir, stat } from 'node:fs/promises';
+import { readdir, rm, rmdir, stat } from 'node:fs/promises';
 import { basename, extname, join as joinPath } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ItemView, NoteView } from '../../web/src/core/engine.ts';
-import { duration, storageSpace, t } from '../../web/src/i18n/index.ts';
+import { duration, storageSpace, t, tn } from '../../web/src/i18n/index.ts';
 import { decodeStart, excerptOf, isText } from '../../web/src/core/media.ts';
 import { readClipboard, writeClipboard } from './clipboard.ts';
 import { type Context, DEFAULT_RELAY, type GroupView, relayUrl } from './context.ts';
 import { CliError, EXIT, usageError } from './errors.ts';
 import { type CliKey, tr } from './i18n.ts';
-import { ago, fetchContent, findItem, itemJSON, safeName, saveBlob, summary } from './items.ts';
+import { ago, fetchContent, findItem, itemJSON, safeName, saveBlob, saveFolder, summary } from './items.ts';
+import { type PackFile, buildPack, isSystemFile } from '../../web/src/core/folder.ts';
 import { confirm, err, errTTY, humanSize, out, outTTY, parseDuration, print, Progress, qr, say, table } from './term.ts';
 
 export interface Option {
@@ -118,6 +119,15 @@ function asText(bytes: Buffer): string | null {
 /** Does what `get` does with an item: prints a text, saves a file. */
 async function deliver(ctx: Context, group: GroupView, item: ItemView, o: Record<string, any>, position?: number) {
   const engine = await ctx.engine();
+  if (item.kind === 'folder') {
+    if (o.clipboard) throw new CliError(tr('err.textOnly'));
+    // the folder recreated (or a ZIP on the standard output)
+    const path = await saveFolder(engine, group.id, item, o.output, !!o.force);
+    if (path === '-') return;
+    if (ctx.g.json) await json(itemJSON(item, position, { path }));
+    else await print(path + '\n');
+    return;
+  }
   if (o.clipboard) {
     if (item.kind !== 'text') throw new CliError(tr('err.textOnly'));
     const c = await fetchContent(engine, group.id, item);
@@ -163,6 +173,7 @@ const send: Command = {
   },
   examples: [
     'entrenous send report.pdf photo.jpg',
+    'entrenous send ~/Photos/Vacances/',
     'entrenous send -m "https://example.com/build/42"',
     'git diff | entrenous send',
     'pg_dump app | gzip | entrenous send --name app.sql.gz',
@@ -170,12 +181,11 @@ const send: Command = {
   ],
   async run(ctx, args, o) {
     // what to send, checked before connecting
-    const files: { path: string; size: number }[] = [];
+    const files: { path: string; size: number; dir?: boolean }[] = [];
     for (const path of args) {
       const s = await stat(path).catch(() => null);
       if (!s) throw usageError(tr('err.noSuchFile', { path }));
-      if (s.isDirectory()) throw usageError(tr('err.isDir', { path }));
-      files.push({ path, size: s.size });
+      files.push({ path, size: s.size, dir: s.isDirectory() });
     }
     const texts: string[] = [];
     if (o.message !== undefined) texts.push(o.message);
@@ -232,7 +242,49 @@ const send: Command = {
       const id = await engine.sendText(group.id, piped.text);
       await done(id, tr('msg.sentText') + ` (${humanSize(Buffer.byteLength(piped.text))})`, { kind: 'text' });
     } else if (piped) await sendBlob(piped.blob, piped.name);
+    // a folder: one item, its files with their paths (system files left out)
+    const sendFolder = async (root: string) => {
+      const name = basename(root.replace(/[\\/]+$/, '')) || 'dossier';
+      const pack: PackFile[] = [];
+      const empty: string[] = [];
+      const walk = async (dir: string, rel: string) => {
+        const entries = await readdir(dir, { withFileTypes: true });
+        if (!entries.length && rel) empty.push(rel);
+        for (const e of entries) {
+          const p = rel ? `${rel}/${e.name}` : e.name;
+          if (e.isDirectory()) await walk(joinPath(dir, e.name), p);
+          else if (e.isFile() && !isSystemFile(p)) {
+            const full = joinPath(dir, e.name);
+            const mime = MIME[extname(e.name).toLowerCase()];
+            const blob = await openAsBlob(full, mime ? { type: mime } : {});
+            const excerpt = isText(e.name, mime) ? excerptOf(decodeStart(new Uint8Array(await blob.slice(0, 4096).arrayBuffer()), blob.size <= 4096)) || undefined : undefined;
+            pack.push({ path: p, size: blob.size, mime, src: blob, preview: excerpt ? { excerpt } : undefined });
+          }
+        }
+      };
+      await walk(root, '');
+      const { source, summary } = buildPack(name, pack, empty);
+      const progress = new Progress(name);
+      const off = engine.on((e) => {
+        if (e.type !== 'change') return;
+        const up = [...engine.transfers.values()].find((x) => x.direction === 'up' && x.groupId === group.id && !x.direct);
+        if (up) progress.update(up.done, up.total, up.rate);
+      });
+      try {
+        const id = await engine.sendBlob(group.id, source, name, 'folder', { folder: summary });
+        progress.end();
+        await done(id, `${name}/ (${tn('folder.files', summary.files) + ', ' + humanSize(summary.bytes)})`, { kind: 'folder', name, files: summary.files, size: summary.bytes });
+      } finally {
+        off();
+        progress.end();
+      }
+    };
+
     for (const f of files) {
+      if (f.dir) {
+        await sendFolder(f.path);
+        continue;
+      }
       const name = basename(f.path);
       const blob = await openAsBlob(f.path, { type: MIME[extname(name).toLowerCase()] ?? 'application/octet-stream' });
       await sendBlob(blob, name);
@@ -248,7 +300,7 @@ const get: Command = {
   summary: 'cmd.get',
   long: 'cmd.get.long',
   options: { output: outputOpt, force: forceOpt, clipboard: clipboardGetOpt },
-  examples: ['entrenous get', 'entrenous get 2 -o ~/Downloads/', 'entrenous get --clipboard', 'entrenous get -o - | tar x', 'entrenous get --json'],
+  examples: ['entrenous get', 'entrenous get 2 -o ~/Downloads/', 'entrenous get --clipboard', 'entrenous get -o - | tar x', 'entrenous get -o - > folder.zip', 'entrenous get --json'],
   async run(ctx, args, o) {
     needArgs(args, 0, 1, 'entrenous get [ITEM]');
     const group = await ctx.group();
@@ -368,8 +420,11 @@ const watch: Command = {
         let path: string | undefined;
         if (o.output && item.kind !== 'text') {
           try {
-            const c = await fetchContent(engine, group.id, item);
-            path = await saveBlob(c.blob!, safeName(c.name, 'entrenous-' + item.id.slice(0, 8)), o.output + '/', false);
+            if (item.kind === 'folder') path = await saveFolder(engine, group.id, item, o.output, false);
+            else {
+              const c = await fetchContent(engine, group.id, item);
+              path = await saveBlob(c.blob!, safeName(c.name, 'entrenous-' + item.id.slice(0, 8)), o.output + '/', false);
+            }
           } catch (e: any) {
             say(err.red('✗ ') + (item.name ?? '') + ': ' + (e.message ?? e));
           }

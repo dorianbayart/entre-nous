@@ -262,8 +262,37 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
         }
 
         "fileCreate" => {
+            // a file of a folder being saved, or a received file (temporary folder)
+            if let Some(folder) = a.get("folder").and_then(Value::as_str) {
+                return Ok(json!(b.files.create_in(folder, &s("path"))?));
+            }
             let name = a.get("name").and_then(Value::as_str).unwrap_or("fichier");
             Ok(json!(b.files.create(name, a.get("expiresAt").and_then(Value::as_f64))?))
+        }
+        // a folder to send: picked here, its files read through tokens
+        "folderPick" => {
+            let Some(dir) = app.dialog().file().blocking_pick_folder().and_then(|d| d.into_path().ok()) else {
+                return Ok(Value::Null);
+            };
+            Ok(clip::folder(&dir, &|p| b.files.register(p)).unwrap_or(Value::Null))
+        }
+        // a folder to save: where, asked here; created there (another name if it exists)
+        "folderCreate" => {
+            let mut dialog = app.dialog().file();
+            if let Some(downloads) = app.path().download_dir().ok() {
+                dialog = dialog.set_directory(downloads);
+            }
+            let Some(parent) = dialog.blocking_pick_folder().and_then(|d| d.into_path().ok()) else {
+                return Ok(Value::Null);
+            };
+            let name = a.get("name").and_then(Value::as_str).unwrap_or("dossier");
+            let (token, made) = b.files.create_folder(&parent, name)?;
+            let last = |p: &std::path::Path| p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            Ok(json!({ "token": token, "where": format!("{}/{}", last(&parent), last(&made)) }))
+        }
+        "folderMkdir" => {
+            b.files.mkdir(&s("folder"), &s("path"))?;
+            Ok(json!(true))
         }
         "fileAppend" => {
             let data = B64.decode(s("data")).map_err(|_| "bad data")?;

@@ -4,7 +4,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomFillSync } from 'node:crypto';
@@ -157,6 +157,37 @@ test('two terminals: pairing, texts, files, stdin, wait, watch, note, rm', { tim
   // both processes of Alice still read everything (no prekey lost between them)
   await ok('bob', ['send', '-m', 'after']);
   assert.equal((await ok('alice', ['get'])).stdout, 'after');
+
+  // ---- a folder: one item, recreated by get (system files left out), or a ZIP on stdout
+  const src = join(dir, 'Vacances');
+  await mkdir(join(src, 'Jour 1'), { recursive: true });
+  await mkdir(join(src, 'Vide'));
+  await writeFile(join(src, 'notes.md'), '# Bretagne\n');
+  await writeFile(join(src, 'Jour 1', 'photo.bin'), Buffer.alloc(2 * 1024 * 1024 + 5, 7));
+  await writeFile(join(src, '.DS_Store'), 'finder');
+  const sentFolder = JSON.parse((await ok('alice', ['send', src, '--json'])).stdout);
+  assert.equal(sentFolder.kind, 'folder');
+  assert.equal(sentFolder.files, 2);
+  const listed = JSON.parse((await ok('bob', ['list', '--json'])).stdout)[0];
+  assert.equal(listed.kind, 'folder');
+  assert.equal(listed.name, 'Vacances');
+  assert.equal(listed.files, 2);
+  assert.equal(listed.folders, 2);
+  assert.match((await ok('bob', ['list'])).stdout, /Vacances\/ \(2 files, 2 MB\)/);
+  const outDir = join(dir, 'reçus');
+  const got = (await ok('bob', ['get', '-o', outDir + '/'])).stdout.trim();
+  assert.equal(got, join(outDir, 'Vacances'));
+  assert.equal(await readFile(join(got, 'notes.md'), 'utf8'), '# Bretagne\n');
+  assert.ok((await readFile(join(got, 'Jour 1', 'photo.bin'))).equals(Buffer.alloc(2 * 1024 * 1024 + 5, 7)));
+  assert.ok((await stat(join(got, 'Vide'))).isDirectory(), 'empty folders too');
+  await assert.rejects(stat(join(got, '.DS_Store')));
+  // once more: another name, nothing overwritten
+  assert.equal((await ok('bob', ['get', '-o', outDir + '/'])).stdout.trim(), join(outDir, 'Vacances (2)'));
+  const zip = (await ok('bob', ['get', '-o', '-'])).bytes;
+  assert.equal(zip.readUInt32LE(0), 0x04034b50, 'a ZIP on stdout');
+  await writeFile(join(dir, 'v.zip'), zip);
+  const { execFileSync } = await import('node:child_process');
+  assert.deepEqual(execFileSync('unzip', ['-Z1', join(dir, 'v.zip')]).toString().trim().split('\n').sort(), ['Jour 1/photo.bin', 'Vide/', 'notes.md']);
 
   // ---- the shared note, and waiting for someone else to change it
   await ok('alice', ['note', 'Wi-Fi: hunter2']);

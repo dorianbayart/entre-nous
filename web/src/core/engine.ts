@@ -47,6 +47,7 @@ import type { KV } from './storage.ts';
 import { t } from '../i18n/index.ts';
 import { ChunkReader, type ContentReader, type ReaderOptions } from './reader.ts';
 import { SHARE_DEFAULT_TTL, ShareGoneError, newShare, shareUrl } from './share.ts';
+import { type ByteSource, type FolderSummary, readSource } from './folder.ts';
 
 export type { ContentReader, ReaderOptions };
 
@@ -78,6 +79,9 @@ export interface ItemView {
   duration?: number;
   pages?: number;
   excerpt?: string;
+  /** A folder: how many files and folders it holds (`size`: its files, all together). */
+  files?: number;
+  dirs?: number;
   chunks: number;
   /** Local item whose sender is not reachable now: nothing to copy or save. */
   unavailable?: boolean;
@@ -129,6 +133,8 @@ export interface SendExtra {
   pages?: number;
   excerpt?: string;
   text?: string;
+  /** A folder: what it holds. */
+  folder?: FolderSummary;
 }
 
 export interface Transfer {
@@ -211,7 +217,7 @@ interface Runtime {
 }
 
 interface Outgoing {
-  blob: Blob;
+  blob: Blob | ByteSource;
   key: Uint8Array;
   chunks: number;
   name: string;
@@ -537,7 +543,7 @@ export class Engine {
   private async serveChunk(rt: Runtime, itemId: string, idx: number, device: string) {
     const o = rt.outbox.get(itemId);
     if (!o || !(idx >= 0 && idx < o.chunks)) return null;
-    const slice = new Uint8Array(await o.blob.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer());
+    const slice = await readSource(o.blob, idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE);
     const sealed = sealContentChunk(o.key, itemId, idx, o.chunks, slice);
     if (o.chunks > 1) this.servedChunk(rt, itemId, o, device);
     return sealed;
@@ -1054,6 +1060,11 @@ export class Engine {
       const text = h.text ?? rt.outbox.get(item.id)?.text; // a local text sent from here
       const thumb = typeof h.thumb === 'string' && h.thumb.startsWith('data:image/') ? h.thumb : undefined;
       const view: ItemView = { ...base, kind: h.kind, text, name: h.name, mime: h.mime, size: h.size, thumb };
+      if (h.kind === 'folder') {
+        const f = h.folder;
+        const n = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 ? (v as number) : 0);
+        Object.assign(view, { files: n(f?.files), dirs: n(f?.dirs), size: n(f?.bytes) });
+      }
       // what the sender made for the previews (checked: it comes from another device)
       if (typeof h.w === 'number' && typeof h.h === 'number') Object.assign(view, { w: h.w, h: h.h });
       if (typeof h.duration === 'number' && h.duration > 0) view.duration = h.duration;
@@ -1148,8 +1159,8 @@ export class Engine {
    * what the history shows before any download (thumbnail, size in pixels, length, excerpt);
    * `text`: a local text, kept for this device's own history.
    */
-  async sendBlob(groupId: string, blob: Blob, name: string, kind: 'image' | 'file' | 'text', extra: SendExtra = {}): Promise<string> {
-    const { text, ...preview } = extra;
+  async sendBlob(groupId: string, blob: Blob | ByteSource, name: string, kind: 'image' | 'file' | 'text' | 'folder', extra: SendExtra = {}): Promise<string> {
+    const { text, folder, ...preview } = extra;
     const rt = this.rt(groupId);
     // shown at once, even while the connection is still being set up
     const key = `up-${++this.uploadSeq}`;
@@ -1160,7 +1171,9 @@ export class Engine {
       await this.whenReady(rt);
       // local mode: only the announcement goes to the relay (no preview: it is content too)
       const local = localOnlyOf(rt.g.state);
-      const header: Header = { kind, ts: Date.now(), name: name || undefined, mime: blob.type, size: blob.size };
+      const mime = blob instanceof Blob ? blob.type : undefined;
+      const header: Header = { kind, ts: Date.now(), name: name || undefined, mime, size: blob.size };
+      if (folder) header.folder = folder; // what it holds: not a preview, the history needs it
       if (local) header.local = true;
       else Object.assign(header, preview);
       const sealed = sealItem(this.device, this.recipients(rt), header, Math.max(blob.size, 1));
@@ -1250,7 +1263,7 @@ export class Engine {
    * Uploads chunks 4 at a time. After a disconnection (or the phone waking up), waits for the
    * connection and resumes with the chunks the relay does not have yet.
    */
-  private async upload(rt: Runtime, id: string, key: Uint8Array, chunks: number, blob: Blob, t: Transfer, until: number) {
+  private async upload(rt: Runtime, id: string, key: Uint8Array, chunks: number, blob: Blob | ByteSource, t: Transfer, until: number) {
     for (let attempt = 0; ; attempt++) {
       let missing = [...Array(chunks).keys()];
       if (attempt > 0) {
@@ -1264,7 +1277,7 @@ export class Engine {
         const worker = async () => {
           for (let idx = queue.shift(); idx !== undefined; idx = queue.shift()) {
             if (rt.cancelled.has(id)) throw new Error('unknown item'); // deleted meanwhile
-            const slice = new Uint8Array(await blob.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer());
+            const slice = await readSource(blob, idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE);
             const data = sealContentChunk(key, id, idx, chunks, slice);
             // little in the socket's queue: a short message (setting up a direct link, a
             // note) never waits behind megabytes of chunks
@@ -1297,7 +1310,10 @@ export class Engine {
     const textOf = async (blob: Blob) => (header.kind === 'text' ? { text: await blob.text() } : {});
     // sent from here: nothing to download
     const own = rt.outbox.get(itemId);
-    if (own) return { blob: own.blob, name: header.name, mime: header.mime, ...(await textOf(own.blob)) };
+    if (own) {
+      const blob = own.blob instanceof Blob ? own.blob : new Blob([(await own.blob.read(0, own.blob.size)) as BlobPart]);
+      return { blob, name: header.name, mime: header.mime, ...(await textOf(blob)) };
+    }
     const chunks = entry.relay.chunks;
     const transfer: Transfer = {
       id: itemId,
@@ -1337,6 +1353,42 @@ export class Engine {
     return this.openReader(this.rt(groupId), itemId, { keep: opts.keep ?? 16, ahead: opts.ahead ?? 4 });
   }
 
+  /**
+   * A download of part of an item (files of a folder), shown in progress on its item:
+   * `chunks` is how many chunks it reads. Closing the reader ends it.
+   */
+  downloadReader(groupId: string, itemId: string, name: string, chunks: number): ContentReader {
+    const rt = this.rt(groupId);
+    const entry = rt.items.get(itemId);
+    if (!entry) throw new ItemGoneError();
+    const id = `part:${itemId}:${++this.uploadSeq}`;
+    const transfer: Transfer = {
+      id,
+      groupId,
+      itemId,
+      name,
+      direction: 'down',
+      done: 0,
+      total: Math.max(1, chunks),
+      peer: rt.g.state.members[entry.relay.from]?.name ?? t('err.theSender'),
+    };
+    const own = rt.outbox.has(itemId);
+    if (!own) this.transfers.set(id, transfer);
+    this.changed();
+    // little read ahead: a small file of a folder fetches no more than it needs
+    const reader = this.openReader(rt, itemId, { keep: 8, ahead: 1 }, own ? undefined : transfer);
+    return {
+      size: reader.size,
+      name: reader.name,
+      mime: reader.mime,
+      read: (start, end) => reader.read(start, end),
+      close: () => {
+        reader.close();
+        if (this.transfers.delete(id)) this.changed();
+      },
+    };
+  }
+
   private openReader(rt: Runtime, itemId: string, opts: { keep: number; ahead: number }, transfer?: Transfer): ChunkReader {
     const entry = rt.items.get(itemId);
     if (!entry) throw new ItemGoneError();
@@ -1352,7 +1404,7 @@ export class Engine {
     let fetch: (idx: number) => Promise<Uint8Array>;
     if (own) {
       // sent from here: the file itself
-      fetch = async (idx) => new Uint8Array(await own.blob.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer());
+      fetch = (idx) => readSource(own.blob, idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE);
     } else {
       const from = entry.relay.from;
       const sender = rt.g.state.members[from]?.name ?? t('err.theSender');
@@ -1723,7 +1775,7 @@ export class Engine {
   canShare(groupId: string, itemId: string): boolean {
     const e = this.runtimes.get(groupId)?.items.get(itemId);
     if (!e?.opened || !e.relay.complete || e.relay.local) return false;
-    return ['text', 'image', 'file'].includes(e.opened.header.kind);
+    return ['text', 'image', 'file', 'folder'].includes(e.opened.header.kind);
   }
 
   /**

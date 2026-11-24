@@ -120,11 +120,31 @@
         <svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11v6M9 14l3-3 3 3"/></svg>
         <span x-text="t('sendClipboard')"></span>
       </button>
-      <button class="secondary" @click="pickFiles">
-        <svg viewBox="0 0 24 24"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
-        <span x-text="t('file')"></span>
+      <div class="file-pick">
+        <button class="secondary" @click="onFileButton" :aria-expanded="fileMenu ? 'true' : 'false'">
+          <svg viewBox="0 0 24 24"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+          <span x-text="t('file')"></span>
+          <svg class="caret" viewBox="0 0 24 24" x-show="mobile && canPickFolder"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <!-- phones: files or a folder -->
+        <div class="menu" x-show="fileMenu" @click.outside="closeFileMenu" role="menu">
+          <button role="menuitem" @click="pickFiles">
+            <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+            <span x-text="t('file.files')"></span>
+          </button>
+          <button role="menuitem" @click="pickFolder">
+            <svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+            <span x-text="t('file.folder')"></span>
+          </button>
+        </div>
+      </div>
+      <!-- computers: a button of its own -->
+      <button class="secondary" x-show="canPickFolder && !mobile" @click="pickFolder">
+        <svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+        <span x-text="t('folder')"></span>
       </button>
       <input type="file" multiple hidden x-ref="file" @change="onFiles($event)">
+      <input type="file" webkitdirectory hidden x-ref="folder" @change="onFolderInput($event)">
     </div>
     <p class="hint" x-show="desktop && shareHint" :class="prefs.paused ? 'paused' : ''" x-text="shareHint"></p>
 
@@ -185,10 +205,11 @@
           <template x-if="!item.share">
           <div class="entry">
           <template x-if="hasTile(item)">
-            <button :class="tileClass(item)" @click="openPreview(item)" :disabled="!previewOf(item)"
+            <button :class="tileClass(item)" @click="openTile(item)" :disabled="tileDisabled(item)"
                     :aria-label="openTitle(item)" :title="openTitle(item)">
               <img x-show="item.thumb" :src="item.thumb" alt="">
-              <span class="page" x-show="!item.thumb && !isVideo(item) && !isAudio(item)" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="folder-mark" x-show="item.kind === 'folder' && !item.thumb" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg></span>
+              <span class="page" x-show="!item.thumb && !isVideo(item) && !isAudio(item) && item.kind !== 'folder'" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
               <span class="note" x-show="!item.thumb && isAudio(item)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
               <span class="play" x-show="isVideo(item)" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg></span>
               <span class="badge" x-show="badge(item)" x-text="badge(item)"></span>
@@ -200,11 +221,14 @@
             <p class="meta">
               <span x-text="item.mine ? t('me') : item.fromName"></span> ·
               <span x-text="ago(item)"></span> ·
+              <span x-show="item.kind === 'folder'" x-text="folderCount(item) + ' ·'"></span>
               <span x-show="sizeOf(item)" x-text="sizeOf(item) + ' ·'"></span>
               <span x-text="left(item)"></span>
             </p>
           </div>
           <div class="item-actions">
+            <button class="small primary" x-show="canBrowse(item)" @click="openFolder(item)" x-text="t('folder.browse')"></button>
+            <button class="small secondary" x-show="canBrowse(item) && !downloading(item)" @click="downloadFolder(item)" x-text="t('folder.downloadAll')"></button>
             <button :class="openClass(item)" x-show="opensFirst(item) && !downloading(item)" @click="openPreview(item)" x-text="openLabel(item)"></button>
             <button :class="copyClass(item)" x-show="canCopy(item) && !downloading(item)" @click="copy(item)" x-text="t('copy')"></button>
             <button :class="openClass(item)" x-show="previewOf(item) && !opensFirst(item) && !downloading(item)" @click="openPreview(item)" x-text="openLabel(item)"></button>
@@ -408,6 +432,40 @@
     <button class="secondary" @click="stopScan" x-text="t('cancel')"></button>
   </section>
 
+  <!-- A shared folder: its browser (over the history); the viewer opens over it -->
+  <section class="folder-page" x-show="folderView.open" role="dialog" aria-modal="true">
+    <div class="folder-state" x-show="folderView.loading || folderView.error">
+      <header class="viewer-bar">
+        <button class="icon" @click="closeFolder" :aria-label="t('back')" :title="t('back')">
+          <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <div class="viewer-title"><strong x-text="t('folder.loading')"></strong></div>
+        <span></span>
+      </header>
+      <p class="viewer-error" x-show="folderView.error" x-text="folderView.error"></p>
+      <p class="muted center" x-show="!folderView.error" x-text="t('folder.loading')"></p>
+    </div>
+    <div class="folder-browser" x-ref="folderBox" x-show="!folderView.loading && !folderView.error"></div>
+  </section>
+
+  <!-- A large (or copied) folder: what it holds, before it is sent -->
+  <div class="sheet-backdrop" x-show="folderAsk" @click.self="cancelFolder">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head">
+        <span class="sheet-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg></span>
+        <strong x-text="folderAsk ? t(folderAsk.copied ? 'folder.askCopied' : 'folder.ask', { name: folderAsk.name }) : ''"></strong>
+      </div>
+      <p x-text="folderAskText"></p>
+      <p class="sheet-note" x-show="folderAskSpace" x-text="folderAskSpace"></p>
+      <p class="sheet-note" x-show="folderAskIgnored" x-text="folderAskIgnored"></p>
+      <p class="alert" x-show="folderAskTooBig" x-text="t('folder.tooBig')"></p>
+      <div class="row">
+        <button class="ghost" @click="cancelFolder" x-text="t('cancel')"></button>
+        <button class="primary" @click="confirmFolder" :disabled="folderAskTooBig" x-text="t('folder.send')"></button>
+      </div>
+    </div>
+  </div>
+
   <!-- Preview of an item: image, video, text, Markdown (over the history) -->
   <section :class="viewerClass" x-show="viewer.open" role="dialog" aria-modal="true" :aria-label="viewerName"
            @touchstart="onSwipeStart($event)" @touchend="onSwipeEnd($event)">
@@ -484,7 +542,7 @@
         <button class="primary" x-show="viewerCanCopy" @click="viewerCopy" x-text="viewerCopyLabel"></button>
         <button class="secondary" @click="viewerSave" x-text="t('save')"></button>
         <button class="secondary" x-show="viewerIs('video') && !viewer.error" @click="fullscreen" x-text="t('viewer.fullscreen')"></button>
-        <button class="ghost danger" @click="viewerRemove" :aria-label="t('item.deleteTitle')" :title="t('item.deleteTitle')">
+        <button class="ghost danger" x-show="!viewerInFolder" @click="viewerRemove" :aria-label="t('item.deleteTitle')" :title="t('item.deleteTitle')">
           <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
           <span x-show="viewerRemoving" x-text="t('deleteEverywhere')"></span>
         </button>
