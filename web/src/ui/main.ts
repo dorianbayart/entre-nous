@@ -245,6 +245,8 @@ Alpine.data('app', () => ({
   toastTimer: undefined as ReturnType<typeof setTimeout> | undefined,
   busy: false,
   confirming: '' as string,
+  /** The item whose receipts are shown (detail by device). */
+  receiptsOpen: '',
   inviteQr: '',
   inviteUrl: '',
   inviteLeft: '',
@@ -727,6 +729,76 @@ Alpine.data('app', () => ({
     return ms < 60_000 ? this.t('ago.now') : this.t('ago', { d: duration(ms) });
   },
 
+  itemClass(item: any) {
+    if (item.share) return 'shared-link';
+    return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '');
+  },
+
+  // ---------------------------------------------------------------- receipts
+
+  /** Delivered somewhere: nothing shows before the first recipient has it. */
+  hasReceipts(item: ItemView) {
+    return !!item.receipts && item.receipts.delivered > 0;
+  },
+
+  /** 1st tick: a device has it (read on one: coloured); 2nd: all have it (read on all: coloured). */
+  tickClass(item: ItemView, n: number) {
+    const r = item.receipts;
+    if (!r) return 'off';
+    if (n === 1) return r.delivered ? (r.read ? 'read' : '') : 'off';
+    return r.delivered < r.total ? 'off' : r.read === r.total ? 'read' : '';
+  },
+
+  receiptsTitle(item: ItemView) {
+    const r = item.receipts;
+    if (!r) return '';
+    if (r.delivered < r.total) {
+      const text = this.t(r.delivered > 1 ? 'receipt.some' : 'receipt.one', { n: r.delivered, total: r.total });
+      return r.read ? this.t('receipt.readBy', { text, n: r.read }) : text;
+    }
+    if (!r.read) return this.t('receipt.all');
+    return r.read < r.total ? this.t('receipt.allReadBy', { n: r.read, total: r.total }) : this.t('receipt.allRead');
+  },
+
+  toggleReceipts(item: ItemView) {
+    this.receiptsOpen = this.receiptsOpen === item.id ? '' : item.id;
+  },
+
+  receiptsShown(item: ItemView) {
+    return this.receiptsOpen === item.id;
+  },
+
+  /** A click elsewhere closes the detail (each item's ticks listen: only the open one acts). */
+  closeReceiptsOf(item: ItemView) {
+    if (this.receiptsOpen === item.id) this.receiptsOpen = '';
+  },
+
+  receiptDevices(item: ItemView) {
+    return item.receipts?.devices ?? [];
+  },
+
+  receiptName(dev: { name: string; me?: boolean }) {
+    return dev.me ? this.t('settings.thisDevice', { name: dev.name }) : dev.name;
+  },
+
+  receiptState(dev: { delivered?: number; read?: number }) {
+    if (dev.read) return this.t('receipt.read', { at: this.clockTime(dev.read) });
+    if (dev.delivered) return this.t('receipt.delivered', { at: this.clockTime(dev.delivered) });
+    return this.t('receipt.waiting');
+  },
+
+  receiptClass(dev: { delivered?: number; read?: number }) {
+    return dev.read ? 'read' : dev.delivered ? '' : 'waiting';
+  },
+
+  /** 14:05 today, “Mon 14:05” before. */
+  clockTime(at: number) {
+    const d = new Date(at);
+    const time = d.toLocaleTimeString(this.lang, { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === new Date(this.now).toDateString()) return time;
+    return d.toLocaleDateString(this.lang, { weekday: 'short' }) + ' ' + time;
+  },
+
   /** Still being uploaded, but its sender sent nothing for minutes: a download would give up. */
   interrupted(item: ItemView) {
     return !!item.pending && this.now - (item.progressAt ?? 0) > UPLOAD_STALLED;
@@ -829,6 +901,7 @@ Alpine.data('app', () => ({
   /** Copy keeps the user gesture: the content is passed as a promise. */
   copy(item: ItemView) {
     const groupId = this.groupId!;
+    engine.markRead(groupId, item.id);
     const mime = item.kind === 'text' ? 'text/plain' : (item.mime ?? 'application/octet-stream');
     platform
       .copy(mime, this.contentOf(groupId, item).then((c) => ({ ...c, expiresAt: item.expiresAt })))
@@ -837,6 +910,7 @@ Alpine.data('app', () => ({
   },
 
   async save(item: ItemView) {
+    engine.markRead(this.groupId!, item.id);
     try {
       const c = await this.contentOf(this.groupId!, item);
       await platform.save(c.blob!, c.name ?? this.t('name.file'));
@@ -1067,6 +1141,7 @@ Alpine.data('app', () => ({
     this.releaseViewer();
     const seq = ++viewerSeq;
     const groupId = this.groupId;
+    engine.markRead(groupId, item.id);
     this.confirming = '';
     this.viewer = { open: true, id: item.id, kind, loading: true, error: '', src: '', note: '', source: false, wrap: this.viewer.wrap, canPip: false, pages: 0, page: 1, zoom: 1, selection: '' };
     await (this as any).$nextTick();
@@ -1687,6 +1762,7 @@ Alpine.data('app', () => ({
     this.closeFolder();
     this.confirming = '';
     this.folderView = { open: true, id: item.id, loading: true, error: '' };
+    engine.markRead(groupId, item.id);
     const reader = engine.reader(groupId, item.id, { keep: 6, ahead: 1 });
     try {
       const index = await readIndex(reader);
@@ -1839,6 +1915,7 @@ Alpine.data('app', () => ({
   async downloadFolder(item: ItemView) {
     const groupId = this.groupId;
     if (!groupId || !this.canBrowse(item)) return;
+    engine.markRead(groupId, item.id);
     // a name from another device: made safe before it names anything here
     const name = safePath(item.name ?? '')?.replace(/\//g, '-') || this.t('name.folder');
     let reader: ContentReader | undefined;

@@ -26,12 +26,15 @@ import {
   signedBundle,
 } from './group.ts';
 import {
+  type Ack,
   type Header,
   type NoteText,
   type Opened,
   type RelayItem,
   INLINE_TEXT_MAX,
+  openAck,
   openNote,
+  sealAck,
   sealNote,
   openContentChunk,
   openItem,
@@ -97,7 +100,26 @@ export interface ItemView {
   local?: boolean;
   /** Sent in local mode: no preview came with it (the viewer shows the content itself). */
   previewless?: boolean;
+  /** Which of its recipients have it, and which have read it (the same on every device). */
+  receipts?: Receipts;
   error?: string;
+}
+
+/** Receipts of an item: its recipients (the devices it was sealed for, but its sender) still in the group. */
+export interface Receipts {
+  total: number;
+  delivered: number;
+  read: number;
+  /** By name; times by each device's clock. `me`: this device. */
+  devices: Array<{ id: string; name: string; me?: boolean; delivered?: number; read?: number }>;
+}
+
+/** Keeps the earliest time of each step known for `device`. */
+function mergeAck(acks: Map<string, Ack>, device: string, a: Ack) {
+  const cur = acks.get(device);
+  if (!cur) return void acks.set(device, a);
+  const r = cur.r && a.r ? Math.min(cur.r, a.r) : (cur.r ?? a.r);
+  acks.set(device, r ? { d: Math.min(cur.d, a.d), r } : { d: Math.min(cur.d, a.d) });
 }
 
 /** The item disappeared from the relay before its content was fully downloaded. */
@@ -160,6 +182,7 @@ interface Entry {
   relay: RelayItem;
   opened?: Opened;
   view: ItemView;
+  acks?: Map<string, Ack>; // receipts of the devices that can read it
   note?: NoteText; // live note: latest text
   marks?: Array<[number, number]>; // being uploaded: (time, chunks received), for its speed
 }
@@ -214,6 +237,8 @@ interface Runtime {
   cancelled: Set<string>;
   /** Contents sent from here, served directly to devices on the same network. */
   outbox: Map<string, Outgoing>;
+  /** Read here, the relay not told yet: told at the next connection. */
+  unsentReads: Set<string>;
 }
 
 interface Outgoing {
@@ -285,6 +310,8 @@ export class Engine {
   private readers = new Set<ChunkReader>();
   private servedTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private listeners = new Set<(e: EngineEvent) => void>();
+  /** Receipts on their way to the relay. */
+  private ackSends = new Set<Promise<void>>();
   private running = false;
   /** Sent to the background during a transfer: disconnects once it is over. */
   private stopWhenIdle = false;
@@ -432,14 +459,98 @@ export class Engine {
     };
   }
 
-  /** A local item can only be fetched from its sender, when it is reachable. */
   private availability(rt: Runtime, e: Entry): ItemView {
+    const v = this.reachability(rt, e);
+    const receipts = this.receipts(rt, e);
+    return receipts ? { ...v, receipts } : v;
+  }
+
+  /** A local item can only be fetched from its sender, when it is reachable. */
+  private reachability(rt: Runtime, e: Entry): ItemView {
     const v = e.view;
     if (!v.local) return v;
     if (v.mine) return rt.outbox.has(v.id) && !localOnlyOf(rt.g.state) ? { ...v, canPublish: true } : v;
     if (v.kind === 'text' && v.text !== undefined) return v; // already fetched
     const reachable = rt.online.has(v.from) && !!rt.peers?.reachable(v.from);
     return reachable ? v : { ...v, unavailable: true };
+  }
+
+  /**
+   * The recipients of an item (the devices it was sealed for, but its sender), still in the
+   * group, and their receipts: the same on every device. A received item whose only recipient
+   * is this device shows none (they would only tell what this device did).
+   */
+  private receipts(rt: Runtime, e: Entry): Receipts | undefined {
+    if (!e.opened || e.view.error || e.view.kind === 'note') return;
+    const members = rt.g.state.members;
+    const me = this.device.id;
+    const devices = Object.keys(e.opened.meta.env)
+      .filter((id) => id !== e.relay.from && members[id])
+      .map((id) => {
+        const a = e.acks?.get(id);
+        return {
+          id,
+          name: members[id].name,
+          ...(id === me ? { me: true } : {}),
+          ...(a ? { delivered: a.d } : {}),
+          ...(a?.r ? { read: a.r } : {}),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!devices.some((d) => d.id !== me)) return;
+    return {
+      total: devices.length,
+      delivered: devices.filter((d) => d.delivered).length,
+      read: devices.filter((d) => d.read).length,
+      devices,
+    };
+  }
+
+  /**
+   * Tells the group that the item reached this device, or that it was read here (opened,
+   * copied, saved by the person: not the automatic copy). Once per step.
+   */
+  private acknowledge(rt: Runtime, e: Entry, read = false) {
+    const v = e.view;
+    if (v.mine || !e.opened || v.error || v.kind === 'note') return;
+    // still being uploaded: not delivered yet (but it can be read while it arrives)
+    if (!read && !e.relay.complete && !e.relay.local) return;
+    const me = this.device.id;
+    const cur = e.acks?.get(me);
+    if (cur && (cur.r || !read)) return;
+    const now = Date.now();
+    const ack: Ack = read ? { d: cur?.d ?? now, r: now } : { d: now };
+    const acks = (e.acks ??= new Map());
+    acks.set(me, ack);
+    if (read) rt.unsentReads.add(v.id);
+    const sending: Promise<void> = rt.conn
+      .request('item.ack', { id: v.id, data: sealAck(e.opened.key, v.id, me, ack) })
+      .then(
+        () => void (read && rt.unsentReads.delete(v.id)),
+        // sent again at the next connection (the relay's list lacks it); an older relay ignores it
+        () => {
+          if (acks.get(me) !== ack) return;
+          if (cur) acks.set(me, cur);
+          else acks.delete(me);
+          this.changed();
+        },
+      )
+      .finally(() => this.ackSends.delete(sending));
+    this.ackSends.add(sending);
+  }
+
+  /** The person opened, copied or saved an item here: its sender is told. */
+  markRead(groupId: string, itemId: string) {
+    const rt = this.runtimes.get(groupId);
+    const e = rt?.items.get(itemId);
+    if (!rt || !e) return;
+    this.acknowledge(rt, e, true);
+    this.changed(); // this device's own tick, at once
+  }
+
+  /** Resolves once the receipts already sent are acknowledged by the relay (or failed). */
+  async acksSent() {
+    while (this.ackSends.size) await Promise.allSettled([...this.ackSends]);
   }
 
   private rt(groupId: string): Runtime {
@@ -461,6 +572,7 @@ export class Engine {
       events: Promise.resolve(),
       outbox: new Map(),
       cancelled: new Set(),
+      unsentReads: new Set(),
       conn: null as unknown as RelayConnection,
     };
     if (this.host.links) {
@@ -964,6 +1076,17 @@ export class Engine {
       case 'signal':
         this.onSignal(rt, e.from, e.data);
         break;
+      case 'ack': {
+        const entry = rt.items.get(e.id);
+        if (!entry?.opened || typeof e.device !== 'string' || !entry.opened.meta.env[e.device]) break;
+        try {
+          mergeAck((entry.acks ??= new Map()), e.device, openAck(entry.opened.key, e.id, e.device, e.data));
+        } catch {
+          break;
+        }
+        this.changed();
+        break;
+      }
       case 'deleted':
         rt.items.delete(e.id);
         rt.outbox.delete(e.id);
@@ -1073,6 +1196,15 @@ export class Engine {
       if (item.local) view.local = true; // the relay's flag: it drops once sent to the relay
       if (h.local) view.previewless = true; // sent in local mode: without its preview, even once on the relay
       const entry: Entry = { relay: item, opened, view };
+      // receipts: the relay's, and those that came as events since
+      const acks = new Map(rt.items.get(item.id)?.acks ?? []);
+      for (const [device, data] of Object.entries(item.acks ?? {})) {
+        if (!opened.meta.env[device]) continue;
+        try {
+          mergeAck(acks, device, openAck(opened.key, item.id, device, data));
+        } catch {}
+      }
+      if (acks.size) entry.acks = acks;
       if (h.kind === 'note') {
         const prev = rt.items.get(item.id)?.note;
         let stored: NoteText | undefined;
@@ -1082,6 +1214,7 @@ export class Engine {
         entry.note = prev && (!stored || prev.at >= stored.at) ? prev : stored;
       }
       rt.items.set(item.id, entry);
+      this.acknowledge(rt, entry, rt.unsentReads.has(item.id));
       return view;
     } catch (err: any) {
       const view: ItemView = { ...base, kind: 'file', error: String(err.message ?? err) };

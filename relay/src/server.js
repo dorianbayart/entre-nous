@@ -489,6 +489,18 @@ const handlers = {
     return { updatedAt, expiresAt };
   },
 
+  /**
+   * Receipt of an item (delivered, then read) from the device on this connection, sealed with
+   * the item key: kept with the item, passed on to the room.
+   */
+  async 'item.ack'(ws, msg) {
+    const room = requireRoom(ws);
+    if (!safeId(ws.device) || !safeId(msg.id) || !b64(msg.data, 512)) throw new Error('bad ack');
+    if (!(await store.putAck(room, msg.id, ws.device, msg.data))) throw new Error('unknown item');
+    broadcast(room, { ev: 'ack', id: msg.id, device: ws.device, data: msg.data }, ws);
+    return {};
+  },
+
   async 'chunk.have'(ws, msg) {
     const room = requireRoom(ws);
     const item = await store.getItem(room, msg.id);

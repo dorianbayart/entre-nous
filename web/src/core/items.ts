@@ -66,6 +66,7 @@ export interface RelayItem {
   progressAt?: number; // being uploaded: last chunk received
   live?: string; // live note: latest encrypted text
   updatedAt?: number;
+  acks?: Record<string, string>; // device -> its receipt (sealAck)
 }
 
 export const INLINE_TEXT_MAX = 64 * 1024;
@@ -164,4 +165,26 @@ export function sealNote(key: Uint8Array, id: string, note: NoteText): string {
 
 export function openNote(key: Uint8Array, id: string, data: string): NoteText {
   return JSON.parse(fromUtf8(unpad(open(kdf(key, 'note'), unb64(data), utf8(id)))));
+}
+
+// Receipt: a recipient tells when the item reached it (delivered) and when the person opened,
+// copied or saved it there (read), by its own clock. Sealed with the item key, so only the
+// devices that can read the item can read it; bound to the item and to the device.
+const ACK_PAD = 64;
+
+export interface Ack {
+  d: number; // delivered
+  r?: number; // read
+}
+
+const ackAad = (id: string, device: string) => utf8(`ack|${id}|${device}`);
+
+export function sealAck(key: Uint8Array, id: string, device: string, ack: Ack): string {
+  return b64(seal(kdf(key, 'ack'), pad(utf8(JSON.stringify(ack)), ACK_PAD), ackAad(id, device)));
+}
+
+export function openAck(key: Uint8Array, id: string, device: string, data: string): Ack {
+  const a = JSON.parse(fromUtf8(unpad(open(kdf(key, 'ack'), unb64(data), ackAad(id, device)))));
+  if (!(typeof a.d === 'number' && a.d > 0)) throw new Error('bad ack');
+  return typeof a.r === 'number' && a.r > 0 ? { d: a.d, r: a.r } : { d: a.d };
 }

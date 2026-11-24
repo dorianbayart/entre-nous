@@ -82,6 +82,11 @@ history as a single item, with all its subfolders.
 - **History**: everything that was shared stays available on every device until it expires:
   **Copy**, **Save**, **Share**, or **Delete** (for everyone: the confirmation reads
   **Delete everywhere**). **Delete all** clears the history and the note.
+- **Read receipts**: ticks at the top right of each item. One tick: a device has it; two: all of
+  them do (every device of the group but the one that sent it). They change colour once the item is read (opened, copied or saved): the
+  first as soon as one device has read it, the second once all of them have. Tap the ticks to see
+  where each device stands. The automatic copy to the clipboard doesn't count as a read. In a
+  group of two, a received item has none: they would only tell what you did.
 - **Upload in progress**: an "↑ name" line above the history shows its progress and speed on
   every device, and disappears when it's done. The item appears right away: you can **Save** it
   before the upload finishes (the download follows the upload), while **Copy** becomes available

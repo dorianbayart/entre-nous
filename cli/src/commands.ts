@@ -12,7 +12,7 @@ import { readClipboard, writeClipboard } from './clipboard.ts';
 import { type Context, DEFAULT_RELAY, type GroupView, relayUrl } from './context.ts';
 import { CliError, EXIT, usageError } from './errors.ts';
 import { type CliKey, tr } from './i18n.ts';
-import { ago, fetchContent, findItem, itemJSON, safeName, saveBlob, saveFolder, summary } from './items.ts';
+import { ago, fetchContent, findItem, itemJSON, safeName, saveBlob, saveFolder, summary, ticks } from './items.ts';
 import { type PackFile, buildPack, isSystemFile } from '../../web/src/core/folder.ts';
 import { confirm, err, errTTY, humanSize, out, outTTY, parseDuration, print, Progress, qr, say, table } from './term.ts';
 
@@ -336,7 +336,7 @@ const list: Command = {
     const rows = items.map((it, i) => [
       out.bold(String(i + 1)),
       it.mine ? out.dim(t('me')) : it.fromName,
-      out.dim(ago(it.createdAt)),
+      out.dim(ago(it.createdAt)) + ticks(it, out.green, out.dim),
       summary(it, width) + (it.pending ? out.dim(' · ' + t('left.sending')) : ''),
     ]);
     await print(table(rows));

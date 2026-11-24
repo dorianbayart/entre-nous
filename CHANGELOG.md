@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.45 — 2026-11-24
+- Accusés de réception et de lecture.
+
 ## 0.1.44 — 2026-11-24
 - Partage de dossiers, avec gestion des aperçus et sélection des fichiers à télécharger.
 

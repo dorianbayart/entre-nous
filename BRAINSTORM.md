@@ -98,6 +98,15 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   presse-papier ; iOS exige un toucher (« Copier ») et ne permet pas l'effacement automatique.
 - Tout envoi attend que la connexion soit établie et les pré-clés des membres chargées
   (sinon un partage Android, reçu pendant la connexion, n'était lisible que par l'expéditeur).
+- **Accusés de réception** : double coche en haut à droite de chaque élément, envoyé ou reçu,
+  comme dans une messagerie ; tous les appareils montrent les mêmes coches. 1re coche : un appareil l'a reçu, colorée quand un
+  appareil l'a lu ; 2e coche : tous l'ont reçu, colorée quand tous l'ont lu. Rien avant la
+  première réception. Toucher les coches donne le détail par appareil (heure de réception, de
+  lecture). « Reçu » = élément arrivé entier ; « lu » = ouvert, copié ou enregistré par la
+  personne (pas la copie automatique) ; « tous » = appareils pour lesquels l'élément a été
+  chiffré, sauf l'expéditeur, encore dans le groupe. Un élément reçu dont on est le seul
+  destinataire (groupe de deux) n'en a pas : elles ne diraient que ce qu'on a fait. L'accusé est chiffré avec la clé de l'élément et gardé par le
+  relais avec l'élément (champ `a:{appareil}`) : l'expéditeur hors ligne le retrouve plus tard.
 
 ## 6. Note en direct
 

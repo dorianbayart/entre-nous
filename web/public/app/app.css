@@ -173,6 +173,32 @@ button svg, .icon svg { width: 18px; height: 18px; fill: none; stroke: currentCo
   gap: 4px 12px;
 }
 .item.broken { opacity: .6; }
+/* receipts of an item sent from here: ticks at the top right, the detail under them */
+.item { position: relative; }
+.item.has-receipts .body { padding-right: 26px; }
+.receipts { position: absolute; top: 8px; right: 8px; }
+.receipts .ticks { display: flex; padding: 4px 5px; border-radius: 7px; background: none; }
+.receipts .ticks:hover { background: var(--accent-soft); }
+.receipts .ticks svg { width: 20px; height: 13px; overflow: visible; }
+.receipts path {
+  fill: none; stroke: var(--muted); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 20; stroke-dashoffset: 0; transition: stroke .35s ease, stroke-dashoffset .35s ease, opacity .2s;
+}
+.receipts path.off { stroke-dashoffset: 20; opacity: 0; }
+.receipts path.read { stroke: var(--accent); }
+.receipts-detail {
+  position: absolute; z-index: 5; top: calc(100% + 4px); right: 0; width: max-content; min-width: 200px; max-width: min(300px, 80vw);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / .14);
+}
+.receipts-detail p { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.receipts-detail ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.receipts-detail li { display: flex; justify-content: space-between; gap: 14px; }
+.receipts-detail li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receipts-detail li span:last-child { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.receipts-detail li.read span:last-child { color: var(--accent); font-weight: 600; }
+.receipts-detail li.waiting span:last-child { font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .receipts path { transition: none; } }
 /* the tile at the left of an item: its thumbnail (a video's poster), or a drawn page */
 .thumb {
   grid-row: span 2; width: 64px; height: 64px; padding: 0; border-radius: 10px; overflow: hidden;

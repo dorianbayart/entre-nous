@@ -10,6 +10,8 @@
 //                                   never uploaded, devices fetch it from the sender directly  have: chunks received
 //                                   so far (an item is listed while it is being uploaded); note: live
 //                                   note (not counted in the history size), live = its latest text
+//                                   a:{device}: that device's receipt (delivered, read), sealed with
+//                                   the item key: it lives and moves with the item
 //   r:{room}:c:{id}:{idx}   bytes one encrypted chunk
 //   r:{room}:sh:{id}        zset  share id -> expiresAt (ms): the share links of an item
 //   s:{share}               hash  { room, item, header, chunks, size, box, del, createdAt, expiresAt }
@@ -30,11 +32,18 @@ redis.call('HSET', KEYS[1], 'v', ARGV[1], 'blob', ARGV[2])
 redis.call('EXPIRE', KEYS[1], ARGV[3])
 return -1`;
 
+// a receipt only for an item that is still there (HSET on a gone key would recreate it, forever)
+const PUT_ACK = `
+if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+return 1`;
+
 export class Store {
   /** @param {import('ioredis').Redis} redis */
   constructor(redis) {
     this.redis = redis;
     redis.defineCommand('casState', { numberOfKeys: 1, lua: CAS_STATE });
+    redis.defineCommand('putAck', { numberOfKeys: 1, lua: PUT_ACK });
   }
 
   k(room, ...parts) {
@@ -123,7 +132,14 @@ export class Store {
       item.live = h.live;
       item.updatedAt = Number(h.updatedAt);
     }
+    const acks = Object.entries(h).filter(([k]) => k.startsWith('a:'));
+    if (acks.length) item.acks = Object.fromEntries(acks.map(([k, v]) => [k.slice(2), v]));
     return item;
+  }
+
+  /** A device's receipt for an item (replaces its previous one). False: the item is gone. */
+  async putAck(room, id, device, data) {
+    return (await this.redis.putAck(this.k(room, 'i', id), 'a:' + device, data)) === 1;
   }
 
   /** Live note: replaces its encrypted text; the retention restarts from now. */

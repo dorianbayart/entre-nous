@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.45 — 2026-11-24
+- Delivery and read receipts.
+
 ## 0.1.44 — 2026-11-24
 - Folder sharing, with previews and a choice of which files to download.
 

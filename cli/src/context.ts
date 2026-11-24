@@ -140,7 +140,11 @@ export class Context {
 
   /** Disconnects everything (end of the command). */
   async close() {
-    if (this.engineLoad) (await this.engineLoad).stop();
+    if (!this.engineLoad) return;
+    const engine = await this.engineLoad;
+    // the receipts of what this command received or read, before leaving (3 s at most)
+    await Promise.race([engine.acksSent(), new Promise((r) => setTimeout(r, 3000).unref())]);
+    engine.stop();
   }
 }
 

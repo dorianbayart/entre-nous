@@ -221,6 +221,13 @@ sequenceDiagram
   seconde. Les fichiers reçus par les applis de bureau sont effacés au même moment.
 - **Note en direct** : un champ texte synchronisé à chaque frappe, chiffré comme le reste.
   « Envoyer » en fait un élément de l'historique, la note restant en place.
+- **Accusés de réception** : quand un élément est arrivé entier sur un appareil, puis quand la
+  personne l'ouvre, le copie ou l'enregistre, cet appareil envoie un accusé au relais
+  (`item.ack`). Il est chiffré avec la clé de l'élément : seuls les appareils qui peuvent lire
+  l'élément peuvent le lire. Le relais le garde avec l'élément (il expire et change de salle avec
+  lui) et le transmet au groupe (évènement `ack`). Un accusé envoyé hors ligne part à la
+  connexion suivante. « Tous » désigne les appareils pour lesquels l'élément a été chiffré, sauf
+  l'expéditeur, s'ils sont encore dans le groupe : tous les appareils affichent les mêmes coches.
 
 ## Liens de partage
 
@@ -252,6 +259,7 @@ messages et une seconde, réservée aux blocs, pour qu'un gros envoi ne retarde 
 | `item.create`, `chunk.put`, `chunk.have`, `item.commit`, `chunk.get` | envoi et lecture d'un élément |
 | `item.delete`, `items.clear`, `items.trim`, `items.shorten` | suppression, taille de l'historique, rétention raccourcie |
 | `note.put` | note en direct (dernière version seulement) |
+| `item.ack` | accusé de réception d'un élément (chiffré), gardé avec lui |
 | `item.publish` | un élément local envoyé au serveur |
 | `signal` | mise en relation WebRTC (transmis, jamais stocké) |
 | `items.move`, `room.purge`, `room.delete` | retrait d'un appareil, dissolution |
@@ -259,7 +267,7 @@ messages et une seconde, réservée aux blocs, pour qu'un gros envoi ne retarde 
 | `share.create`, `share.expire`, `share.delete` | lien de partage : création, durée, suppression (par son créateur) |
 | `share.open`, `share.chunk` | ouverture d'un lien et lecture de ses blocs, sans salle |
 
-Évènements : `item`, `progress`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
+Évènements : `item`, `progress`, `ack`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.
 
 Limites : 200 requêtes/s par connexion, 32 connexions par adresse IP, blocs de 1 Mio.

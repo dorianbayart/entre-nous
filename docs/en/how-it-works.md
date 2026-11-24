@@ -220,6 +220,13 @@ sequenceDiagram
   history at that very second. Files received by the desktop apps are deleted at the same moment.
 - **Live note**: a text field synced as you type, encrypted like everything else. "Send" turns
   it into a history item, leaving the note in place.
+- **Read receipts**: once an item has fully reached a device, then when the person opens,
+  copies or saves it, that device sends a receipt to the relay (`item.ack`). It is encrypted
+  with the item's key: only the devices that can read the item can read it. The relay keeps it
+  with the item (it expires and changes room with it) and passes it on to the group (`ack`
+  event). A receipt made offline is sent at the next connection. "All" means the devices the
+  item was encrypted for, but its sender, as long as they are still in the group: every device
+  shows the same ticks.
 
 ## Share links
 
@@ -250,6 +257,7 @@ second one, reserved for chunks, so that a large upload never holds up anything 
 | `item.create`, `chunk.put`, `chunk.have`, `item.commit`, `chunk.get` | sending and reading an item |
 | `item.delete`, `items.clear`, `items.trim`, `items.shorten` | deletion, history size, shortened retention |
 | `note.put` | live note (latest version only) |
+| `item.ack` | receipt of an item (encrypted), kept with it |
 | `item.publish` | a local item sent to the server |
 | `signal` | WebRTC connection setup (forwarded, never stored) |
 | `items.move`, `room.purge`, `room.delete` | removing a device, dissolving a group |
@@ -257,7 +265,7 @@ second one, reserved for chunks, so that a large upload never holds up anything 
 | `share.create`, `share.expire`, `share.delete` | share link: creation, lifetime, deletion (by its creator) |
 | `share.open`, `share.chunk` | opening a link and reading its chunks, without a room |
 
-Events: `item`, `progress`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
+Events: `item`, `progress`, `ack`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.
 
 Limits: 200 requests/s per connection, 32 connections per IP address, 1 MiB chunks.

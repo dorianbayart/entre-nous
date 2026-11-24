@@ -52,9 +52,20 @@ export function itemJSON(item: ItemView, position?: number, extra: Record<string
     ...(item.text !== undefined ? { text: item.text } : {}),
     ...(item.pending ? { uploading: true } : {}),
     ...(item.local ? { localOnly: true } : {}),
+    // how many of its recipients (but its sender) have it, and have read it
+    ...(item.receipts ? { receipts: { devices: item.receipts.total, delivered: item.receipts.delivered, read: item.receipts.read } } : {}),
     ...(item.error ? { error: item.error } : {}),
     ...extra,
   };
+}
+
+/** ✓ once a recipient has it, ✓✓ once all have it; green once read (on one, on all). */
+export function ticks(item: ItemView, green: (s: string) => string, dim: (s: string) => string) {
+  const r = item.receipts;
+  if (!r?.delivered) return '';
+  const first = r.read ? green('✓') : dim('✓');
+  if (r.delivered < r.total) return ' ' + first;
+  return ' ' + first + (r.read === r.total ? green('✓') : dim('✓'));
 }
 
 /** “2 min ago”, “just now”. */
@@ -95,7 +106,9 @@ export async function fetchContent(engine: Engine, groupId: string, item: ItemVi
     if (transfer) progress.update(transfer.done, transfer.total, transfer.rate);
   });
   try {
-    return await engine.content(groupId, item.id);
+    const content = await engine.content(groupId, item.id);
+    engine.markRead(groupId, item.id); // its sender sees it read
+    return content;
   } finally {
     off();
     progress.end();
@@ -142,6 +155,7 @@ export async function saveBlob(blob: Blob, name: string, output: string | undefi
 export async function saveFolder(engine: Engine, groupId: string, item: ItemView, output: string | undefined, force: boolean): Promise<string> {
   if (item.error) throw new CliError(t('item.undecryptable'));
   const progress = new Progress(item.name || 'dossier');
+  engine.markRead(groupId, item.id); // its sender sees it read
   const reader = engine.downloadReader(groupId, item.id, item.name ?? '', item.chunks);
   const off = engine.on((e) => {
     if (e.type !== 'change') return;

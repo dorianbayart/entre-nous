@@ -93,6 +93,12 @@ test('two terminals: pairing, texts, files, stdin, wait, watch, note, rm', { tim
   assert.equal((await ok('bob', ['get'])).stdout, 'hello\nworld');
   // after "--": an id may start with "-" (base64url)
   assert.equal((await ok('bob', ['get', '--', sent.id.slice(0, 6)])).stdout, 'hello\nworld');
+  // read on Bob: Alice's receipts say so (sent before the CLI exits)
+  const mine = JSON.parse((await ok('alice', ['list', '--json'])).stdout).find((i) => i.id === sent.id);
+  assert.deepEqual(mine.receipts, { devices: 1, delivered: 1, read: 1 });
+  assert.match((await ok('alice', ['list'])).stdout, /✓✓/);
+  // Bob, its only recipient: receipts would only tell what he did
+  assert.equal(JSON.parse((await ok('bob', ['list', '--json'])).stdout).find((i) => i.id === sent.id).receipts, undefined);
 
   // ---- stdin: text, then binary (a file)
   await ok('bob', ['send'], { input: 'piped text' });

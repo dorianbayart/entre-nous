@@ -39,7 +39,7 @@ const en = {
     'ITEM is a position in the history (1 = the latest, as in `entrenous list`) or the beginning of an id. Without ITEM: the latest item.\nA text is printed on the standard output. A file is saved in the current folder under its own name (never overwriting one: “name (2).pdf”), and its path is printed. A folder is recreated there the same way (-o - writes it as a ZIP).',
 
   'cmd.list': 'Show the history',
-  'cmd.list.long': 'The items of the group, the latest first, with their position (for get and rm), their sender and their expiry.',
+  'cmd.list.long': 'The items of the group, the latest first, with their position (for get and rm), their sender and their expiry; ✓ or ✓✓: delivered to one device or to all (green once read).',
   'opt.list.limit': 'show only the N latest',
 
   'cmd.wait': 'Wait for the next item sent by another device, then get it',
@@ -191,7 +191,7 @@ const fr: Strings = {
     'ÉLÉMENT est une position dans l’historique (1 = le plus récent, comme dans `entrenous list`) ou le début d’un identifiant. Sans ÉLÉMENT : le plus récent.\nUn texte s’affiche sur la sortie standard. Un fichier est enregistré dans le dossier courant sous son nom (sans jamais en remplacer un : « nom (2).pdf »), et son chemin s’affiche. Un dossier y est recréé de la même façon (-o - l’écrit en ZIP).',
 
   'cmd.list': 'Affiche l’historique',
-  'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien, avec leur position (pour get et rm), leur expéditeur et leur expiration.',
+  'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien, avec leur position (pour get et rm), leur expéditeur et leur expiration ; ✓ ou ✓✓ : reçu par un appareil ou par tous (en vert une fois lu).',
   'opt.list.limit': 'n’affiche que les N plus récents',
 
   'cmd.wait': 'Attend le prochain élément envoyé par un autre appareil, puis le récupère',

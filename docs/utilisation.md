@@ -83,6 +83,12 @@ aussi). Il arrive dans l'historique en un seul élément, avec tous ses sous-dos
 - **Historique** : tout ce qui a été partagé reste disponible jusqu'à expiration, sur tous les
   appareils : **Copier**, **Enregistrer**, **Partager**, ou **Supprimer** (pour tous : la
   confirmation dit « Supprimer partout »). **Tout supprimer** vide l'historique et la note.
+- **Accusés de réception** : des coches en haut à droite de chaque élément. Une coche : un
+  appareil l'a reçu ; deux : tous l'ont reçu (tous ceux du groupe, sauf celui qui l'a envoyé). Elles se colorent quand l'élément est lu
+  (ouvert, copié ou enregistré) : la première dès qu'un appareil l'a lu, la seconde quand tous
+  l'ont lu. Touche les coches pour voir où en est chaque appareil. La copie automatique dans le
+  presse-papier ne compte pas comme une lecture. Dans un groupe de deux, l'élément reçu n'en a pas :
+  elles ne diraient que ce que tu as fait.
 - **Envoi en cours** : une ligne « ↑ nom » au-dessus de l'historique montre sa progression et sa
   vitesse, sur tous les appareils, et disparaît à la fin. L'élément apparaît dès le début :
   **Enregistrer** est possible avant la fin, le téléchargement suit l'envoi ; **Copier** arrive une

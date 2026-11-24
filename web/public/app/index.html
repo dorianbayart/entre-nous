@@ -182,7 +182,7 @@
     </div>
     <ul class="history">
       <template x-for="item in history" :key="item.id">
-        <li class="item" :class="item.share ? 'shared-link' : (item.error ? 'broken' : '')">
+        <li class="item" :class="itemClass(item)">
           <!-- a share link made here: only this device sees it -->
           <template x-if="item.share">
             <div class="entry">
@@ -204,6 +204,21 @@
           </template>
           <template x-if="!item.share">
           <div class="entry">
+          <!-- receipts: one tick once a recipient has it, two once all have it; coloured once read -->
+          <div class="receipts" x-show="hasReceipts(item)" @click.outside="closeReceiptsOf(item)">
+            <button class="ticks" @click="toggleReceipts(item)" :aria-label="receiptsTitle(item)" :title="receiptsTitle(item)"
+                    :aria-expanded="receiptsShown(item)">
+              <svg viewBox="0 0 17 11" aria-hidden="true"><path :class="tickClass(item, 1)" d="M1 5.6 4.4 9 11 1.8"/><path :class="tickClass(item, 2)" d="M7.6 8.2 8.4 9 15 1.8"/></svg>
+            </button>
+            <div class="receipts-detail" x-show="receiptsShown(item)" x-cloak>
+              <p x-text="t('receipt.title')"></p>
+              <ul>
+                <template x-for="dev in receiptDevices(item)" :key="dev.id">
+                  <li :class="receiptClass(dev)"><span x-text="receiptName(dev)"></span><span x-text="receiptState(dev)"></span></li>
+                </template>
+              </ul>
+            </div>
+          </div>
           <template x-if="hasTile(item)">
             <button :class="tileClass(item)" @click="openTile(item)" :disabled="tileDisabled(item)"
                     :aria-label="openTitle(item)" :title="openTitle(item)">

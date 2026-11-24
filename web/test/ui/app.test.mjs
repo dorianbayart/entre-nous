@@ -284,6 +284,78 @@ test('three devices, one of them a phone: invitations, parallel downloads, remov
   assert.deepEqual(problems, []);
 });
 
+test('receipts: one tick, two ticks, coloured once read, the same on every device, the detail', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  const c = await device('Chloé');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await rename(a, 'Alice');
+  await pair(a, b, (link) => b.page.goto(link));
+  await rename(b, 'Bob');
+  await pair(a, c, (link) => c.page.goto(link));
+  await rename(c, 'Chloé');
+  await until('three devices', async () => /Bob/.test(await a.page.locator('.status').textContent()) && /Chloé/.test(await a.page.locator('.status').textContent()));
+
+  await a.page.locator('.note textarea').fill('Code du portail : 4521');
+  await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  const mine = a.page.locator('.history .item', { hasText: 'Code du portail' });
+  const ticks = mine.locator('.receipts .ticks');
+  const paths = mine.locator('.receipts path');
+  const state = async () => [await paths.nth(0).getAttribute('class'), await paths.nth(1).getAttribute('class')].join('|');
+  // both devices are online: two grey ticks
+  await until('two grey ticks', async () => (await state()) === '|');
+  assert.equal(await ticks.getAttribute('title'), 'Reçu par tous');
+  // the same on a received item
+  const theirs = b.page.locator('.history .item', { hasText: 'Code du portail' });
+  const theirPaths = theirs.locator('.receipts path');
+  const theirState = async () => [await theirPaths.nth(0).getAttribute('class'), await theirPaths.nth(1).getAttribute('class')].join('|');
+  await until('two grey ticks on Bob', async () => (await theirState()) === '|');
+
+  // read on Bob (copied): the first tick takes the colour
+  await button(theirs, 'Copier').click();
+  await until('first tick read', async () => (await state()) === 'read|');
+  await until('first tick read on Bob', async () => (await theirState()) === 'read|');
+  assert.equal(await ticks.getAttribute('title'), 'Reçu par tous · lu par 1 sur 2');
+  // the detail by device
+  await ticks.click();
+  const detail = mine.locator('.receipts-detail');
+  await detail.waitFor();
+  assert.match(await detail.locator('li', { hasText: 'Bob' }).textContent(), /lu · \d\d:\d\d/);
+  assert.match(await detail.locator('li', { hasText: 'Chloé' }).textContent(), /reçu · \d\d:\d\d/);
+  // read on Chloé (opened in the preview): both coloured, while the detail is open
+  const hers = c.page.locator('.history .item', { hasText: 'Code du portail' });
+  await button(hers, 'Copier').click();
+  await until('both read', async () => (await state()) === 'read|read');
+  await until('both read on Bob', async () => (await theirState()) === 'read|read');
+  await theirs.locator('.receipts .ticks').click();
+  assert.match(await theirs.locator('.receipts-detail li', { hasText: 'Bob' }).textContent(), /Bob \(cet appareil\)lu · /);
+  await b.page.locator('.bar .title').click();
+  assert.equal(await ticks.getAttribute('title'), 'Lu par tous');
+  assert.match(await detail.locator('li', { hasText: 'Chloé' }).textContent(), /lu · /);
+  // a click elsewhere closes it
+  await a.page.locator('.bar .title').click();
+  await detail.waitFor({ state: 'hidden' });
+
+  // a device offline: one tick until it comes back
+  await c.page.close();
+  await until('Chloé offline', async () => !/Chloé/.test(await a.page.locator('.status').textContent()));
+  await a.page.locator('.note textarea').fill('Pour plus tard');
+  await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  const later = a.page.locator('.history .item', { hasText: 'Pour plus tard' });
+  const laterState = async () => [await later.locator('.receipts path').nth(0).getAttribute('class'), await later.locator('.receipts path').nth(1).getAttribute('class')].join('|');
+  await until('one tick', async () => (await laterState()) === '|off');
+  assert.equal(await later.locator('.receipts .ticks').getAttribute('title'), 'Reçu par 1 appareil sur 2');
+  const back = await c.context.newPage();
+  await back.goto(APP);
+  await until('two ticks once Chloé is back', async () => (await laterState()) === '|');
+
+  await a.context.close();
+  await b.context.close();
+  await c.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('iPhone in Safari: an invitation offers to install, or to go on in Safari', { timeout: 60_000 }, async () => {
   const a = await device('Alice');
   const d = await device('Dan', { phone: 'iphone' });

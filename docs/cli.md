@@ -209,7 +209,10 @@ Avec `--json`, chaque commande écrit un seul objet JSON (`watch` : un par ligne
 enregistré, `uploading` indique un élément encore en cours d'envoi. Ce que l'expéditeur a joint pour
 les aperçus : `width` et `height` (pixels d'une image ou d'une vidéo), `duration` (secondes, une
 vidéo ou un fichier audio), `pages` (pages d'un PDF), `excerpt` (les premiers caractères d'un fichier texte ; `send` le joint aussi pour les
-fichiers texte qu'il envoie). Les dates sont en ISO 8601 (UTC), les tailles en octets.
+fichiers texte qu'il envoie). `receipts` donne les accusés de réception : `devices` (les appareils
+qui peuvent le lire, sauf l'expéditeur), `delivered` (combien l'ont reçu),
+`read` (combien l'ont lu) ; `list` les montre par ✓ (un appareil l'a reçu) ou ✓✓ (tous), en vert
+une fois lu. `get` compte comme une lecture. Les dates sont en ISO 8601 (UTC), les tailles en octets.
 
 ### Exemples
 
