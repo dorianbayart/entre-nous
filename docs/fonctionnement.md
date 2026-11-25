@@ -96,8 +96,9 @@ sequenceDiagram
 - **Coupure** (veille, réseau) : l'envoi reprend avec les blocs manquants dès le retour de la
   connexion, tant que l'appli reste ouverte et que l'élément n'a pas expiré.
 - **Appareil absent** : l'élément l'attend sur le relais jusqu'à son expiration (24 h par
-  défaut) ; il le voit en ouvrant l'appli. Le partage automatique du presse-papier, lui,
-  attend qu'un autre appareil soit connecté et envoie alors la dernière copie.
+  défaut) ; il le voit en ouvrant l'appli. C'est vrai aussi du presse-papier partagé
+  automatiquement : chaque copie est envoyée tout de suite, même si aucun autre appareil n'est
+  connecté.
 
 ## Mode local : en direct sur le même réseau
 

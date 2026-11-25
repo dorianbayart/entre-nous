@@ -43,7 +43,7 @@ Tu peux créer d'autres groupes (un pour la famille, un pour le travail) : ils s
 
 | | Comment envoyer |
 |---|---|
-| Mac, Linux, Windows | **copie, c'est tout** : ce que tu copies part tout seul dès qu'un autre appareil est connecté ; un fichier copié dans le gestionnaire de fichiers aussi. Boutons **Fichier** et **Dossier**, ou glisse un fichier ou un dossier dans la fenêtre (sur Mac, sur l'icône de la barre des menus) |
+| Mac, Linux, Windows | **copie, c'est tout** : ce que tu copies est envoyé tout seul, même si aucun autre appareil n'est connecté ; un fichier copié dans le gestionnaire de fichiers aussi. Boutons **Fichier** et **Dossier**, ou glisse un fichier ou un dossier dans la fenêtre (sur Mac, sur l'icône de la barre des menus) |
 | Android | **Envoyer le presse-papier**, **Fichier** (des fichiers, ou un dossier), ou **Partager → Entre Nous** depuis n'importe quelle appli |
 | iPhone | **Envoyer le presse-papier** (touche « Coller » dans la bulle), **Fichier** |
 | Navigateur | Ctrl+V dans la page, glisser-déposer, **Fichier** ; **Dossier** sur ordinateur |

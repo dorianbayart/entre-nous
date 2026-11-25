@@ -24,7 +24,7 @@ données opaques, en mémoire, jusqu'à leur expiration.
 | les noms de fichiers, les types, les aperçus (miniatures, durées, débuts de textes) | l'heure des envois, leur nombre |
 | le nom du groupe, le nom et le type des appareils | une taille approximative (arrondie à 64 Kio, 256 o pour l'en-tête) |
 | le secret du groupe, les clés privées | un identifiant de salle opaque, des identifiants d'appareils pseudonymes |
-| les adresses locales échangées pour le mode local | qui est connecté en ce moment (pour le partage automatique) |
+| les adresses locales échangées pour le mode local | qui est connecté en ce moment (pour l'afficher aux autres appareils) |
 | le contenu des accusés de réception (reçu ou lu, et à quelle heure) | quand un appareil envoie un accusé de réception, et pour quel élément |
 
 Le relais ne journalise ni contenu ni identifiant de salle, et ne garde rien sur disque

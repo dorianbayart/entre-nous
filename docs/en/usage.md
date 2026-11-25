@@ -42,7 +42,7 @@ You can create more groups (one for family, one for work): they're independent o
 
 | | How to send |
 |---|---|
-| Mac, Linux, Windows | **just copy**: whatever you copy is sent on its own as soon as another device is connected, and so is a file copied in the file manager. **File** and **Folder** buttons, or drag a file or a folder onto the window (on a Mac, onto the menu bar icon) |
+| Mac, Linux, Windows | **just copy**: whatever you copy is sent on its own, even when no other device is connected, and so is a file copied in the file manager. **File** and **Folder** buttons, or drag a file or a folder onto the window (on a Mac, onto the menu bar icon) |
 | Android | **Send clipboard**, **File** (files, or a folder), or **Share → Entre Nous** from any app |
 | iPhone | **Send clipboard** (tap "Paste" in the bubble), **File** |
 | Browser | Ctrl+V in the page, drag and drop, **File**; **Folder** on a computer |

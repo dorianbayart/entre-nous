@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.50 — 2026-11-25
+- Fix: your clipboard is sent even when no other device is connected.
+
 ## 0.1.49 — 2026-11-24
 - Link to receive files from someone outside the group.
 

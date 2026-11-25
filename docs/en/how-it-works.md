@@ -95,8 +95,8 @@ sequenceDiagram
 - **Connection drop** (sleep, network): the upload resumes with the missing chunks as soon as the
   connection is back, as long as the app stays open and the item hasn't expired.
 - **Offline device**: the item waits for it on the relay until it expires (24 h by default); the
-  device sees it when the app is opened. Automatic clipboard sharing, on the other hand, waits
-  for another device to be connected and then sends the latest copy.
+  device sees it when the app is opened. The same goes for the automatically shared clipboard:
+  each copy is sent right away, even when no other device is connected.
 
 ## Local mode: direct on the same network
 

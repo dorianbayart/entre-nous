@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.50 — 2026-11-25
+- Fix: le presse-papier est envoyé même quand aucun autre appareil n'est connecté.
+
 ## 0.1.49 — 2026-11-24
 - Lien pour recevoir des fichiers d'une personne hors du groupe.
 

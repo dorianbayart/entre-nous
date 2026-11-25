@@ -105,7 +105,6 @@ let installPrompt: any = null;
 let installInvite: string | null = null;
 let lastShared = '';
 let loadingNewsFor = ''; // the new version whose changelog was asked to the relay
-let pendingLocal: Outgoing | undefined;
 let noteTypedAt = 0;
 const copiedIds = new Set<string>(); // items already written to the clipboard here
 let noteRetry: ReturnType<typeof setTimeout> | undefined;
@@ -330,7 +329,6 @@ Alpine.data('app', () => ({
         this.onIncoming(e.groupId, e.item);
         this.notifyIncoming(e.item);
       } else if (e.type === 'synced') this.onSynced(e.groupId);
-      else if (e.type === 'presence') this.onPresence(e.groupId);
       else if (e.type === 'removed') this.toast(this.t('toast.removedHere', { group: e.groupName }));
       else if (e.type === 'error') this.toast(e.message);
     });
@@ -679,7 +677,6 @@ Alpine.data('app', () => ({
 
   setPaused(paused: boolean) {
     this.prefs.paused = paused;
-    pendingLocal = undefined; // a copy made before the pause is not sent afterwards
     platform.setPaused?.(paused);
     this.savePrefs();
     this.toast(this.t(paused ? 'pause.on' : 'pause.off'));
@@ -2193,8 +2190,8 @@ Alpine.data('app', () => ({
   },
 
   /**
-   * Mac: every copy is shared while another device of the group is online (otherwise with
-   * the first one that comes). Contents above the group's limit are left to manual sending.
+   * Desktop apps: every copy goes to the relay at once, whether another device is online or not.
+   * Contents above the group's limit are left to manual sending.
    */
   onLocalCopy(c: LocalCopy) {
     if (this.prefs.paused || !this.prefs.autoShare) return;
@@ -2214,18 +2211,6 @@ Alpine.data('app', () => ({
       this.sendFolder(o.folder, true);
       return;
     }
-    pendingLocal = o;
-    if (!this.others.some((m) => m.online)) return;
-    lastShared = fp;
-    this.send(o);
-  },
-
-  /** Mac: a device comes online -> it gets the current clipboard. */
-  onPresence(groupId: string) {
-    const o = pendingLocal;
-    if (!this.desktop || this.prefs.paused || !this.prefs.autoShare || groupId !== this.groupId || !o) return;
-    const fp = fingerprint(o);
-    if (fp === lastShared) return;
     lastShared = fp;
     this.send(o);
   },

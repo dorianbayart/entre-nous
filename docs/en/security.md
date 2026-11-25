@@ -24,7 +24,7 @@ carries and stores opaque data, in memory, until it expires.
 | file names, types, previews (thumbnails, lengths, starts of texts) | when things are sent, and how many |
 | the group's name, the devices' names and types | an approximate size (rounded to 64 KiB, 256 B for the header) |
 | the group secret, the private keys | an opaque room identifier, pseudonymous device identifiers |
-| the local addresses exchanged for local mode | who is connected right now (for automatic sharing) |
+| the local addresses exchanged for local mode | who is connected right now (to show it to the other devices) |
 | what read receipts say (delivered or read, and when) | when a device sends a read receipt, and for which item |
 
 The relay never logs content or room identifiers, and keeps nothing on disk (except with the

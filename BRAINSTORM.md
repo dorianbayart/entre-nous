@@ -85,9 +85,10 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   enregistré ou supprimé par n'importe quel membre.
 - Les appareils ne téléchargent un contenu qu'au moment de le copier ou de l'enregistrer.
 - Un élément expiré quitte l'historique local à la seconde.
-- **Partage automatique du Mac** : par défaut, une copie n'est envoyée que si un autre
-  appareil du groupe est connecté ; quand un appareil se connecte, la dernière copie du Mac
-  lui est envoyée. Le relais connaît donc la présence (identifiants pseudonymes).
+- **Partage automatique du Mac** (et Linux, Windows) : chaque copie est envoyée tout de suite
+  au relais, qu'un autre appareil soit connecté ou non (décision du 2026-11-25 ; avant, la copie
+  attendait qu'un appareil se connecte). La limite d'historique du groupe s'applique : les plus
+  anciens éléments laissent la place. La **Pause** arrête l'envoi automatique.
   Une copie plus grosse que la limite du groupe n'est ni lue ni envoyée : un message invite
   à passer par « Fichier ». Les envois manuels passent toujours par la boîte aux lettres.
 - **À la connexion** (ouverture de l'appli, sortie de veille), le dernier élément reçu
