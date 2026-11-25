@@ -227,6 +227,14 @@ sequenceDiagram
   event). A receipt made offline is sent at the next connection. "All" means the devices the
   item was encrypted for, but its sender, as long as they are still in the group: every device
   shows the same ticks.
+- **Pins**: pinning or unpinning an item sends its state to the relay (`item.pin`), encrypted
+  with the item's key and the same size either way: the relay can't tell which items are
+  pinned. It keeps it with the item and passes it on to the group (`pin` event); the latest
+  change wins.
+- **History size**: the devices enforce it, since only they know what is pinned. Every device
+  online deletes the unpinned items beyond the N latest, at each new item and when it connects;
+  an item sent through a file request while no device is online is deleted at the next
+  connection.
 
 ## Share links
 
@@ -257,8 +265,8 @@ account (`https://<relay>/r/#<secret>`).
    pick of files, makes the previews, encrypts the content with a random key and encrypts that key
    for the request's public key (`drop.item`, `chunk.put`, `drop.commit`). Several files picked at
    once make a folder.
-3. The relay puts the item in the group's room, with the group's retention and history size; the
-   devices receive it like the others. The request follows the group when the history moves to
+3. The relay puts the item in the group's room, with the group's retention; the devices receive it
+   like the others. The request follows the group when the history moves to
    another room (a device removed).
 
 Any device of the group changes the lifetime or the message (`drop.update`) or deletes the request
@@ -275,9 +283,10 @@ second one, reserved for chunks, so that a large upload never holds up anything 
 | `hello` | joins a room (opaque identifier derived from the group secret) |
 | `state.put`, `prekey.put` | group state (encrypted, versioned), devices' public prekeys |
 | `item.create`, `chunk.put`, `chunk.have`, `item.commit`, `chunk.get` | sending and reading an item |
-| `item.delete`, `items.clear`, `items.trim`, `items.shorten` | deletion, history size, shortened retention |
+| `item.delete`, `items.clear`, `items.shorten` | deletion, shortened retention (`items.trim` stays for older versions) |
 | `note.put` | live note (latest version only) |
 | `item.ack` | receipt of an item (encrypted), kept with it |
+| `item.pin` | whether an item is pinned (encrypted), kept with it |
 | `item.publish` | a local item sent to the server |
 | `signal` | WebRTC connection setup (forwarded, never stored) |
 | `items.move`, `room.purge`, `room.delete` | removing a device, dissolving a group |

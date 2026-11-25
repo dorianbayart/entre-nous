@@ -53,6 +53,7 @@ export function itemJSON(item: ItemView, position?: number, extra: Record<string
     ...(item.pending ? { uploading: true } : {}),
     ...(item.local ? { localOnly: true } : {}),
     // how many of its recipients (but its sender) have it, and have read it
+    ...(item.pinned ? { pinned: true } : {}),
     ...(item.receipts ? { receipts: { devices: item.receipts.total, delivered: item.receipts.delivered, read: item.receipts.read } } : {}),
     ...(item.error ? { error: item.error } : {}),
     ...extra,

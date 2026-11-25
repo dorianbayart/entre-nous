@@ -26,6 +26,7 @@ données opaques, en mémoire, jusqu'à leur expiration.
 | le secret du groupe, les clés privées | un identifiant de salle opaque, des identifiants d'appareils pseudonymes |
 | les adresses locales échangées pour le mode local | qui est connecté en ce moment (pour l'afficher aux autres appareils) |
 | le contenu des accusés de réception (reçu ou lu, et à quelle heure) | quand un appareil envoie un accusé de réception, et pour quel élément |
+| quels éléments sont épinglés | qu'un élément a été épinglé ou désépinglé, sans savoir lequel des deux |
 
 Le relais ne journalise ni contenu ni identifiant de salle, et ne garde rien sur disque
 (sauf option `PERSIST`, qui ne range que les mêmes données chiffrées).

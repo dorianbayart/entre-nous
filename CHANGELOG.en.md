@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.51 — 2026-11-26
+- Pin an item to the top of the history.
+
 ## 0.1.50 — 2026-11-25
 - Fix: your clipboard is sent even when no other device is connected.
 

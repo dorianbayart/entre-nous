@@ -229,6 +229,14 @@ sequenceDiagram
   lui) et le transmet au groupe (évènement `ack`). Un accusé envoyé hors ligne part à la
   connexion suivante. « Tous » désigne les appareils pour lesquels l'élément a été chiffré, sauf
   l'expéditeur, s'ils sont encore dans le groupe : tous les appareils affichent les mêmes coches.
+- **Épingles** : épingler ou désépingler un élément envoie au relais son état (`item.pin`),
+  chiffré avec la clé de l'élément et de la même taille dans les deux cas : le relais ne sait pas
+  quels éléments sont épinglés. Il le garde avec l'élément et le transmet au groupe (évènement
+  `pin`) ; le changement le plus récent l'emporte.
+- **Taille de l'historique** : ce sont les appareils qui l'appliquent, puisque seuls eux savent
+  ce qui est épinglé. Chaque appareil en ligne supprime les éléments non épinglés au-delà des N
+  plus récents, à chaque nouvel élément et à la connexion ; un élément déposé par une demande de
+  fichiers quand aucun appareil n'est en ligne est donc supprimé à la connexion suivante.
 
 ## Liens de partage
 
@@ -260,8 +268,8 @@ un navigateur, sans compte (`https://<relais>/r/#<secret>`).
    de fichiers, fabrique les aperçus, chiffre le contenu avec une clé tirée au hasard et chiffre cette
    clé pour la clé publique de la demande (`drop.item`, `chunk.put`, `drop.commit`). Plusieurs
    fichiers choisis d'un coup forment un dossier.
-3. Le relais range l'élément dans la salle du groupe, avec la durée de conservation et la taille
-   d'historique du groupe ; les appareils le reçoivent comme les autres. La demande suit le groupe
+3. Le relais range l'élément dans la salle du groupe, avec la durée de conservation du groupe ;
+   les appareils le reçoivent comme les autres. La demande suit le groupe
    quand l'historique change de salle (retrait d'un appareil).
 
 N'importe quel appareil du groupe change la durée ou le message (`drop.update`) ou supprime la
@@ -278,9 +286,10 @@ messages et une seconde, réservée aux blocs, pour qu'un gros envoi ne retarde 
 | `hello` | entre dans une salle (identifiant opaque dérivé du secret du groupe) |
 | `state.put`, `prekey.put` | état du groupe (chiffré, versionné), pré-clés publiques des appareils |
 | `item.create`, `chunk.put`, `chunk.have`, `item.commit`, `chunk.get` | envoi et lecture d'un élément |
-| `item.delete`, `items.clear`, `items.trim`, `items.shorten` | suppression, taille de l'historique, rétention raccourcie |
+| `item.delete`, `items.clear`, `items.shorten` | suppression, rétention raccourcie (`items.trim` reste pour les anciennes versions) |
 | `note.put` | note en direct (dernière version seulement) |
 | `item.ack` | accusé de réception d'un élément (chiffré), gardé avec lui |
+| `item.pin` | élément épinglé ou non (chiffré), gardé avec lui |
 | `item.publish` | un élément local envoyé au serveur |
 | `signal` | mise en relation WebRTC (transmis, jamais stocké) |
 | `items.move`, `room.purge`, `room.delete` | retrait d'un appareil, dissolution |

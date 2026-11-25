@@ -26,7 +26,7 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
 | Rétention | Réglage du groupe, modifiable par tout membre, 24 h par défaut, plafonnée par `MAX_TTL` (7 j) ; raccourcir s'applique aussi aux éléments existants, allonger seulement aux nouveaux |
 | Retrait d'un appareil | Par n'importe quel membre ; rotation des clés, l'historique suit les membres restants |
 | Taille des envois | Pas de limite pour un envoi manuel ; partage automatique du Mac limité par un réglage du groupe (1 Mo par défaut, 10 Mo, 100 Mo) ; le relais est borné par `MAX_STORAGE` et `mem_limit` |
-| Taille de l'historique | Réglage du groupe : 1, 10 (défaut) ou illimité ; appliquée par le relais, qui supprime les plus anciens (la note en direct ne compte pas) |
+| Taille de l'historique | Réglage du groupe : 1, 10 (défaut) ou illimité ; appliquée par les appareils, qui suppriment les plus anciens non épinglés (le relais ne sait pas lesquels sont épinglés ; la note en direct ne compte pas) |
 | Relais | Un conteneur Node + Redis en RAM, sans volume par défaut ; volume optionnel (`PERSIST`) |
 | Adresses | Page d'accueil sur `/`, PWA sous `/app/`, appli Mac en `/download/Entre-Nous-mac.zip` ; relais public `https://entrenous.0xdba.dev` |
 
@@ -108,6 +108,15 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   chiffré, sauf l'expéditeur, encore dans le groupe. Un élément reçu dont on est le seul
   destinataire (groupe de deux) n'en a pas : elles ne diraient que ce qu'on a fait. L'accusé est chiffré avec la clé de l'élément et gardé par le
   relais avec l'élément (champ `a:{appareil}`) : l'expéditeur hors ligne le retrouve plus tard.
+- **Épingles** : la punaise garde un élément en haut de l'historique (puis des résultats de
+  recherche), sur tous les appareils ; épinglés triés par date entre eux. Il expire comme les
+  autres, mais la taille de l'historique ne le compte pas et ne le supprime pas. État chiffré avec
+  la clé de l'élément, de taille fixe, épinglé ou non (champ `pin` de l'élément, `{p, at}`, le
+  plus récent l'emporte) : le relais ne sait pas lesquels sont épinglés. Comme il ne peut donc
+  plus appliquer la taille de l'historique, ce sont les appareils en ligne qui suppriment les
+  éléments en trop (le relais ne coupe plus de lui-même). Désépingler un élément trop ancien le
+  supprime : l'appli le demande d'abord. Le « dernier élément » (copie automatique, `get` du CLI)
+  suit la date, pas la position à l'écran.
 - **Recherche** : sur l'appareil seulement (`core/search.ts`, partagé avec le CLI), dans ce que
   l'en-tête donne déjà : texte, nom de fichier, extrait d'un fichier texte, appareil. Sans accents,
   majuscules, tirets ni apostrophes ; tous les mots doivent y être. Loupe dans la barre du haut

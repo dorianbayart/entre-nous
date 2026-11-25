@@ -86,14 +86,17 @@ entrenous wait                         # waits for the next item sent by another
 |---|---|
 | `send [FILE…]` | sends files or folders, a text (`-m TEXT`), this computer's clipboard (`-c`), or standard input |
 | `get [ITEM]` | prints a text, or saves a file or a folder in the current folder (`-o` for elsewhere) |
-| `list` | the history, latest first (`-n N` for the N latest, `-s WORDS` to search, `-t TYPE` for one type: `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
+| `list` | the history, latest first, the pinned items 📌 on top (`-n N` for the N latest, `-s WORDS` to search, `-t TYPE` for one type: `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
 | `wait` | waits for the next item sent by another device, then does what `get` does; `--note` waits for the note to change |
 | `watch` | prints items as they arrive, until Ctrl-C; `-o FOLDER` also saves the files |
 | `note [TEXT \| -]` | prints the shared note, or replaces it (`-` reads standard input); `--clear` clears it |
+| `pin ITEM…` | pins items on top of the history, on every device |
+| `unpin ITEM…` | unpins them; an item older than those the group keeps is then deleted, the command asks first (`--yes` not to ask) |
 | `rm ITEM…` | deletes items on every device; `--all` empties the history |
 
 **ITEM** is a position in the history (`1` = the latest, as in `list`) or the beginning of its id
-(the one in the JSON). Without ITEM, `get` takes the latest.
+(the one in the JSON). Without ITEM, `get` takes the latest. Positions always follow the date, even
+for the pinned items shown on top.
 
 **What comes in on standard input** is sent as a text if it is UTF-8 text, otherwise as a file
 (named with `--name`, which also forces a file):
@@ -206,7 +209,7 @@ marks an item still being uploaded. What the sender attached for previews: `widt
 (pixels of an image or a video), `duration` (seconds, a video or an audio file), `pages` (pages of a PDF), `excerpt` (the first characters of
 a text file; `send` attaches it too for the text files it sends). `receipts` gives its read receipts: `devices` (the devices that can read it, but its sender),
 `delivered` (how many have it), `read` (how many have read it); `list` shows them as ✓ (one device
-has it) or ✓✓ (all of them), green once read. `get` counts as a read. Dates are ISO 8601 (UTC), sizes
+has it) or ✓✓ (all of them), green once read. `get` counts as a read. `pinned` is `true` for a pinned item. Dates are ISO 8601 (UTC), sizes
 are in bytes.
 
 ### Examples

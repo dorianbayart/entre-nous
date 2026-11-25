@@ -12,6 +12,8 @@
 //                                   note (not counted in the history size), live = its latest text
 //                                   a:{device}: that device's receipt (delivered, read), sealed with
 //                                   the item key: it lives and moves with the item
+//                                   pin: pinned or not, sealed with the item key (the relay cannot
+//                                   tell which items are pinned); it lives and moves with the item
 //   r:{room}:c:{id}:{idx}   bytes one encrypted chunk
 //   r:{room}:sh:{id}        zset  share id -> expiresAt (ms): the share links of an item
 //   s:{share}               hash  { room, item, header, chunks, size, box, del, createdAt, expiresAt }
@@ -23,8 +25,9 @@
 //   d:{drop}                hash  { room, info, itemTtl, max, createdAt, expiresAt }
 //                                   a file request: people outside the group send items to the room
 //                                   through it. info: its public key and message, sealed with a key
-//                                   only the link holds; itemTtl, max: the group's retention and
-//                                   history size, for what is sent through it
+//                                   only the link holds; itemTtl: the group's retention, for what
+//                                   is sent through it (max: no longer used, the devices keep the
+//                                   history size, sparing the pinned items)
 //
 // The chunks of a shared item live as long as the item or its last share link, whichever ends
 // last: an item may leave the group (expiry, deletion) while a link to it still works.
@@ -38,8 +41,8 @@ redis.call('HSET', KEYS[1], 'v', ARGV[1], 'blob', ARGV[2])
 redis.call('EXPIRE', KEYS[1], ARGV[3])
 return -1`;
 
-// a receipt only for an item that is still there (HSET on a gone key would recreate it, forever)
-const PUT_ACK = `
+// a receipt or a pin only for an item that is still there (HSET on a gone key would recreate it, forever)
+const PUT_FIELD = `
 if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
 redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
 return 1`;
@@ -49,7 +52,7 @@ export class Store {
   constructor(redis) {
     this.redis = redis;
     redis.defineCommand('casState', { numberOfKeys: 1, lua: CAS_STATE });
-    redis.defineCommand('putAck', { numberOfKeys: 1, lua: PUT_ACK });
+    redis.defineCommand('putField', { numberOfKeys: 1, lua: PUT_FIELD });
   }
 
   k(room, ...parts) {
@@ -140,12 +143,18 @@ export class Store {
     }
     const acks = Object.entries(h).filter(([k]) => k.startsWith('a:'));
     if (acks.length) item.acks = Object.fromEntries(acks.map(([k, v]) => [k.slice(2), v]));
+    if (h.pin) item.pin = h.pin;
     return item;
   }
 
   /** A device's receipt for an item (replaces its previous one). False: the item is gone. */
   async putAck(room, id, device, data) {
-    return (await this.redis.putAck(this.k(room, 'i', id), 'a:' + device, data)) === 1;
+    return (await this.redis.putField(this.k(room, 'i', id), 'a:' + device, data)) === 1;
+  }
+
+  /** Pinned or not (replaces the previous state). False: the item is gone. */
+  async putPin(room, id, data) {
+    return (await this.redis.putField(this.k(room, 'i', id), 'pin', data)) === 1;
   }
 
   /** Live note: replaces its encrypted text; the retention restarts from now. */

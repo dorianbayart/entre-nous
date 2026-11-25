@@ -89,6 +89,10 @@ aussi). Il arrive dans l'historique en un seul élément, avec tous ses sous-dos
   l'ont lu. Touche les coches pour voir où en est chaque appareil. La copie automatique dans le
   presse-papier ne compte pas comme une lecture. Dans un groupe de deux, l'élément reçu n'en a pas :
   elles ne diraient que ce que tu as fait.
+- **Épingler** : la punaise d'un élément le garde en haut de l'historique, sur tous les appareils,
+  et aussi en haut des résultats de recherche. Il expire quand même à son heure, mais il n'est pas
+  supprimé quand le groupe garde un nombre limité d'éléments. Si l'élément est plus ancien que ceux
+  que le groupe garde, le désépingler le supprime : l'appli le demande d'abord.
 - **Envoi en cours** : une ligne « ↑ nom » au-dessus de l'historique montre sa progression et sa
   vitesse, sur tous les appareils, et disparaît à la fin. L'élément apparaît dès le début :
   **Enregistrer** est possible avant la fin, le téléchargement suit l'envoi ; **Copier** arrive une

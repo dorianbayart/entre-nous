@@ -89,14 +89,17 @@ exemples.
 |---|---|
 | `send [FICHIER…]` | envoie des fichiers ou des dossiers, un texte (`-m TEXTE`), le presse-papier de l'ordinateur (`-c`), ou l'entrée standard |
 | `get [ÉLÉMENT]` | affiche un texte, ou enregistre un fichier ou un dossier dans le dossier courant (`-o` pour ailleurs) |
-| `list` | l'historique, du plus récent au plus ancien (`-n N` pour les N derniers, `-s MOTS` pour chercher, `-t TYPE` pour un seul type : `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
+| `list` | l'historique, du plus récent au plus ancien, les épinglés 📌 en haut (`-n N` pour les N derniers, `-s MOTS` pour chercher, `-t TYPE` pour un seul type : `text`, `link`, `image`, `video`, `audio`, `doc`, `folder`) |
 | `wait` | attend le prochain élément envoyé par un autre appareil, puis fait comme `get` ; `--note` attend une modification de la note |
 | `watch` | affiche les éléments à leur arrivée, jusqu'à Ctrl-C ; `-o DOSSIER` enregistre aussi les fichiers |
 | `note [TEXTE \| -]` | affiche la note partagée, ou la remplace (`-` lit l'entrée standard) ; `--clear` l'efface |
+| `pin ÉLÉMENT…` | épingle des éléments en haut de l'historique, sur tous les appareils |
+| `unpin ÉLÉMENT…` | les désépingle ; un élément plus ancien que ceux que le groupe garde est alors supprimé, la commande le demande d'abord (`--yes` pour ne pas demander) |
 | `rm ÉLÉMENT…` | supprime des éléments sur tous les appareils ; `--all` vide l'historique |
 
 **ÉLÉMENT** est une position dans l'historique (`1` = le plus récent, comme dans `list`) ou le début
-de son identifiant (celui du JSON). Sans ÉLÉMENT, `get` prend le plus récent.
+de son identifiant (celui du JSON). Sans ÉLÉMENT, `get` prend le plus récent. Les positions suivent
+toujours la date, même pour les éléments épinglés affichés en haut.
 
 **Ce qui arrive sur l'entrée standard** est envoyé comme un texte si c'est du texte UTF-8, sinon
 comme un fichier (nommé avec `--name`, qui force aussi l'envoi comme fichier) :
@@ -212,7 +215,7 @@ vidéo ou un fichier audio), `pages` (pages d'un PDF), `excerpt` (les premiers c
 fichiers texte qu'il envoie). `receipts` donne les accusés de réception : `devices` (les appareils
 qui peuvent le lire, sauf l'expéditeur), `delivered` (combien l'ont reçu),
 `read` (combien l'ont lu) ; `list` les montre par ✓ (un appareil l'a reçu) ou ✓✓ (tous), en vert
-une fois lu. `get` compte comme une lecture. Les dates sont en ISO 8601 (UTC), les tailles en octets.
+une fois lu. `get` compte comme une lecture. `pinned` vaut `true` pour un élément épinglé. Les dates sont en ISO 8601 (UTC), les tailles en octets.
 
 ### Exemples
 

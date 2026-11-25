@@ -495,11 +495,7 @@ const handlers = {
       ev: 'item',
       item: { id, meta, sig, from, chunks, size: local ? 0 : size, createdAt, expiresAt, complete, ...progress, ...extra },
     });
-    // history size of the group: the oldest items go
-    const max = Number(msg.max) || 0;
-    if (!note && max > 0) {
-      for (const old of await store.trimItems(room, max)) broadcast(room, { ev: 'deleted', id: old });
-    }
+    // the history size (msg.max) is kept by the devices, which know the pinned items
     return { createdAt, expiresAt };
   },
 
@@ -535,6 +531,18 @@ const handlers = {
     return {};
   },
 
+  /**
+   * Pinned or not, sealed with the item key (the relay cannot tell which): kept with the item,
+   * passed on to the room.
+   */
+  async 'item.pin'(ws, msg) {
+    const room = requireRoom(ws);
+    if (!safeId(msg.id) || !b64(msg.data, 512)) throw new Error('bad pin');
+    if (!(await store.putPin(room, msg.id, msg.data))) throw new Error('unknown item');
+    broadcast(room, { ev: 'pin', id: msg.id, data: msg.data }, ws);
+    return {};
+  },
+
   async 'chunk.have'(ws, msg) {
     const room = requireRoom(ws);
     const item = await store.getItem(room, msg.id);
@@ -565,6 +573,7 @@ const handlers = {
     return {};
   },
 
+  /** Older apps only: newer ones delete the oldest items themselves, sparing the pinned ones. */
   async 'items.trim'(ws, msg) {
     const room = requireRoom(ws);
     const max = Number(msg.max);
@@ -710,7 +719,7 @@ const handlers = {
       ev: 'item',
       item: { id, meta, sig: '', from, chunks, size, createdAt, expiresAt, complete: false, have: 0, progressAt: createdAt },
     });
-    if (d.max > 0) for (const old of await store.trimItems(d.room, d.max)) broadcast(d.room, { ev: 'deleted', id: old });
+    // the history size is kept by the group's devices, which know the pinned items
     return { createdAt, expiresAt, dropExpiresAt: d.expiresAt };
   },
 

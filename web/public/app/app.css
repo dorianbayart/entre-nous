@@ -668,6 +668,11 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 /* in the history: the request, on every device of the group (framed like a share link) */
 .drop-tile { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
 .drop-tile svg { width: 26px; height: 26px; }
+/* pinned: on top of the history, a pin before the sender; the button filled; pins tilted, as stuck in a board */
+.meta .pin-mark { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; fill: var(--accent); stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: rotate(40deg); }
+.pin-button svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transform: rotate(40deg); }
+.pin-button.on { color: var(--accent); }
+.pin-button.on svg { fill: currentColor; }
 .meta .from-drop { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .drop-page .drop-msg { width: 100%; max-width: 320px; text-align: left; margin: 0; }
 .drop-page .drop-msg input { width: 100%; }

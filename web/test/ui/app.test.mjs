@@ -390,6 +390,57 @@ test('receipts: one tick, two ticks, coloured once read, the same on every devic
   assert.deepEqual(problems, []);
 });
 
+test('pins: on top on every device, in the search too, spared by the history size, unpinned with a confirmation', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  for (const text of ['Code Wi-Fi : poney-violet-42', 'Rendez-vous 14 h', 'Courses : pain, café']) {
+    await a.page.locator('.note textarea').fill(text);
+    await button(a.page.locator('.note-bar'), 'Envoyer').click();
+    await b.page.locator('.history .item', { hasText: text }).waitFor();
+  }
+  const first = async (d) => (await d.page.locator('.history .item .content').first().textContent()).trim();
+  assert.equal(await first(b), 'Courses : pain, café');
+
+  // pinned on Bob: on top, on Alice too, its button pressed and a pin before the sender
+  const wifi = b.page.locator('.history .item', { hasText: 'Code Wi-Fi' });
+  await button(wifi, 'Épingler').click();
+  assert.equal(await first(b), 'Code Wi-Fi : poney-violet-42');
+  await until('on top on Alice', async () => (await first(a)) === 'Code Wi-Fi : poney-violet-42');
+  const onAlice = a.page.locator('.history .item', { hasText: 'Code Wi-Fi' });
+  assert.equal(await button(onAlice, 'Désépingler').getAttribute('aria-pressed'), 'true');
+  assert.ok(await onAlice.locator('.meta .pin-mark').isVisible());
+  assert.ok(!(await a.page.locator('.history .item', { hasText: 'Courses' }).locator('.meta .pin-mark').isVisible()));
+
+  // the search keeps them first
+  await button(a.page, 'Rechercher').click();
+  await a.page.locator('.search-field input').fill('e');
+  await until('search on Alice', async () => (await a.page.locator('.history .item').count()) === 3);
+  assert.equal(await first(a), 'Code Wi-Fi : poney-violet-42');
+  await a.page.locator('.search-bar').getByRole('button', { name: 'Fermer la recherche' }).click();
+
+  // the history size spares it: one item, and the pinned one
+  await a.page.getByLabel('Réglages').click();
+  await a.page.locator('section.settings select').filter({ hasText: '1 élément' }).selectOption({ label: '1 élément' });
+  await a.page.locator('section.settings').getByLabel('Retour', { exact: true }).click();
+  await until('trimmed on Bob', async () => (await b.page.locator('.history .item').count()) === 2);
+  assert.deepEqual((await b.page.locator('.history .item .content').allTextContents()).map((s) => s.trim()), ['Code Wi-Fi : poney-violet-42', 'Courses : pain, café']);
+
+  // unpinned, it would go: asked first, then gone everywhere
+  await button(wifi, 'Désépingler').click();
+  const confirm = button(wifi, 'Désépingler et supprimer');
+  await confirm.waitFor();
+  await confirm.click();
+  await until('gone on Alice', async () => (await a.page.locator('.history .item').count()) === 1);
+  assert.equal(await first(a), 'Courses : pain, café');
+
+  await a.context.close();
+  await b.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('iPhone in Safari: an invitation offers to install, or to go on in Safari', { timeout: 60_000 }, async () => {
   const a = await device('Alice');
   const d = await device('Dan', { phone: 'iphone' });

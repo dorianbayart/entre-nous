@@ -87,6 +87,10 @@ history as a single item, with all its subfolders.
   first as soon as one device has read it, the second once all of them have. Tap the ticks to see
   where each device stands. The automatic copy to the clipboard doesn't count as a read. In a
   group of two, a received item has none: they would only tell what you did.
+- **Pin**: an item's pin keeps it on top of the history on every device, and on top of the
+  search results too. It still expires on time, but it isn't deleted when the group keeps a
+  limited number of items. If the item is older than those the group keeps, unpinning it deletes
+  it: the app asks first.
 - **Upload in progress**: an "↑ name" line above the history shows its progress and speed on
   every device, and disappears when it's done. The item appears right away: you can **Save** it
   before the upload finishes (the download follows the upload), while **Copy** becomes available

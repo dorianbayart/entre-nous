@@ -337,10 +337,12 @@ const list: Command = {
     const query = (o.search ?? '') as string;
     const group = await ctx.group();
     await ctx.connect(group.id);
-    // positions stay those of the whole history: `get 3` is still the third item
+    // positions stay those of the whole history, by date: `get 3` is still the third item;
+    // the pinned items come first, as in the apps
     const items = (await ctx.view(group.id)).items
       .map((it, i) => ({ it, position: i + 1 }))
       .filter(({ it }) => matches(it, query, type))
+      .sort((a, b) => Number(!!b.it.pinned) - Number(!!a.it.pinned))
       .slice(0, limit);
     if (ctx.g.json) return void (await json(items.map(({ it, position }) => itemJSON(it, position))));
     if (!items.length) return say(tr(query || type ? 'msg.noMatch' : 'msg.noItem', { group: group.name }));
@@ -349,7 +351,7 @@ const list: Command = {
       out.bold(String(position)),
       it.mine ? out.dim(t('me')) : it.fromName,
       out.dim(ago(it.createdAt)) + ticks(it, out.green, out.dim),
-      summary(it, width) + (it.pending ? out.dim(' · ' + t('left.sending')) : ''),
+      (it.pinned ? '📌 ' : '') + summary(it, width) + (it.pending ? out.dim(' · ' + t('left.sending')) : ''),
     ]);
     await print(table(rows));
   },
@@ -509,6 +511,35 @@ const rmCmd: Command = {
     say(err.green('✓ ') + tr('msg.deleted', { n: items.map((i) => summary(i, 30)).join(', ') }));
   },
 };
+
+/** pin and unpin: the same items, on every device. An old item goes once unpinned: asked first. */
+function pinCommand(on: boolean): Command {
+  const name = on ? 'pin' : 'unpin';
+  return {
+    name,
+    section: 'share',
+    args: 'ITEM…',
+    summary: on ? 'cmd.pin' : 'cmd.unpin',
+    long: on ? 'cmd.pin.long' : 'cmd.unpin.long',
+    options: on ? {} : { yes: yesOpt },
+    examples: on ? ['entrenous pin 3', 'entrenous pin 1 4'] : ['entrenous unpin 1', 'entrenous unpin 2 --yes'],
+    async run(ctx, args, o) {
+      if (!args.length) throw usageError(tr('err.usage', { usage: `entrenous ${name} ITEM…` }));
+      const group = await ctx.group();
+      const engine = await ctx.engine();
+      await ctx.connect(group.id);
+      const view = await ctx.view(group.id);
+      const items = [...new Set(args.map((ref) => findItem(view, ref)))]; // all found before changing any
+      const goes = on ? [] : items.filter((i) => engine.unpinDeletes(group.id, i.id));
+      if (goes.length) {
+        await confirmed(tr('msg.confirmUnpin', { group: group.name, n: goes.map((i) => summary(i, 30)).join(', ') }), !!o.yes);
+      }
+      for (const item of items) await engine.pin(group.id, item.id, on);
+      if (ctx.g.json) await json(items.map((i) => i.id));
+      say(err.green('✓ ') + tr(on ? 'msg.pinned' : 'msg.unpinned', { n: items.map((i) => summary(i, 30)).join(', ') }));
+    },
+  };
+}
 
 // ------------------------------------------------------------------ devices and groups
 
@@ -762,4 +793,4 @@ const reset: Command = {
   },
 };
 
-export const COMMANDS: Command[] = [send, get, list, wait, watch, note, rmCmd, join, invite, create, groups, use, leave, status, name, reset];
+export const COMMANDS: Command[] = [send, get, list, wait, watch, note, pinCommand(true), pinCommand(false), rmCmd, join, invite, create, groups, use, leave, status, name, reset];

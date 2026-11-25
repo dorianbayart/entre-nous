@@ -199,7 +199,7 @@ test('pairing, sync, mailbox, files, retention, removal', { timeout: 90_000 }, a
   await tablet.e.deleteItem(gid, toDelete.id);
   await until('deleted on mac', () => !group(mac.e, gid)?.items.find((i) => i.id === toDelete.id));
 
-  // --- history size, set by any device, enforced by the relay (the live note does not count)
+  // --- history size, set by any device, kept by the devices (the live note does not count)
   const st = group(mac.e, gid)!.storage;
   assert.ok(st && st.limit > 0 && st.used > 0, 'storage not reported');
   phone.e.setNote(gid, 'note gardée');

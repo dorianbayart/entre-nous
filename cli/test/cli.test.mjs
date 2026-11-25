@@ -142,6 +142,15 @@ test('two terminals: pairing, texts, files, stdin, wait, watch, note, rm', { tim
   assert.match((await ok('bob', ['list', '--search', 'introuvable'])).stderr, /Nothing found/);
   assert.equal((await run('bob', ['list', '--type', 'photo'])).code, 2, 'unknown type: usage error');
 
+  // ---- pinned on Bob, seen by Alice: on top of the list, positions still by date
+  assert.match((await ok('bob', ['pin', '2'])).stderr, /Pinned: big\.bin/);
+  const pinned = JSON.parse((await ok('alice', ['list', '--json'])).stdout);
+  assert.deepEqual(pinned.slice(0, 2).map((i) => [i.name, i.position, !!i.pinned]), [['big.bin', 2, true], ['../../.evil.sh', 1, false]]);
+  assert.match((await ok('alice', ['list'])).stdout, /^2 .*📌 big\.bin/m);
+  assert.match((await ok('alice', ['unpin', '2'])).stderr, /Unpinned: big\.bin/);
+  assert.ok(!JSON.parse((await ok('bob', ['list', '--json'])).stdout).some((i) => i.pinned));
+  assert.equal((await run('bob', ['pin'])).code, 2, 'no item: usage error');
+
   // ---- wait: the next item from another device; a timeout is exit code 124
   const waiting = run('bob', ['wait', '--timeout', '30s', '--json']);
   await new Promise((r) => setTimeout(r, 1500));

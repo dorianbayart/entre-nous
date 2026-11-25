@@ -26,6 +26,7 @@ carries and stores opaque data, in memory, until it expires.
 | the group secret, the private keys | an opaque room identifier, pseudonymous device identifiers |
 | the local addresses exchanged for local mode | who is connected right now (to show it to the other devices) |
 | what read receipts say (delivered or read, and when) | when a device sends a read receipt, and for which item |
+| which items are pinned | that an item was pinned or unpinned, without knowing which |
 
 The relay never logs content or room identifiers, and keeps nothing on disk (except with the
 `PERSIST` option, which only stores the same encrypted data).

@@ -68,6 +68,7 @@ export interface RelayItem {
   live?: string; // live note: latest encrypted text
   updatedAt?: number;
   acks?: Record<string, string>; // device -> its receipt (sealAck)
+  pin?: string; // pinned or not (sealPin)
 }
 
 export const INLINE_TEXT_MAX = 64 * 1024;
@@ -188,4 +189,26 @@ export function openAck(key: Uint8Array, id: string, device: string, data: strin
   const a = JSON.parse(fromUtf8(unpad(open(kdf(key, 'ack'), unb64(data), ackAad(id, device)))));
   if (!(typeof a.d === 'number' && a.d > 0)) throw new Error('bad ack');
   return typeof a.r === 'number' && a.r > 0 ? { d: a.d, r: a.r } : { d: a.d };
+}
+
+// Pin: an item kept on top of the history, on every device of the group. Sealed with the item key,
+// the same size pinned or not: the relay cannot tell which items are pinned. `at`: when it was
+// changed (by the clock of the device that did it), the latest change wins.
+const PIN_PAD = 32;
+
+export interface Pin {
+  p: boolean;
+  at: number;
+}
+
+const pinAad = (id: string) => utf8(`pin|${id}`);
+
+export function sealPin(key: Uint8Array, id: string, pin: Pin): string {
+  return b64(seal(kdf(key, 'pin'), pad(utf8(JSON.stringify({ p: pin.p ? 1 : 0, at: pin.at })), PIN_PAD), pinAad(id)));
+}
+
+export function openPin(key: Uint8Array, id: string, data: string): Pin {
+  const v = JSON.parse(fromUtf8(unpad(open(kdf(key, 'pin'), unb64(data), pinAad(id)))));
+  if (!(typeof v.at === 'number' && v.at > 0)) throw new Error('bad pin');
+  return { p: v.p === 1, at: v.at };
 }

@@ -703,13 +703,16 @@ Alpine.data('app', () => ({
   },
 
   /**
-   * The history as shown: the group's file requests still open, on top; then the items and the
-   * share links made here (newest first).
+   * The history as shown: the group's file requests still open, on top; then the pinned items,
+   * then the other items and the share links made here (newest first in each). The search
+   * keeps this order.
    */
   get history(): Array<ItemView | { id: string; createdAt: number; share: ShareView } | { id: string; createdAt: number; request: DropView }> {
     const requests = (this.group?.drops ?? []).map((request) => ({ id: 'request:' + request.id, createdAt: request.createdAt, request }));
     const shares = (this.group?.shares ?? []).map((share) => ({ id: 'share:' + share.id, createdAt: share.createdAt, share }));
-    return [...requests, ...[...this.items, ...shares].sort((a, b) => b.createdAt - a.createdAt)];
+    const pinned = this.items.filter((i) => i.pinned);
+    const others = [...this.items.filter((i) => !i.pinned), ...shares].sort((a, b) => b.createdAt - a.createdAt);
+    return [...requests, ...pinned, ...others];
   },
 
   /** What an entry of the history gives to the search. */
@@ -915,7 +918,54 @@ Alpine.data('app', () => ({
   itemClass(item: any) {
     const selected = item.id === this.searchSelected ? ' selected' : '';
     if (item.share || item.request) return 'shared-link' + selected;
-    return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '') + selected;
+    return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '') + (item.pinned ? ' pinned' : '') + selected;
+  },
+
+  // ---------------------------------------------------------------- pins
+
+  /** Any item this device can read can be pinned, for every device of the group. */
+  canPin(item: ItemView) {
+    return !!this.groupId && !item.error;
+  },
+
+  pinKey(item: ItemView) {
+    return 'unpin:' + item.id;
+  },
+
+  /** Unpinning deletes it: asked first. */
+  pinConfirming(item: ItemView) {
+    return this.isConfirming(this.pinKey(item));
+  },
+
+  /** Its name: what it does, or the confirmation it shows. */
+  pinLabel(item: ItemView) {
+    if (this.pinConfirming(item)) return this.t('pin.confirm');
+    return this.t(item.pinned ? 'pin.off' : 'pin.on');
+  },
+
+  pinTitle(item: ItemView) {
+    return this.pinConfirming(item) ? this.t('pin.deletesTitle') : this.pinLabel(item);
+  },
+
+  pinClass(item: ItemView) {
+    if (this.pinConfirming(item)) return 'small danger pin-button';
+    return 'small ghost icon-only pin-button' + (item.pinned ? ' on' : '');
+  },
+
+  /**
+   * Pins it, or unpins it, on every device. An old item, beyond the history size of the group,
+   * goes once unpinned: always asked first.
+   */
+  async togglePin(item: ItemView) {
+    const groupId = this.groupId;
+    if (!groupId) return;
+    const on = !item.pinned;
+    if (!on && engine.unpinDeletes(groupId, item.id) && !this.pinConfirming(item)) {
+      this.askConfirm(this.pinKey(item));
+      return;
+    }
+    this.confirming = '';
+    await engine.pin(groupId, item.id, on).catch((err) => this.toast(failure('toast.error', err)));
   },
 
   // ---------------------------------------------------------------- receipts

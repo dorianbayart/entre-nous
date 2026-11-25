@@ -29,13 +29,16 @@ import {
 import {
   type Ack,
   type Header,
+  type Pin,
   type NoteText,
   type Opened,
   type RelayItem,
   INLINE_TEXT_MAX,
   openAck,
   openNote,
+  openPin,
   sealAck,
+  sealPin,
   sealNote,
   openContentChunk,
   openItem,
@@ -104,6 +107,8 @@ export interface ItemView {
   previewless?: boolean;
   /** Which of its recipients have it, and which have read it (the same on every device). */
   receipts?: Receipts;
+  /** Kept on top of the history, on every device of the group (it still expires). */
+  pinned?: boolean;
   /** Sent through a file request of the group (its id), by someone outside the group. */
   drop?: string;
   /** The name that person gave, if any. */
@@ -189,6 +194,7 @@ interface Entry {
   opened?: Opened;
   view: ItemView;
   acks?: Map<string, Ack>; // receipts of the devices that can read it
+  pin?: Pin; // pinned or not, the latest change
   note?: NoteText; // live note: latest text
   marks?: Array<[number, number]>; // being uploaded: (time, chunks received), for its speed
 }
@@ -489,7 +495,8 @@ export class Engine {
   private availability(rt: Runtime, e: Entry): ItemView {
     const v = this.reachability(rt, e);
     const receipts = this.receipts(rt, e);
-    return receipts ? { ...v, receipts } : v;
+    const pinned = !!e.pin?.p && !v.error;
+    return receipts || pinned ? { ...v, ...(receipts ? { receipts } : {}), ...(pinned ? { pinned } : {}) } : v;
   }
 
   /** A local item can only be fetched from its sender, when it is reachable. */
@@ -578,6 +585,71 @@ export class Engine {
   /** Resolves once the receipts already sent are acknowledged by the relay (or failed). */
   async acksSent() {
     while (this.ackSends.size) await Promise.allSettled([...this.ackSends]);
+  }
+
+  /** Can be pinned: an item of the history this device can read. */
+  private pinnable(e: Entry | undefined): e is Entry & { opened: Opened } {
+    return !!e?.opened && !e.view.error && e.view.kind !== 'note';
+  }
+
+  /**
+   * Pins an item, or unpins it, for every device of the group: shown at once, back as it was if
+   * the relay does not take it. Unpinned, an old item may go at once (history size of the group).
+   */
+  async pin(groupId: string, itemId: string, on: boolean) {
+    const rt = this.rt(groupId);
+    const e = rt.items.get(itemId);
+    if (!this.pinnable(e)) throw new Error('unknown item');
+    const before = e.pin;
+    if (!!before?.p === on) return;
+    // after the change it replaces, even if this device's clock is behind
+    const pin: Pin = { p: on, at: Math.max(Date.now(), (before?.at ?? 0) + 1) };
+    e.pin = pin;
+    this.changed();
+    try {
+      await rt.conn.request('item.pin', { id: itemId, data: sealPin(e.opened.key, itemId, pin) });
+    } catch (err) {
+      if (e.pin === pin) {
+        if (before) e.pin = before;
+        else delete e.pin;
+        this.changed();
+      }
+      throw err;
+    }
+    this.keepHistorySize(rt);
+  }
+
+  /** Unpinning this item would delete it at once: it is older than the items the group keeps. */
+  unpinDeletes(groupId: string, itemId: string): boolean {
+    const rt = this.runtimes.get(groupId);
+    const e = rt?.items.get(itemId);
+    if (!rt || !e?.pin?.p) return false;
+    return this.overflow(rt, itemId).includes(itemId);
+  }
+
+  /**
+   * The items beyond the history size of the group: the oldest unpinned ones. `unpinned`: as if
+   * that item were not pinned. Only the items this device can read count: it knows whether they
+   * are pinned (a device that reads fewer items never deletes one that another keeps).
+   */
+  private overflow(rt: Runtime, unpinned?: string): string[] {
+    const max = maxItemsOf(rt.g.state);
+    if (!max) return [];
+    return [...rt.items.values()]
+      .filter((e) => this.pinnable(e) && !(e.pin?.p && e.view.id !== unpinned))
+      .sort((a, b) => b.relay.createdAt - a.relay.createdAt)
+      .slice(max)
+      .map((e) => e.view.id);
+  }
+
+  /**
+   * History size of the group: the oldest unpinned items go. Every device online does it, the
+   * relay cannot (it does not know which items are pinned); deleting twice does no harm.
+   */
+  private keepHistorySize(rt: Runtime) {
+    // also while connecting: called at the end of a (re)connection, the requests wait for it
+    if (!rt.ready || rt.conn.status === 'offline') return;
+    for (const id of this.overflow(rt)) this.deleteItem(rt.g.id, id).catch(() => {});
   }
 
   private rt(groupId: string): Runtime {
@@ -779,7 +851,7 @@ export class Engine {
     const rt = this.rt(groupId);
     rt.g.state = { ...rt.g.state, maxItems: max, maxItemsAt: Date.now() };
     await this.pushState(rt);
-    if (max > 0) await rt.conn.request('items.trim', { max });
+    this.keepHistorySize(rt);
     this.syncDrops(rt);
   }
 
@@ -1017,6 +1089,7 @@ export class Engine {
     rt.ready = true;
     this.changed();
     this.emit({ type: 'synced', groupId: rt.g.id });
+    this.keepHistorySize(rt);
     for (const e of rt.items.values()) if (this.isLocalText(e.view)) this.fetchLocalText(rt, e.view.id, false);
     if (rt.noteDraft !== undefined) this.flushNote(rt); // typed while offline
     else this.extendNote(rt);
@@ -1091,6 +1164,7 @@ export class Engine {
           this.emit({ type: 'incoming', groupId: rt.g.id, item: view });
         }
         this.changed();
+        if (!had) this.keepHistorySize(rt);
         break;
       }
       case 'progress': {
@@ -1119,6 +1193,20 @@ export class Engine {
         this.changed();
         break;
       }
+      case 'pin': {
+        const entry = rt.items.get(e.id);
+        if (!this.pinnable(entry) || typeof e.data !== 'string') break;
+        try {
+          const pin = openPin(entry.opened.key, e.id, e.data);
+          if (entry.pin && entry.pin.at > pin.at) break;
+          entry.pin = pin;
+        } catch {
+          break;
+        }
+        this.changed();
+        this.keepHistorySize(rt);
+        break;
+      }
       case 'deleted':
         rt.items.delete(e.id);
         rt.outbox.delete(e.id);
@@ -1133,11 +1221,13 @@ export class Engine {
         }
         for (const id of rt.outbox.keys()) if (!rt.items.has(id)) rt.outbox.delete(id);
         this.changed();
+        this.keepHistorySize(rt);
         break;
       }
       case 'state':
         await this.syncState(rt, rt.conn, e.state);
         this.changed();
+        this.keepHistorySize(rt); // the history size may have changed
         break;
       case 'prekey': {
         const b = openBundle(rt.g, e.bundle);
@@ -1244,6 +1334,15 @@ export class Engine {
         } catch {}
       }
       if (acks.size) entry.acks = acks;
+      // pinned or not: the relay's, or a newer change that came as an event since
+      let pin = rt.items.get(item.id)?.pin;
+      if (item.pin && h.kind !== 'note') {
+        try {
+          const stored = openPin(opened.key, item.id, item.pin);
+          if (!pin || stored.at >= pin.at) pin = stored;
+        } catch {}
+      }
+      if (pin) entry.pin = pin;
       if (h.kind === 'note') {
         const prev = rt.items.get(item.id)?.note;
         let stored: NoteText | undefined;
@@ -1321,7 +1420,6 @@ export class Engine {
       chunks: 0,
       size: 0,
       ttl: rt.g.state.ttl,
-      max: maxItemsOf(rt.g.state),
     });
     return sealed.id;
   }
@@ -1362,7 +1460,6 @@ export class Engine {
         chunks: sealed.chunks,
         size: local ? 0 : sealedSize(blob.size, sealed.chunks),
         ttl: rt.g.state.ttl,
-        max: maxItemsOf(rt.g.state),
         ...(local ? { local: true } : {}),
       });
       if (local) {
@@ -2090,7 +2187,6 @@ export class Engine {
         info: sealDropInfo(record),
         ttl,
         itemTtl: rt.g.state.ttl,
-        max: maxItemsOf(rt.g.state),
       });
       await this.putDrop(rt, id, { ...rt.g.state.drops![id], expiresAt: res.expiresAt });
     } catch (err) {
@@ -2145,11 +2241,14 @@ export class Engine {
     await this.putDrop(rt, id, { ...d, gone: true });
   }
 
-  /** The group's retention and history size changed: what comes through its requests follows. */
+  /**
+   * The group's retention changed: what comes through its requests follows (the history size is
+   * kept by the devices, which know the pinned items).
+   */
   private syncDrops(rt: Runtime) {
     const s = rt.g.state;
     for (const d of this.dropViews(rt)) {
-      rt.conn.request('drop.update', { drop: d.id, itemTtl: s.ttl, max: maxItemsOf(s) }).catch(() => {});
+      rt.conn.request('drop.update', { drop: d.id, itemTtl: s.ttl }).catch(() => {});
     }
   }
 

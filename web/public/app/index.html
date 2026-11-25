@@ -284,7 +284,7 @@
             <p class="content" :class="item.kind === 'text' ? 'text' : 'file'"><template x-for="(p, i) in labelParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
             <p class="excerpt" x-show="item.excerpt"><template x-for="(p, i) in excerptParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
             <p class="meta">
-              <span><svg class="from-drop" x-show="item.drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 14h5l2 3h4l2-3h5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><template x-for="(p, i) in fromParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></span> ·
+              <span><svg class="pin-mark" x-show="item.pinned" viewBox="0 0 24 24" role="img" :aria-label="t('pin.pinned')"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg><svg class="from-drop" x-show="item.drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 14h5l2 3h4l2-3h5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><template x-for="(p, i) in fromParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></span> ·
               <span x-text="ago(item)"></span> ·
               <span x-show="item.kind === 'folder'" x-text="folderCount(item) + ' ·'"></span>
               <span x-show="sizeOf(item)" x-text="sizeOf(item) + ' ·'"></span>
@@ -306,6 +306,12 @@
               </svg>
               <span x-text="downloadProgress(item)"></span>
             </span>
+            <!-- pinned: on top of the history, on every device; an old item goes once unpinned (asked first) -->
+            <button :class="pinClass(item)" x-show="canPin(item)" @click="togglePin(item)" :aria-label="pinLabel(item)" :title="pinTitle(item)"
+                    :aria-pressed="item.pinned ? 'true' : 'false'">
+              <svg x-show="!pinConfirming(item)" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>
+              <span x-show="pinConfirming(item)" x-text="t('pin.confirm')"></span>
+            </button>
             <button class="small ghost icon-only" x-show="canShare(item)" @click="shareItem(item)" :aria-label="t('share')" :title="t('share')">
               <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
             </button>

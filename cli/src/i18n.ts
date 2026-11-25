@@ -39,7 +39,7 @@ const en = {
     'ITEM is a position in the history (1 = the latest, as in `entrenous list`) or the beginning of an id. Without ITEM: the latest item.\nA text is printed on the standard output. A file is saved in the current folder under its own name (never overwriting one: “name (2).pdf”), and its path is printed. A folder is recreated there the same way (-o - writes it as a ZIP).',
 
   'cmd.list': 'Show the history',
-  'cmd.list.long': 'The items of the group, the latest first, with their position (for get and rm), their sender and their expiry; ✓ or ✓✓: delivered to one device or to all (green once read).',
+  'cmd.list.long': 'The items of the group, the latest first (the pinned ones 📌 on top), with their position (for get and rm), their sender and their expiry; ✓ or ✓✓: delivered to one device or to all (green once read).',
   'opt.list.limit': 'show only the N latest',
   'opt.list.search': 'only the items holding these words (text, file name, sender; accents and case ignored)',
   'opt.list.type': 'only this type: text, link, image, video, audio, doc or folder',
@@ -57,6 +57,11 @@ const en = {
   'cmd.note': 'Show or change the shared note',
   'cmd.note.long': 'Without TEXT: prints the note. With TEXT (or - to read the standard input): replaces it on every device.',
   'opt.note.clear': 'clear the note on every device',
+
+  'cmd.pin': 'Pin items on top of the history, on every device',
+  'cmd.pin.long': 'ITEM is a position (1 = the latest) or the beginning of an id. A pinned item stays on top of the history and is not deleted when the group keeps a limited number of items; it expires like the others.',
+  'cmd.unpin': 'Unpin items, on every device',
+  'cmd.unpin.long': 'ITEM is a position (1 = the latest) or the beginning of an id. An item older than those the group keeps is deleted once unpinned: the command asks first (--yes not to ask).',
 
   'cmd.rm': 'Delete items on every device',
   'cmd.rm.long': 'ITEM is a position (1 = the latest) or the beginning of an id. --all empties the whole history.',
@@ -94,6 +99,9 @@ const en = {
   'msg.noNote': 'No note in “{group}”.',
   'msg.noteSet': 'Note updated on every device of “{group}”.',
   'msg.noteCleared': 'Note cleared on every device of “{group}”.',
+  'msg.pinned': 'Pinned: {n}',
+  'msg.unpinned': 'Unpinned: {n}',
+  'msg.confirmUnpin': 'Too old for the history size of “{group}”: once unpinned, {n} will be deleted. Go on?',
   'msg.deleted': 'Deleted: {n}',
   'msg.cleared': 'History of “{group}” deleted.',
   'msg.joined': 'This device joined “{group}”.',
@@ -195,7 +203,7 @@ const fr: Strings = {
     'ÉLÉMENT est une position dans l’historique (1 = le plus récent, comme dans `entrenous list`) ou le début d’un identifiant. Sans ÉLÉMENT : le plus récent.\nUn texte s’affiche sur la sortie standard. Un fichier est enregistré dans le dossier courant sous son nom (sans jamais en remplacer un : « nom (2).pdf »), et son chemin s’affiche. Un dossier y est recréé de la même façon (-o - l’écrit en ZIP).',
 
   'cmd.list': 'Affiche l’historique',
-  'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien, avec leur position (pour get et rm), leur expéditeur et leur expiration ; ✓ ou ✓✓ : reçu par un appareil ou par tous (en vert une fois lu).',
+  'cmd.list.long': 'Les éléments du groupe, du plus récent au plus ancien (les épinglés 📌 en haut), avec leur position (pour get et rm), leur expéditeur et leur expiration ; ✓ ou ✓✓ : reçu par un appareil ou par tous (en vert une fois lu).',
   'opt.list.limit': 'n’affiche que les N plus récents',
   'opt.list.search': 'seulement les éléments qui contiennent ces mots (texte, nom de fichier, appareil ; sans tenir compte des accents ni des majuscules)',
   'opt.list.type': 'seulement ce type : text, link, image, video, audio, doc ou folder',
@@ -213,6 +221,11 @@ const fr: Strings = {
   'cmd.note': 'Affiche ou modifie la note partagée',
   'cmd.note.long': 'Sans TEXTE : affiche la note. Avec TEXTE (ou - pour lire l’entrée standard) : la remplace sur tous les appareils.',
   'opt.note.clear': 'efface la note sur tous les appareils',
+
+  'cmd.pin': 'Épingle des éléments en haut de l’historique, sur tous les appareils',
+  'cmd.pin.long': 'ÉLÉMENT est une position (1 = le plus récent) ou le début d’un identifiant. Un élément épinglé reste en haut de l’historique et n’est pas supprimé quand le groupe garde un nombre limité d’éléments ; il expire comme les autres.',
+  'cmd.unpin': 'Désépingle des éléments, sur tous les appareils',
+  'cmd.unpin.long': 'ÉLÉMENT est une position (1 = le plus récent) ou le début d’un identifiant. Un élément plus ancien que ceux que le groupe garde est supprimé une fois désépinglé : la commande le demande d’abord (--yes pour ne pas demander).',
 
   'cmd.rm': 'Supprime des éléments sur tous les appareils',
   'cmd.rm.long': 'ÉLÉMENT est une position (1 = le plus récent) ou le début d’un identifiant. --all vide tout l’historique.',
@@ -249,6 +262,9 @@ const fr: Strings = {
   'msg.noNote': 'Aucune note dans « {group} ».',
   'msg.noteSet': 'Note mise à jour sur tous les appareils de « {group} ».',
   'msg.noteCleared': 'Note effacée sur tous les appareils de « {group} ».',
+  'msg.pinned': 'Épinglés : {n}',
+  'msg.unpinned': 'Désépinglés : {n}',
+  'msg.confirmUnpin': 'Trop ancien pour la taille de l’historique de « {group} » : une fois désépinglé, {n} sera supprimé. Continuer ?',
   'msg.deleted': 'Supprimés : {n}',
   'msg.cleared': 'Historique de « {group} » supprimé.',
   'msg.joined': 'Cet appareil a rejoint « {group} ».',
