@@ -38,6 +38,7 @@ export interface Header {
   local?: boolean; // content only served directly by the sender (never uploaded to the relay)
   rekey?: { secret: string; state: string }; // key rotation after a removal
   folder?: { files: number; dirs: number; bytes: number }; // a folder: what it holds (`size`: its archive)
+  by?: string; // sent through a file request: the name the person gave, if any
 }
 
 /** Clear part, as stored on the relay (signed). */
@@ -72,7 +73,7 @@ export interface RelayItem {
 export const INLINE_TEXT_MAX = 64 * 1024;
 const HEADER_PAD = 256;
 
-const envAad = (itemId: string, device: string) => utf8(`${itemId}|${device}`);
+export const envAad = (itemId: string, device: string) => utf8(`${itemId}|${device}`);
 
 export interface Sealed {
   id: string;

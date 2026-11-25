@@ -1,5 +1,6 @@
-// Builds dist/: the landing page (/, landing.js), the PWA (/app/, app/app.js) and the page of
-// a share link (/s/, s/share.js), plus the static files of public/.
+// Builds dist/: the landing page (/, landing.js), the PWA (/app/, app/app.js), the page of
+// a share link (/s/, s/share.js) and that of a file request (/r/, r/drop.js), plus the static
+// files of public/.
 import * as esbuild from 'esbuild';
 import { execSync } from 'node:child_process';
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
@@ -86,7 +87,10 @@ for (const name of ['chiffrement.svg', 'reseau.svg', 'chiffrement-en.svg', 'rese
 }
 
 // pdf.js's worker (PDF previews): next to app.js, loaded only when a PDF is opened or sent
-await cp(fileURLToPath(new URL('./node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url)), outdir + 'app/pdf.worker.js');
+const pdfWorker = fileURLToPath(new URL('./node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url));
+await cp(pdfWorker, outdir + 'app/pdf.worker.js');
+// the page of a file request makes the preview of a PDF it sends
+await cp(pdfWorker, outdir + 'r/pdf.worker.js');
 const changelog = loadChangelog();
 await writeFile(outdir + 'app/changelog.json', JSON.stringify(changelog));
 await mkdir(outdir + 'nouveautes', { recursive: true });
@@ -100,6 +104,8 @@ const options = {
     { in: 'src/landing/main.ts', out: 'landing' },
     // the page of a share link (/s/), served by the relay only
     { in: 'src/share/main.ts', out: 's/share' },
+    // the page of a file request (/r/), served by the relay only
+    { in: 'src/drop/main.ts', out: 'r/drop' },
   ],
   bundle: true,
   format: 'esm',

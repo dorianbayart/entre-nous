@@ -851,6 +851,86 @@ test('share links: made from the history, opened outside the group, kept for the
   assert.deepEqual(problems, []);
 });
 
+test('file requests: made from the top bar, files sent from a browser, on every device, deleted', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  const guest = await device('Invitée', { phone: true });
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await rename(a, 'Alice');
+  await pair(a, b, (link) => b.page.goto(link));
+
+  // ---- the icon in the top bar; the page slides in, the link is made at once, 24 h
+  await a.page.getByLabel('Recevoir des fichiers', { exact: true }).click();
+  const page = a.page.locator('section.drop-page');
+  await page.waitFor();
+  assert.ok(await a.page.locator('section.main').isHidden());
+  const link = await until('request link', () => page.locator('input.link').inputValue());
+  assert.match(link, /^http:\/\/127\.0\.0\.1:8080\/r\/#[A-Za-z0-9_-]{43}$/);
+  await page.locator('img.qr').waitFor();
+  assert.equal(await button(page, '24 h').getAttribute('aria-pressed'), 'true');
+  assert.equal((await page.locator('.segmented button').allTextContents()).join(), '1 h,24 h,7 j');
+  assert.match(await page.textContent(), /Expire dans 2[34] h/);
+  assert.doesNotMatch(await page.textContent(), /\d+ (Go|Mo)/, 'no size limit shown');
+  const message = page.getByLabel('Message affiché sur la page (facultatif)');
+  await message.fill('Les photos de samedi');
+  await message.blur();
+
+  // ---- on every device of the group, on top of the history
+  const entryB = b.page.locator('.history .item.shared-link', { hasText: 'Les photos de samedi' });
+  await entryB.waitFor();
+  assert.match(await entryB.locator('.meta').textContent(), /^Demande de fichiers · expire dans 2[34] h$/);
+  await button(page, 'Retour').click();
+  await a.page.locator('section.main').waitFor();
+  const entryA = a.page.locator('.history .item.shared-link', { hasText: 'Les photos de samedi' });
+  await entryA.waitFor();
+
+  // ---- the page of the link, on a phone outside the group
+  await guest.page.goto(link);
+  await guest.page.locator('.visit-lead', { hasText: 'Quelqu’un te demande des fichiers.' }).waitFor();
+  assert.equal(await guest.page.locator('#ask-text').textContent(), 'Les photos de samedi');
+  await guest.page.getByLabel('Ton prénom (facultatif)').fill('Marie');
+  // two files at once: one item, a folder
+  const one = Buffer.from('premier fichier\n'.repeat(100));
+  const two = randomFillSync(Buffer.alloc(1_500_000));
+  await guest.page.locator('#files').setInputFiles([
+    { name: 'premier.txt', mimeType: 'text/plain', buffer: one },
+    { name: 'second.bin', mimeType: 'application/octet-stream', buffer: two },
+  ]);
+  const rows = guest.page.locator('.deposit-list li');
+  await until('two sent', async () => (await rows.locator('.deposit-state.done').count()) === 2);
+  assert.equal(await guest.page.locator('#pick').textContent(), 'Ajouter des fichiers');
+  for (const d of [a, b]) {
+    const folder = d.page.locator('.history .item:not(.shared-link)', { hasText: 'Envoi de Marie' });
+    await folder.waitFor();
+    await until('complete', async () => /2 fichiers/.test(await folder.locator('.meta').textContent()) && !/envoi en cours/i.test(await folder.locator('.meta').textContent()));
+    assert.match((await folder.locator('.meta').textContent()).trim(), /^Marie ·/);
+  }
+  // then one file: an item of its own
+  await guest.page.locator('#files').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('à lire') });
+  await until('third sent', async () => (await rows.locator('.deposit-state.done').count()) === 3);
+  const notes = b.page.locator('.history .item:not(.shared-link)', { hasText: 'notes.txt' });
+  await notes.waitFor();
+  assert.match((await notes.locator('.meta').textContent()).trim(), /^Marie ·/);
+  await until('counted', async () => /2 envois/.test(await entryA.locator('.meta').textContent()));
+  // the name is remembered on the phone
+  await guest.page.reload();
+  await guest.page.locator('.visit-lead').waitFor();
+  assert.equal(await guest.page.getByLabel('Ton prénom (facultatif)').inputValue(), 'Marie');
+
+  // ---- deleted on Bob's device: gone everywhere, the page says so; what came stays
+  await entryB.locator('button.danger').click();
+  assert.equal(await entryB.locator('button.danger').textContent(), 'Confirmer : supprimer le lien');
+  await entryB.locator('button.danger').click();
+  await entryA.waitFor({ state: 'detached' });
+  assert.ok(await a.page.locator('.history .item', { hasText: 'Envoi de Marie' }).isVisible());
+  await guest.page.reload();
+  await guest.page.getByText('Ce lien n’est plus valable : il a expiré ou il a été supprimé.').waitFor();
+
+  for (const d of [a, b, guest]) await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('search: words without accents, highlighted, a long text from its match, type chips, keyboard, phone', { timeout: 120_000 }, async () => {
   const a = await device('Alice');
   const b = await device('Bob', { phone: true });

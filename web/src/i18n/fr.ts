@@ -292,6 +292,36 @@ export const fr = {
   'visit.e2e': 'Chiffré de bout en bout : le serveur ne peut pas lire ce contenu.',
   'visit.cta': 'Partage toi aussi avec Entre Nous',
 
+  // file requests: a link for someone outside the group to send files
+  'drop.open': 'Recevoir des fichiers',
+  'drop.title': 'Demande de fichiers',
+  'drop.hint': 'Envoie ce lien ou fais scanner le QR code. La personne choisit ses fichiers dans son navigateur, sans compte ni installation.',
+  'drop.message': 'Message affiché sur la page (facultatif)',
+  'drop.messagePlaceholder': 'Par exemple : les photos de samedi',
+  'drop.anyone': 'Toute personne qui a ce lien peut t’envoyer des fichiers. Elle ne voit rien de ton historique.',
+  'drop.qrAlt': 'QR code de la demande de fichiers',
+  'drop.received.one': '{n} envoi',
+  'drop.received.other': '{n} envois',
+  'drop.guest': 'Invité',
+  'drop.batch': 'Envoi de {by}',
+  'drop.batchGuest': 'Envoi d’un invité',
+
+  // the page of a file request, for someone outside the group
+  'deposit.lead': 'Quelqu’un te demande des fichiers.',
+  'deposit.message': 'Son message',
+  'deposit.name': 'Ton prénom (facultatif)',
+  'deposit.pick': 'Choisir des fichiers',
+  'deposit.more': 'Ajouter des fichiers',
+  'deposit.dropHere': 'ou glisse-les ici',
+  'deposit.preparing': 'Préparation…',
+  'deposit.waiting': 'En attente',
+  'deposit.sent': 'Envoyé',
+  'deposit.notSent': 'Non envoyé',
+  'deposit.failed': 'Échec : {msg}',
+  'deposit.full': 'Le serveur est plein : réessaie plus tard.',
+  'deposit.e2e': 'Chiffré de bout en bout : le serveur ne peut pas lire ce que tu envoies.',
+  'deposit.cta': 'Découvrir Entre Nous',
+
   // shared folders
   'name.folder': 'dossier',
   folder: 'Dossier',

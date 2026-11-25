@@ -95,6 +95,10 @@
         <svg viewBox="0 0 24 24" x-show="!prefs.paused"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
         <svg viewBox="0 0 24 24" x-show="prefs.paused"><path d="M7 4.5v15l12-7.5z"/></svg>
       </button>
+      <!-- a file request: someone outside the group sends files through a link -->
+      <button class="icon" x-show="canDrop" @click="openDrop()" :aria-label="t('drop.open')" :title="t('drop.open')">
+        <svg viewBox="0 0 24 24"><path d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 14h5l2 3h4l2-3h5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </button>
       <button class="icon" x-show="history.length" @click="openSearch" :aria-label="t('search')" :title="searchTitle">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       </button>
@@ -230,7 +234,25 @@
               </div>
             </div>
           </template>
-          <template x-if="!item.share">
+          <!-- a file request of the group, open: on every device, on top -->
+          <template x-if="item.request">
+            <div class="entry">
+              <button class="thumb drop-tile" @click="openDrop(item.request)" :aria-label="t('share.show')" :title="t('share.show')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 14h5l2 3h4l2-3h5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              </button>
+              <div class="body">
+                <p class="content file"><template x-for="(p, i) in requestParts(item.request)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
+                <p class="meta link-meta" x-text="requestMeta(item.request)"></p>
+              </div>
+              <div class="item-actions">
+                <button class="small secondary" @click="copyDropLink(item.request)" x-text="t('share.copyLink')"></button>
+                <button class="small secondary" @click="openDrop(item.request)" x-text="t('share.show')"></button>
+                <button class="small ghost danger" @click="removeDrop(item.request)"
+                        x-text="t(isConfirming(dropKey(item.request)) ? 'share.deleteConfirm' : 'delete')"></button>
+              </div>
+            </div>
+          </template>
+          <template x-if="!item.share && !item.request">
           <div class="entry">
           <!-- receipts: one tick once a recipient has it, two once all have it; coloured once read -->
           <div class="receipts" x-show="hasReceipts(item)" @click.outside="closeReceiptsOf(item)">
@@ -262,7 +284,7 @@
             <p class="content" :class="item.kind === 'text' ? 'text' : 'file'"><template x-for="(p, i) in labelParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
             <p class="excerpt" x-show="item.excerpt"><template x-for="(p, i) in excerptParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></p>
             <p class="meta">
-              <span><template x-for="(p, i) in fromParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></span> ·
+              <span><svg class="from-drop" x-show="item.drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 14h5l2 3h4l2-3h5v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><template x-for="(p, i) in fromParts(item)" :key="i"><span :class="hitClass(p)" x-text="p.text"></span></template></span> ·
               <span x-text="ago(item)"></span> ·
               <span x-show="item.kind === 'folder'" x-text="folderCount(item) + ' ·'"></span>
               <span x-show="sizeOf(item)" x-text="sizeOf(item) + ' ·'"></span>
@@ -468,6 +490,35 @@
       <button class="ghost" @click="closeShare" x-text="t('back')"></button>
       <button class="ghost danger" x-show="share" @click="removeShownShare"
               x-text="t(removingShownShare ? 'share.deleteConfirm' : 'share.delete')"></button>
+    </div>
+  </section>
+
+  <!-- File request of the group, for someone outside it: slides in over the history -->
+  <section class="center page drop-page" x-show="view === 'drop'">
+    <h1 x-text="t('drop.title')"></h1>
+    <p class="muted" x-text="t('drop.hint')"></p>
+    <label class="field drop-msg" x-show="drop"><span x-text="t('drop.message')"></span>
+      <input type="text" :maxlength="dropMessageMax" :placeholder="t('drop.messagePlaceholder')"
+             :value="drop ? (drop.msg || '') : ''" @change="setDropMessage($event)" enterkeyhint="done">
+    </label>
+    <img class="qr" :src="dropQr" :alt="t('drop.qrAlt')" x-show="dropQr">
+    <p class="qr-wait muted small" x-show="!dropQr" x-text="t('share.creating')"></p>
+    <div class="share-ttl" x-show="drop">
+      <span class="muted small" x-text="t('share.valid')"></span>
+      <div class="segmented" role="group" :aria-label="t('share.valid')">
+        <template x-for="o in dropTtls" :key="o.value">
+          <button :aria-pressed="o.pressed" @click="setDropTtl(o.value)" x-text="o.label"></button>
+        </template>
+      </div>
+    </div>
+    <p class="muted small" x-show="drop" x-text="dropLeft"></p>
+    <input class="link" type="text" readonly :value="drop ? drop.url : ''" @focus="$event.target.select()" x-show="drop">
+    <button class="primary" x-show="drop" @click="copyShownDropLink" x-text="t('share.copyLink')"></button>
+    <p class="muted small" x-text="t('drop.anyone')"></p>
+    <div class="share-bottom">
+      <button class="ghost" @click="closeDrop" x-text="t('back')"></button>
+      <button class="ghost danger" x-show="drop" @click="removeShownDrop"
+              x-text="t(removingShownDrop ? 'share.deleteConfirm' : 'share.delete')"></button>
     </div>
   </section>
 

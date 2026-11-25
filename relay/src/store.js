@@ -19,6 +19,12 @@
 //                                   group. header: the item's encrypted header; box: the item key,
 //                                   sealed with a key only the link holds; del: sha256 of the secret
 //                                   that deletes it (kept by the device that made it)
+//   r:{room}:drops          set   the file requests of the room
+//   d:{drop}                hash  { room, info, itemTtl, max, createdAt, expiresAt }
+//                                   a file request: people outside the group send items to the room
+//                                   through it. info: its public key and message, sealed with a key
+//                                   only the link holds; itemTtl, max: the group's retention and
+//                                   history size, for what is sent through it
 //
 // The chunks of a shared item live as long as the item or its last share link, whichever ends
 // last: an item may leave the group (expiry, deletion) while a link to it still works.
@@ -309,6 +315,51 @@ export class Store {
     return true;
   }
 
+  // ---- file requests ----
+
+  /** `keepUntil`: past its end, a file request stays a while for the uploads under way. */
+  async createDrop(room, { drop, info, itemTtl, max, expiresAt, keepUntil }) {
+    const key = 'd:' + drop;
+    if (await this.redis.exists(key)) throw new Error('exists');
+    const createdAt = Date.now();
+    await this.redis
+      .multi()
+      .hset(key, { room, info, itemTtl, max, createdAt, expiresAt })
+      .pexpireat(key, keepUntil)
+      .sadd(this.k(room, 'drops'), drop)
+      .expire(this.k(room, 'drops'), ROOM_IDLE_TTL)
+      .exec();
+    return { createdAt, expiresAt };
+  }
+
+  async getDrop(drop) {
+    const h = await this.redis.hgetall('d:' + drop);
+    if (!h.room) return null;
+    return {
+      room: h.room,
+      info: h.info,
+      itemTtl: Number(h.itemTtl),
+      max: Number(h.max) || 0,
+      createdAt: Number(h.createdAt),
+      expiresAt: Number(h.expiresAt),
+    };
+  }
+
+  /** Changes a file request: its message, its end, the group's settings. */
+  async updateDrop(drop, fields, keepUntil) {
+    const key = 'd:' + drop;
+    const m = this.redis.multi().hset(key, fields);
+    if (keepUntil) m.pexpireat(key, keepUntil);
+    await m.exec();
+  }
+
+  async deleteDrop(drop) {
+    const d = await this.getDrop(drop);
+    if (!d) return false;
+    await this.redis.multi().del('d:' + drop).srem(this.k(d.room, 'drops'), drop).exec();
+    return true;
+  }
+
   /** Keeps the `max` most recent items (live notes aside). Returns the deleted ids. */
   async trimItems(room, max) {
     const ids = await this.redis.zrange(this.k(room, 'items'), 0, -1);
@@ -383,13 +434,22 @@ export class Store {
       await m.exec();
       moved++;
     }
+    // the file requests follow the group
+    const drops = await this.redis.smembers(this.k(room, 'drops'));
+    if (drops.length) {
+      const m = this.redis.multi();
+      for (const drop of drops) if (await this.redis.exists('d:' + drop)) m.hset('d:' + drop, 'room', to).sadd(this.k(to, 'drops'), drop);
+      m.expire(this.k(to, 'drops'), ROOM_IDLE_TTL).del(this.k(room, 'drops'));
+      await m.exec();
+    }
     return moved;
   }
 
   async purgeRoom(room, keep = []) {
     const ids = await this.redis.zrange(this.k(room, 'items'), 0, -1);
     for (const id of ids) if (!keep.includes(id)) await this.deleteItem(room, id);
-    await this.redis.del(this.k(room, 'pk'), this.k(room, 'state'));
+    const drops = await this.redis.smembers(this.k(room, 'drops'));
+    await this.redis.del(this.k(room, 'pk'), this.k(room, 'state'), this.k(room, 'drops'), ...drops.map((d) => 'd:' + d));
   }
 
   /** Dissolves the group: deletes everything, and leaves a "gone" marker for latecomers. */
@@ -399,9 +459,9 @@ export class Store {
     await this.redis.set(this.k(room, 'gone'), 1, 'EX', ROOM_IDLE_TTL);
   }
 
-  /** Is any content (item, live note, share link) still held, in any group? */
+  /** Is any content (item, live note, share link) or file request still held, in any group? */
   async hasItems() {
-    for (const pattern of ['r:*:i:*', 's:*']) {
+    for (const pattern of ['r:*:i:*', 's:*', 'd:*']) {
       let cursor = '0';
       do {
         const [next, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 1000);

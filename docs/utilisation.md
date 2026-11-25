@@ -201,6 +201,25 @@ vidéo, écouter la musique ou télécharger le fichier.
   télécharge ce qu'elle veut.
 - Pas de lien en **Réseau local uniquement** : le contenu n'est pas sur le serveur.
 
+### Recevoir des fichiers de quelqu'un hors du groupe
+
+Pour récupérer les photos d'une soirée ou les fichiers d'un collègue, touche l'icône **Recevoir des
+fichiers** en haut de l'écran. Un lien et son QR code s'affichent tout de suite, valables 24 heures.
+La personne l'ouvre dans son navigateur, sans compte ni installation, écrit son prénom si elle veut,
+et choisit ses fichiers : chacun part dès qu'il est choisi, et arrive dans l'historique de tous tes
+appareils.
+
+- **Message** : facultatif, il s'affiche sur la page (« Les photos de samedi »).
+- **Durée** : 1 h, 24 h (par défaut) ou 7 jours, à changer sur la page du lien ; l'adresse ne change pas.
+- **Dans l'historique** : plusieurs fichiers envoyés d'un coup forment un dossier (« Envoi de Marie »),
+  un seul fichier reste un élément simple. Ils durent comme le reste de l'historique.
+- **Sur tous tes appareils** : la demande apparaît en haut de l'historique, encadrée de pointillés :
+  **Copier le lien**, **QR code**, **Supprimer**, depuis n'importe lequel. Une demande supprimée ne
+  reçoit plus rien ; ce qui est déjà arrivé reste.
+- **Chiffré de bout en bout** : la page chiffre les fichiers avant de les envoyer. Le lien permet
+  d'envoyer, jamais de lire : la personne ne voit rien de ton historique, ni ce que les autres ont envoyé.
+- Pas de demande en **Réseau local uniquement** : les fichiers passent par le serveur.
+
 ## 6. Réglages du groupe
 
 Modifiables par n'importe quel appareil du groupe :

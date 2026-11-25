@@ -496,18 +496,18 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 .link-tile img + .link-mark svg { width: 22px; height: 22px; padding: 5px; box-sizing: content-box; border-radius: 50%; background: var(--surface); }
 .link-meta { color: var(--accent); }
 .share-name { margin: 0; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.share-page .qr-wait { height: 256px; display: flex; align-items: center; margin: 8px 0; }
+.share-page .qr-wait, .drop-page .qr-wait { height: 256px; display: flex; align-items: center; margin: 8px 0; }
 .share-ttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
-.share-page .link { width: 100%; }
+.share-page .link, .drop-page .link { width: 100%; }
 .share-bottom { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 /* the share page slides in from the right; the history slides back from the left */
 @keyframes slide-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slide-back { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
-.share-page { animation: slide-in .26s cubic-bezier(.2, .8, .2, 1); }
+.share-page, .drop-page { animation: slide-in .26s cubic-bezier(.2, .8, .2, 1); }
 .main.slide-back { animation: slide-back .26s cubic-bezier(.2, .8, .2, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .share-page, .main.slide-back { animation: none; }
+  .share-page, .drop-page, .main.slide-back { animation: none; }
 }
 
 /* ---------------------------------------------------------- share link page (/s/) */
@@ -662,3 +662,47 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 .visit-folder .folder-body { max-height: 62vh; }
 .visit-preview .visit-media { width: 100%; height: 100%; align-items: center; margin: 0; }
 .visit-preview .visit-text { max-height: 100%; overflow: auto; width: 100%; }
+
+/* ---------------------------------------------------------- file requests */
+
+/* in the history: the request, on every device of the group (framed like a share link) */
+.drop-tile { display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+.drop-tile svg { width: 26px; height: 26px; }
+.meta .from-drop { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.drop-page .drop-msg { width: 100%; max-width: 320px; text-align: left; margin: 0; }
+.drop-page .drop-msg input { width: 100%; }
+
+/* the page of a request, for someone outside the group */
+.deposit-body { display: flex; flex-direction: column; gap: 12px; }
+.deposit-body[hidden] { display: none; }
+.deposit .visit-lead { margin: 4px 0 0; }
+.deposit-ask { background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; }
+.deposit-ask[hidden] { display: none; }
+.deposit-ask small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.deposit-ask p { margin: 2px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.deposit-name { margin: 0; }
+.deposit-zone {
+  flex-direction: column; gap: 6px; padding: 26px 14px; width: 100%; text-align: center;
+  border: 2px dashed color-mix(in srgb, var(--accent) 55%, var(--line)); border-radius: var(--radius); background: var(--surface);
+}
+.deposit-zone svg { width: 30px; height: 30px; stroke: var(--accent); stroke-width: 1.8; }
+.deposit-zone.over { border-color: var(--accent); background: var(--accent-soft); }
+.deposit-zone.compact { flex-direction: row; padding: 12px 14px; border-style: solid; border-width: 0; background: var(--accent-soft); font-weight: 600; }
+.deposit-zone.compact svg { width: 18px; height: 18px; stroke-width: 2; }
+.deposit-zone.compact span { display: none; }
+.deposit-zone[hidden] { display: none; }
+.deposit-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.deposit-list[hidden] { display: none; }
+.deposit-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--line); min-width: 0; }
+.deposit-list li:first-child { border-top: 0; }
+.deposit-thumb { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex: none; position: relative; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; }
+.deposit-thumb svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.deposit-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.deposit-file { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.deposit-file strong { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deposit-file small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.deposit-state { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.deposit-state .ring { width: 14px; height: 14px; }
+.deposit-state.done { color: var(--on); font-weight: 600; }
+.deposit-state.failed { color: var(--danger); }
+.deposit .center-text { text-align: center; margin: 0; }

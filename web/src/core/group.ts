@@ -51,8 +51,40 @@ export interface GroupState {
   autoMaxAt?: number;
   localOnly?: boolean; // contents only travel directly between devices on the same network
   localOnlyAt?: number;
+  drops?: Record<string, DropRecord>; // file requests: links for people outside the group to send files
   updatedBy: string;
   updatedAt: number;
+}
+
+/**
+ * A file request (see drop.ts), known to every device of the group: any of them shows its link,
+ * changes or deletes it, and opens what comes through it.
+ */
+export interface DropRecord {
+  secret: string; // the link's secret (base64url): the link can be shown again on any device
+  sk: string; // seed of its key pair (base64url): opens what is sent through it
+  msg?: string; // shown on the page of the link
+  ttl: number; // lifetime chosen last, seconds
+  createdAt: number;
+  expiresAt: number;
+  by: string; // device that made it
+  at: number; // last change (the most recent wins)
+  gone?: boolean; // deleted: kept a while to open what came through it
+}
+
+/** A file request stays in the state this long after its end: what came through it can be opened. */
+export const DROP_KEEP = 8 * DAY * 1000;
+
+/** Both versions of the file requests: the most recent change of each wins; long-ended ones go. */
+export function mergeDrops(a: GroupState['drops'] = {}, b: GroupState['drops'] = {}, now = Date.now()): Record<string, DropRecord> {
+  const out: Record<string, DropRecord> = {};
+  for (const [id, d] of [...Object.entries(a), ...Object.entries(b)]) {
+    if ((d.gone ? Math.min(d.at, d.expiresAt) : d.expiresAt) + DROP_KEEP < now) continue;
+    const prev = out[id];
+    if (!prev || d.at > prev.at || (d.at === prev.at && d.gone && !prev.gone)) out[id] = d;
+  }
+  // in a fixed order: two devices that merged the same versions publish the same state
+  return Object.fromEntries(Object.keys(out).sort().map((id) => [id, out[id]]));
 }
 
 export const DEFAULT_MAX_ITEMS = 10;
@@ -181,10 +213,12 @@ export function mergeState(a: GroupState, b: GroupState): GroupState {
     const w = (a[at] ?? -1) >= (b[at] ?? -1) ? a : b;
     return w[at] === undefined ? {} : { [key]: w[key], [at]: w[at] };
   };
+  const drops = mergeDrops(a.drops, b.drops);
   return {
     ...pick('maxItems'),
     ...pick('autoMax'),
     ...pick('localOnly'),
+    ...(Object.keys(drops).length ? { drops } : {}),
     v: Math.max(a.v, b.v),
     name: named.name,
     nameAt: named.nameAt,

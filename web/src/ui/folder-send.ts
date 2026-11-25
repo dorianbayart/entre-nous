@@ -1,7 +1,7 @@
 // Sending a folder: what was picked, dropped or copied becomes a list of files with their paths
 // (system files left out), then an archive with a preview of every image, video and PDF, made
 // here before the upload (the other devices browse it without downloading anything).
-import { type ByteSource, type FolderSummary, type PackFile, buildPack, comparePaths, isSystemFile, safePath } from '../core/folder.ts';
+import { type ByteSource, type FolderIndex, type FolderSummary, type PackFile, buildPack, comparePaths, isSystemFile, safePath } from '../core/folder.ts';
 import { previewKind } from '../core/media.ts';
 import type { FolderSource, FolderSourceFile } from '../platform/types.ts';
 import { IMAGE_PREVIEW_MAX, dataUrlBytes, mosaicOf, preview } from './previews.ts';
@@ -144,7 +144,7 @@ export function folderFromNative(
 export async function prepareFolder(
   src: FolderSource,
   onProgress?: (done: number, total: number) => void,
-): Promise<{ source: ByteSource; summary: FolderSummary; thumb?: string }> {
+): Promise<{ source: ByteSource; summary: FolderSummary; thumb?: string; index: FolderIndex }> {
   const files: PackFile[] = src.files.map((f) => ({ path: f.path, size: f.size, mime: f.mime || undefined, src: f.src }));
   const todo = src.files.map((f, i) => i).filter((i) => !!previewKind(src.files[i].path, src.files[i].mime));
   const urls = new Map<number, string>();
@@ -170,9 +170,9 @@ export async function prepareFolder(
     }
   };
   await Promise.all(Array.from({ length: PREVIEW_WORKERS }, worker));
-  const { source, summary } = buildPack(src.name, files, src.dirs);
+  const { source, summary, index } = buildPack(src.name, files, src.dirs);
   // the first previews, in the folder's order
   const firsts = [...urls.keys()].sort((a, b) => a - b).map((i) => urls.get(i)!);
   const thumb = await mosaicOf(firsts).catch(() => undefined);
-  return { source, summary, thumb };
+  return { source, summary, thumb, index };
 }

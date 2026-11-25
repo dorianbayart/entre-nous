@@ -191,6 +191,25 @@ the music or download the file.
   what they want.
 - No links with **Local network only**: the content isn't on the server.
 
+### Receive files from someone outside the group
+
+To collect the photos of a party or a colleague's files, tap the **Receive files** icon at the top
+of the screen. A link and its QR code show up at once, valid for 24 hours. The person opens it in
+their browser, with no account and nothing to install, types their first name if they want, and
+picks their files: each one goes as soon as it's picked, and arrives in the history of all your
+devices.
+
+- **Message**: optional, shown on the page ("The photos from Saturday").
+- **Lifetime**: 1 h, 24 h (default) or 7 days, to change on the link's page; the address stays the same.
+- **In the history**: several files sent at once make a folder ("Files from Marie"), a single file
+  stays a plain item. They last like the rest of the history.
+- **On all your devices**: the request shows at the top of the history, with a dashed border:
+  **Copy link**, **QR code**, **Delete**, from any of them. A deleted request receives nothing more;
+  what already arrived stays.
+- **End-to-end encrypted**: the page encrypts the files before sending them. The link lets people
+  send, never read: they see nothing of your history, nor what others sent.
+- No requests with **Local network only**: the files go through the server.
+
 ## 6. Group settings
 
 Any device in the group can change them:

@@ -3,8 +3,9 @@
 import Alpine from '@alpinejs/csp';
 import qrcode from 'qrcode-generator';
 import jsQR from 'jsqr';
-import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ChangelogEntry, type ItemView, type Invite, type ShareView } from '../core/engine.ts';
+import { Engine, ItemGoneError, SendCancelledError, UPLOAD_STALLED, type ChangelogEntry, type DropView, type ItemView, type Invite, type ShareView } from '../core/engine.ts';
 import { SHARE_DEFAULT_TTL, SHARE_TTLS, ShareGoneError } from '../core/share.ts';
+import { DROP_MESSAGE_MAX, DROP_TTLS, DropGoneError } from '../core/drop.ts';
 import { hash } from '../core/crypto.ts';
 import { b64, utf8 } from '../core/bytes.ts';
 import { desktopPlatform, isDesktopApp } from '../platform/desktop.ts';
@@ -260,6 +261,10 @@ Alpine.data('app', () => ({
   share: null as ShareView | null,
   shareName: '',
   shareQr: '',
+  // the file request shown (its page: message, QR code, lifetime)
+  drop: null as DropView | null,
+  dropQr: '',
+  dropMessageMax: DROP_MESSAGE_MAX,
   /** Coming back from a page that slid in: the main view slides back. */
   slide: '',
   joinLink: '',
@@ -317,6 +322,8 @@ Alpine.data('app', () => ({
       // direct transfers on the same network, when WebRTC is there
       links: webrtcAvailable() ? webrtcLinks() : undefined,
     });
+    // the web app: links to where it is served from (the relay may know itself by another name)
+    if (!platform.native) engine.linkOrigin = location.origin;
     engine.on((e) => {
       if (e.type === 'change') this.refresh();
       else if (e.type === 'incoming') {
@@ -437,6 +444,12 @@ Alpine.data('app', () => ({
     if (this.folderView.open && !this.items.some((i) => i.id === this.folderView.id)) this.closeFolder();
     // the link shown expired (it is created when its page opens: not before)
     if (this.view === 'share' && this.share && !this.group?.shares.some((s) => s.id === this.share!.id)) this.closeShare();
+    // the request shown: as changed on any device, or closed once it ends
+    if (this.view === 'drop' && this.drop) {
+      const now = this.group?.drops.find((d) => d.id === this.drop!.id);
+      if (now) this.drop = now;
+      else this.closeDrop();
+    }
     this.latest = engine.latest;
     this.announceUpdate();
     this.showNote();
@@ -692,17 +705,28 @@ Alpine.data('app', () => ({
     return this.group?.items ?? [];
   },
 
-  /** The history as shown: the items, and the share links made here (newest first). */
-  get history(): Array<ItemView | { id: string; createdAt: number; share: ShareView }> {
+  /**
+   * The history as shown: the group's file requests still open, on top; then the items and the
+   * share links made here (newest first).
+   */
+  get history(): Array<ItemView | { id: string; createdAt: number; share: ShareView } | { id: string; createdAt: number; request: DropView }> {
+    const requests = (this.group?.drops ?? []).map((request) => ({ id: 'request:' + request.id, createdAt: request.createdAt, request }));
     const shares = (this.group?.shares ?? []).map((share) => ({ id: 'share:' + share.id, createdAt: share.createdAt, share }));
-    return [...this.items, ...shares].sort((a, b) => b.createdAt - a.createdAt);
+    return [...requests, ...[...this.items, ...shares].sort((a, b) => b.createdAt - a.createdAt)];
+  },
+
+  /** What an entry of the history gives to the search. */
+  searchable(e: any) {
+    if (e.share) return e.share;
+    if (e.request) return { kind: 'request', text: e.request.msg ?? '' };
+    return e;
   },
 
   /** The history shown: what the search finds, when there is one. */
   get shown() {
     if (!this.searchActive) return this.history;
     const { q, type } = this.search;
-    return this.history.filter((e: any) => matches(e.share ?? e, q, type));
+    return this.history.filter((e: any) => matches(this.searchable(e), q, type));
   },
 
   // ---------------------------------------------------------------- search
@@ -715,7 +739,7 @@ Alpine.data('app', () => ({
   /** The type chips: only the types found in the history, if there are at least two. */
   get searchTypes() {
     void this.lang;
-    const all = this.history.map((e: any) => e.share ?? e);
+    const all = this.history.map((e: any) => this.searchable(e));
     const types = SEARCH_TYPES.filter((type) => all.some((e) => isType(e, type)));
     if (types.length < 2 && !this.search.type) return [];
     return [{ value: '', label: this.t('search.all') }, ...types.map((value) => ({ value, label: this.t(('search.type.' + value) as Key) }))];
@@ -796,6 +820,7 @@ Alpine.data('app', () => ({
       e.preventDefault();
       const entry: any = shown.find((x) => x.id === this.searchSelected);
       if (entry.share) this.copyShareLink(entry.share);
+      else if (entry.request) this.copyDropLink(entry.request);
       else if (this.canCopy(entry)) this.copy(entry);
       else if (this.canBrowse(entry)) this.openFolder(entry);
       else if (this.previewOf(entry)) this.openPreview(entry);
@@ -892,7 +917,7 @@ Alpine.data('app', () => ({
 
   itemClass(item: any) {
     const selected = item.id === this.searchSelected ? ' selected' : '';
-    if (item.share) return 'shared-link' + selected;
+    if (item.share || item.request) return 'shared-link' + selected;
     return (item.error ? 'broken' : '') + (this.hasReceipts(item) ? ' has-receipts' : '') + selected;
   },
 
@@ -2366,6 +2391,155 @@ Alpine.data('app', () => ({
     return this.items.find((i) => i.id === share.itemId)?.thumb ?? '';
   },
 
+  // ---------------------------------------------------------------- file requests
+
+  /** A file request needs the relay: not in local mode. */
+  get canDrop() {
+    return !!this.group && !this.group.localOnly;
+  },
+
+  /**
+   * The page of a file request, sliding in over the history: a new one (made at once, valid
+   * 24 h), or one already open (from its entry in the history).
+   */
+  async openDrop(request?: DropView) {
+    const groupId = this.groupId;
+    if (!groupId) return;
+    this.confirming = '';
+    this.slide = '';
+    this.view = 'drop';
+    if (request) return this.showDrop(request);
+    this.drop = null;
+    this.dropQr = '';
+    try {
+      this.showDrop(await engine.createDrop(groupId));
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+      this.closeDrop();
+    }
+  },
+
+  showDrop(request: DropView) {
+    this.drop = request;
+    const qr = qrcode(0, 'M');
+    qr.addData(request.url);
+    qr.make();
+    this.dropQr = qr.createDataURL(6, 2);
+  },
+
+  closeDrop() {
+    this.drop = null;
+    this.dropQr = '';
+    this.confirming = '';
+    if (this.view !== 'drop') return;
+    this.slide = 'slide-back';
+    this.view = this.groups.length ? 'main' : 'welcome';
+    setTimeout(() => (this.slide = ''), 400);
+  },
+
+  get dropTtls() {
+    const max = this.group?.maxTtl ?? 7 * 86400;
+    const current = this.drop?.ttl;
+    return DROP_TTLS.filter((v) => v <= max).map((value) => ({
+      value,
+      label: this.t(('share.ttl.' + value) as Key),
+      pressed: value === current ? 'true' : 'false',
+    }));
+  },
+
+  get dropLeft() {
+    return this.drop ? this.t('share.left', { left: duration(this.drop.expiresAt - this.now) }) : '';
+  },
+
+  /** A request gone from the server meanwhile: said, and its page closed. */
+  dropFailed(err: any) {
+    if (err instanceof DropGoneError) {
+      this.toast(this.t('toast.shareGone'));
+      this.closeDrop();
+    } else this.toast(failure('toast.error', err));
+  },
+
+  async setDropTtl(ttl: number) {
+    const request = this.drop;
+    if (!request || request.ttl === ttl || !this.groupId) return;
+    try {
+      const now = await engine.setDropTtl(this.groupId, request.id, ttl);
+      if (this.drop?.id === request.id) this.drop = now;
+    } catch (err: any) {
+      this.dropFailed(err);
+    }
+  },
+
+  /** The message shown on the page of the link (saved once typed). */
+  async setDropMessage(e: Event) {
+    const request = this.drop;
+    const msg = (e.target as HTMLInputElement).value.trim();
+    if (!request || !this.groupId || msg === (request.msg ?? '')) return;
+    try {
+      const now = await engine.setDropMessage(this.groupId, request.id, msg);
+      if (this.drop?.id === request.id) this.drop = now;
+    } catch (err: any) {
+      this.dropFailed(err);
+    }
+  },
+
+  /** Copies the link (not shared with the group by the desktop apps: not a copy of the user's). */
+  copyDropLink(request: DropView | null) {
+    if (!request) return;
+    lastShared = b64(hash(utf8(request.url)));
+    platform
+      .copy('text/plain', Promise.resolve({ text: request.url }))
+      .then(() => this.toast(this.t('toast.linkCopied')))
+      .catch((err) => this.toast(failure('toast.copyFailed', err)));
+  },
+
+  copyShownDropLink() {
+    this.copyDropLink(this.drop);
+  },
+
+  /** Deletes a request, on every device: nothing more comes through it (confirmed like a deletion). */
+  async removeDrop(request: DropView) {
+    const key = this.dropKey(request);
+    if (this.prefs.confirmDelete && !this.isConfirming(key)) {
+      this.askConfirm(key);
+      return;
+    }
+    this.confirming = '';
+    if (!this.groupId) return;
+    try {
+      await engine.deleteDrop(this.groupId, request.id);
+      this.toast(this.t('toast.shareDeleted'));
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    }
+  },
+
+  async removeShownDrop() {
+    const request = this.drop;
+    if (!request) return;
+    await this.removeDrop(request);
+    if (!engine.drops(this.groupId ?? '').some((d) => d.id === request.id)) this.closeDrop();
+  },
+
+  get removingShownDrop() {
+    return !!this.drop && this.isConfirming(this.dropKey(this.drop));
+  },
+
+  dropKey(request: { id: string }) {
+    return 'request:' + request.id;
+  },
+
+  requestParts(request: DropView) {
+    return this.marked(request.msg || this.t('drop.title'));
+  },
+
+  requestMeta(request: DropView) {
+    const parts = request.msg ? [this.t('drop.title')] : [];
+    if (request.received) parts.push(this.tn('drop.received', request.received), humanSize(request.bytes));
+    parts.push(this.t('expires', { d: duration(request.expiresAt - this.now) }));
+    return parts.join(' · ');
+  },
+
   // ---------------------------------------------------------------- pairing
 
   showInvite() {
@@ -2497,6 +2671,7 @@ Alpine.data('app', () => ({
     else if (this.folderView.open) folderOpen?.browser ? folderOpen.browser.back() : this.closeFolder();
     else if (this.view === 'scan') this.stopScan();
     else if (this.view === 'share') this.closeShare();
+    else if (this.view === 'drop') this.closeDrop();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
     else if (this.search.open) this.closeSearch();
     else platform.background?.();

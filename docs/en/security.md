@@ -120,6 +120,26 @@ A share link gives someone outside the group access to a single item, in a brows
 - Anyone who has the link can open the item. The relay also sees when a link is opened, and from
   which IP address.
 
+## File requests
+
+A file request lets someone outside the group send files to the group.
+
+- The link is `https://<relay>/r/#<secret>`: a random 256-bit secret, after the `#`, never sent to
+  the server.
+- Each request has its own X-Wing key pair. The private key only exists in the group's encrypted
+  state, on its devices. The relay keeps the request's identifier, `sha256(HKDF(secret, "drop/id"))`,
+  and the public key with the message, sealed with `HKDF(secret, "drop/info")`: it can neither read
+  them nor replace the public key.
+- The page encrypts each file with a random key, sealed for the request's public key. The link lets
+  people send, never read: neither the relay nor anyone with the link can open what was sent, nor
+  see the group's history.
+- What arrives is not signed: the group only knows the sender had the link. The first name is the
+  one the person typed. Only files and folders are accepted, shown and never run, like the rest.
+- Anyone who has the link can send files to the group until it ends, within the server's space. The
+  relay sees the approximate size of each upload, and the sender's IP address.
+- A device removed from the group still knows the requests open at that time: it can send files
+  through them, but can no longer read anything (the history moved to another room).
+
 ## Storage on the devices
 
 | Platform | Where the keys live |
@@ -155,6 +175,8 @@ A share link gives someone outside the group access to a single item, in a brows
   Android, Linux and Windows apps ship their own interface: their code never comes from the server.
 - **Share link page**: served by the relay, like the web app. A compromised relay could change it
   to read the shared item.
+- **File request page**: served by the relay too. A compromised relay could change it to read what
+  the person sends.
 - **Availability**: the relay can refuse, delay or delete items. It can't forge or read them.
 - **Metadata**: see the table above (IP addresses, times, approximate sizes, presence).
 - **Compromised device**: a device in the group can read everything the group shares for as long as

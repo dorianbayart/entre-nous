@@ -121,6 +121,28 @@ Un lien de partage donne à une personne hors du groupe l'accès à un seul él�
 - Toute personne qui a le lien peut ouvrir l'élément. Le relais voit en plus quand un lien est
   ouvert, et depuis quelle adresse IP.
 
+## Demandes de fichiers
+
+Une demande de fichiers permet à une personne hors du groupe d'envoyer des fichiers au groupe.
+
+- Le lien est `https://<relais>/r/#<secret>` : un secret aléatoire de 256 bits, après le `#`, jamais
+  envoyé au serveur.
+- Chaque demande a sa propre paire de clés X-Wing. La clé privée n'existe que dans l'état chiffré du
+  groupe, sur ses appareils. Le relais garde l'identifiant de la demande,
+  `sha256(HKDF(secret, "drop/id"))`, et la clé publique avec le message, scellés avec
+  `HKDF(secret, "drop/info")` : il ne peut ni les lire, ni remplacer la clé publique.
+- La page chiffre chaque fichier avec une clé aléatoire, scellée pour la clé publique de la demande.
+  Le lien permet d'envoyer, jamais de lire : ni le relais, ni une personne qui a le lien ne peuvent
+  ouvrir ce qui a été envoyé, ni voir l'historique du groupe.
+- Ce qui arrive n'est pas signé : le groupe sait seulement que l'expéditeur avait le lien. Le prénom
+  est celui que la personne a écrit. Seuls des fichiers et des dossiers sont acceptés, affichés sans
+  jamais s'exécuter, comme le reste.
+- Toute personne qui a le lien peut envoyer des fichiers au groupe jusqu'à sa fin, dans la limite de
+  la place du serveur. Le relais voit la taille approximative de chaque envoi, et l'adresse IP de
+  l'expéditeur.
+- Un appareil retiré du groupe connaît encore les demandes ouvertes à ce moment : il peut y envoyer
+  des fichiers, mais ne peut plus rien lire (l'historique a changé de salle).
+
 ## Stockage sur les appareils
 
 | Plateforme | Où sont les clés |
@@ -157,6 +179,8 @@ Un lien de partage donne à une personne hors du groupe l'accès à un seul él�
   Mac, Android, Linux et Windows embarquent leur interface : le code ne vient jamais du serveur.
 - **Page d'un lien de partage** : servie par le relais, comme l'appli web. Un relais compromis
   pourrait la modifier pour lire l'élément partagé.
+- **Page d'une demande de fichiers** : servie par le relais aussi. Un relais compromis pourrait la
+  modifier pour lire ce que la personne envoie.
 - **Disponibilité** : le relais peut refuser, retarder ou supprimer des éléments. Il ne peut pas en
   fabriquer ni en lire.
 - **Métadonnées** : voir le tableau plus haut (IP, heures, tailles approximatives, présence).

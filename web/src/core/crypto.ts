@@ -93,6 +93,12 @@ export function kemKeygen(): KemKeys {
   return { sk: secretKey, pk: publicKey };
 }
 
+/** The key pair behind a seed (`KemKeys.sk`): the public key need not be stored. */
+export function kemFromSeed(seed: Uint8Array): KemKeys {
+  const { secretKey, publicKey } = KEM.keygen(seed);
+  return { sk: secretKey, pk: publicKey };
+}
+
 export interface Wrapped {
   kem: Uint8Array; // KEM ciphertext, 1120 bytes
   box: Uint8Array; // the wrapped key

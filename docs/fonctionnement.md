@@ -246,6 +246,26 @@ navigateur, sans compte (`https://<relais>/s/#<secret>`).
 Le lien n'existe que sur l'appareil qui l'a créé, avec le second secret qui permet de changer sa
 durée (`share.expire`) ou de le supprimer (`share.delete`).
 
+## Demandes de fichiers
+
+Une demande de fichiers permet à une personne hors du groupe d'envoyer des fichiers au groupe, depuis
+un navigateur, sans compte (`https://<relais>/r/#<secret>`).
+
+1. L'appareil qui crée la demande tire un secret et une paire de clés (X-Wing, comme les clés de
+   pré-partage des appareils). La clé privée va dans l'état chiffré du groupe : tous les appareils
+   peuvent ouvrir ce qui arrive, et gérer la demande. Il envoie au relais l'identifiant tiré du
+   secret, et la clé publique avec le message, scellés avec le secret (`drop.create`).
+2. La page `/r/` lit le secret après le `#`, ouvre la demande (`drop.open`), puis, pour chaque choix
+   de fichiers, fabrique les aperçus, chiffre le contenu avec une clé tirée au hasard et chiffre cette
+   clé pour la clé publique de la demande (`drop.item`, `chunk.put`, `drop.commit`). Plusieurs
+   fichiers choisis d'un coup forment un dossier.
+3. Le relais range l'élément dans la salle du groupe, avec la durée de conservation et la taille
+   d'historique du groupe ; les appareils le reçoivent comme les autres. La demande suit le groupe
+   quand l'historique change de salle (retrait d'un appareil).
+
+N'importe quel appareil du groupe change la durée ou le message (`drop.update`) ou supprime la
+demande (`drop.delete`).
+
 ## Protocole du relais
 
 WebSocket sur `/ws`. Requêtes JSON `{ rid, op, … }`, réponses `{ rid, ok, … }`, évènements
@@ -266,6 +286,8 @@ messages et une seconde, réservée aux blocs, pour qu'un gros envoi ne retarde 
 | `pair.join`, `pair.send`, `pair.leave` | canal d'association temporaire |
 | `share.create`, `share.expire`, `share.delete` | lien de partage : création, durée, suppression (par son créateur) |
 | `share.open`, `share.chunk` | ouverture d'un lien et lecture de ses blocs, sans salle |
+| `drop.create`, `drop.update`, `drop.delete` | demande de fichiers : création, durée et message, suppression (par un appareil du groupe) |
+| `drop.open`, `drop.item`, `chunk.put`, `drop.have`, `drop.commit` | page d'une demande : envoi d'un élément au groupe, sans salle |
 
 Évènements : `item`, `progress`, `ack`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.

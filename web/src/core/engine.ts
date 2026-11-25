@@ -4,6 +4,7 @@ import { b64, fromJSON, toJSON, unb64, utf8, fromUtf8 } from './bytes.ts';
 import { CHUNK_SIZE, kdf, open, randomBytes, randomId, seal, signKeygen } from './crypto.ts';
 import {
   type Device,
+  type DropRecord,
   type GroupState,
   type LocalGroup,
   type Member,
@@ -50,6 +51,7 @@ import type { KV } from './storage.ts';
 import { t } from '../i18n/index.ts';
 import { ChunkReader, type ContentReader, type ReaderOptions } from './reader.ts';
 import { SHARE_DEFAULT_TTL, ShareGoneError, newShare, shareUrl } from './share.ts';
+import { DROP_DEFAULT_TTL, DROP_MESSAGE_MAX, DropGoneError, newDrop, openDropItem, sealDropInfo, dropUrl } from './drop.ts';
 import { type ByteSource, type FolderSummary, readSource } from './folder.ts';
 
 export type { ContentReader, ReaderOptions };
@@ -102,6 +104,10 @@ export interface ItemView {
   previewless?: boolean;
   /** Which of its recipients have it, and which have read it (the same on every device). */
   receipts?: Receipts;
+  /** Sent through a file request of the group (its id), by someone outside the group. */
+  drop?: string;
+  /** The name that person gave, if any. */
+  by?: string;
   error?: string;
 }
 
@@ -276,6 +282,24 @@ interface LocalShare extends ShareView {
 
 const SHARE_TEXT_MAX = 200;
 
+/** A file request of the group (the same on every device of the group). */
+export interface DropView {
+  id: string;
+  groupId: string;
+  url: string;
+  msg?: string;
+  /** Lifetime chosen last, in seconds. */
+  ttl: number;
+  createdAt: number;
+  expiresAt: number;
+  by: string;
+  byName: string;
+  mine: boolean;
+  /** What came through it so far (still in the history): items, bytes. */
+  received: number;
+  bytes: number;
+}
+
 export type EngineEvent =
   | { type: 'change' }
   | { type: 'incoming'; groupId: string; item: ItemView }
@@ -318,6 +342,8 @@ export class Engine {
   private sweeper?: ReturnType<typeof setInterval>;
   /** The share links made here, until they expire or are deleted. */
   private shareList: LocalShare[] = [];
+  /** The web app: the address its links use (where it is served from). */
+  linkOrigin?: string;
 
   private constructor(private host: Host) {}
 
@@ -456,6 +482,7 @@ export class Engine {
         .sort((a, b) => b.createdAt - a.createdAt),
       note: this.noteView(rt),
       shares: this.shares(rt.g.id),
+      drops: this.dropViews(rt),
     };
   }
 
@@ -512,7 +539,7 @@ export class Engine {
    */
   private acknowledge(rt: Runtime, e: Entry, read = false) {
     const v = e.view;
-    if (v.mine || !e.opened || v.error || v.kind === 'note') return;
+    if (v.mine || !e.opened || v.error || v.kind === 'note' || v.drop) return;
     // still being uploaded: not delivered yet (but it can be read while it arrives)
     if (!read && !e.relay.complete && !e.relay.local) return;
     const me = this.device.id;
@@ -744,6 +771,7 @@ export class Engine {
     rt.g.state = { ...rt.g.state, ttl, ttlAt: Date.now() };
     await this.pushState(rt);
     if (shorter) await rt.conn.request('items.shorten', { ttl });
+    this.syncDrops(rt);
   }
 
   /** History size of the group (0 = unlimited); lowering it applies at once. */
@@ -752,6 +780,7 @@ export class Engine {
     rt.g.state = { ...rt.g.state, maxItems: max, maxItemsAt: Date.now() };
     await this.pushState(rt);
     if (max > 0) await rt.conn.request('items.trim', { max });
+    this.syncDrops(rt);
   }
 
   /**
@@ -864,7 +893,10 @@ export class Engine {
       if (target === me || !remaining.includes(me)) {
         await this.wipeGroup(rt, false);
       } else {
-        await this.rotateLocally(rt, target, randomBytes(32));
+        // the relay forgot everything, its file requests too
+        const next = this.rotatedState(rt, target);
+        const drops = Object.fromEntries(Object.entries(next.drops ?? {}).map(([id, d]) => [id, { ...d, gone: true, at: Date.now() }]));
+        await this.rotateLocally(rt, target, randomBytes(32), { ...next, drops });
       }
       return;
     }
@@ -1166,10 +1198,11 @@ export class Engine {
   }
 
   private addItem(rt: Runtime, item: RelayItem): ItemView | null {
+    const drop = rt.g.state.drops?.[item.from];
     const base = {
       id: item.id,
       from: item.from,
-      fromName: rt.g.state.members[item.from]?.name ?? '?',
+      fromName: drop ? t('drop.guest') : (rt.g.state.members[item.from]?.name ?? '?'),
       mine: item.from === this.device.id,
       createdAt: item.createdAt,
       expiresAt: item.expiresAt,
@@ -1177,7 +1210,7 @@ export class Engine {
       ...(item.complete ? {} : { pending: true, have: item.have ?? 0, progressAt: item.progressAt ?? item.createdAt }),
     };
     try {
-      const opened = openItem(rt.g, this.device, item);
+      const opened = drop ? openDropItem(drop, item.from, item) : openItem(rt.g, this.device, item);
       if (opened.header.kind === 'rekey') return null;
       const h = opened.header;
       const text = h.text ?? rt.outbox.get(item.id)?.text; // a local text sent from here
@@ -1187,6 +1220,12 @@ export class Engine {
         const f = h.folder;
         const n = (v: unknown) => (Number.isSafeInteger(v) && (v as number) >= 0 ? (v as number) : 0);
         Object.assign(view, { files: n(f?.files), dirs: n(f?.dirs), size: n(f?.bytes) });
+      }
+      if (drop) {
+        // someone outside the group: the name they gave; several files are one folder, theirs
+        view.drop = item.from;
+        if (h.by) Object.assign(view, { by: h.by, fromName: h.by });
+        if (h.kind === 'folder') view.name = h.by ? t('drop.batch', { by: h.by }) : t('drop.batchGuest');
       }
       // what the sender made for the previews (checked: it comes from another device)
       if (typeof h.w === 'number' && typeof h.h === 'number') Object.assign(view, { w: h.w, h: h.h });
@@ -1988,6 +2027,130 @@ export class Engine {
     this.shareList = this.shareList.filter((x) => x !== s);
     this.saveShares();
     this.changed();
+  }
+
+  // ------------------------------------------------------------ file requests
+
+  /** The file requests of a group still open, newest first. */
+  drops(groupId: string): DropView[] {
+    const rt = this.runtimes.get(groupId);
+    return rt ? this.dropViews(rt) : [];
+  }
+
+  private dropViews(rt: Runtime): DropView[] {
+    const now = Date.now();
+    return Object.entries(rt.g.state.drops ?? {})
+      .filter(([, d]) => !d.gone && d.expiresAt > now)
+      .map(([id, d]) => {
+        const got = [...rt.items.values()].filter((e) => e.view.drop === id && !e.view.error);
+        return {
+          id,
+          groupId: rt.g.id,
+          url: dropUrl(this.linkOrigin ?? rt.g.relay, unb64(d.secret)),
+          ...(d.msg ? { msg: d.msg } : {}),
+          ttl: d.ttl,
+          createdAt: d.createdAt,
+          expiresAt: d.expiresAt,
+          by: d.by,
+          byName: rt.g.state.members[d.by]?.name ?? '?',
+          mine: d.by === this.device.id,
+          received: got.length,
+          bytes: got.reduce((n, e) => n + (e.view.size ?? 0), 0),
+        };
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  private dropView(rt: Runtime, id: string): DropView {
+    const v = this.dropViews(rt).find((d) => d.id === id);
+    if (!v) throw new DropGoneError();
+    return v;
+  }
+
+  /** Changes a file request of the group, for every device (the most recent change wins). */
+  private async putDrop(rt: Runtime, id: string, d: DropRecord) {
+    rt.g.state = { ...rt.g.state, drops: { ...rt.g.state.drops, [id]: { ...d, at: Math.max(Date.now(), d.at + 1) } } };
+    await this.pushState(rt);
+  }
+
+  /**
+   * A new file request: a link for someone outside the group to send files to it, valid `ttl`
+   * seconds. `msg`: shown on the page of the link. Not in local mode (contents go to the relay).
+   */
+  async createDrop(groupId: string, ttl = DROP_DEFAULT_TTL, msg = ''): Promise<DropView> {
+    const rt = this.rt(groupId);
+    if (localOnlyOf(rt.g.state)) throw new Error('local only');
+    await this.whenReady(rt);
+    const { id, record } = newDrop(this.device.id, ttl, msg.slice(0, DROP_MESSAGE_MAX));
+    // the group knows its key first: what comes through it can always be opened
+    await this.putDrop(rt, id, record);
+    try {
+      const res = await rt.conn.request('drop.create', {
+        drop: id,
+        info: sealDropInfo(record),
+        ttl,
+        itemTtl: rt.g.state.ttl,
+        max: maxItemsOf(rt.g.state),
+      });
+      await this.putDrop(rt, id, { ...rt.g.state.drops![id], expiresAt: res.expiresAt });
+    } catch (err) {
+      await this.putDrop(rt, id, { ...rt.g.state.drops![id], gone: true }).catch(() => {});
+      throw err;
+    }
+    return this.dropView(rt, id);
+  }
+
+  /** A request about a file request, on its group's connection; gone from the relay: gone here too. */
+  private async dropRequest(rt: Runtime, id: string, op: string, payload: Record<string, unknown> = {}) {
+    try {
+      return await rt.conn.request(op, { drop: id, ...payload });
+    } catch (err: any) {
+      if (err.message !== 'unknown drop') throw err;
+      const d = rt.g.state.drops?.[id];
+      if (d) await this.putDrop(rt, id, { ...d, gone: true });
+      throw new DropGoneError();
+    }
+  }
+
+  /** A file request lives `ttl` seconds more, from now. */
+  async setDropTtl(groupId: string, id: string, ttl: number): Promise<DropView> {
+    const rt = this.rt(groupId);
+    const d = rt.g.state.drops?.[id];
+    if (!d || d.gone) throw new DropGoneError();
+    const res = await this.dropRequest(rt, id, 'drop.update', { ttl });
+    await this.putDrop(rt, id, { ...rt.g.state.drops![id], ttl, expiresAt: res.expiresAt });
+    return this.dropView(rt, id);
+  }
+
+  /** The message shown on the page of a file request ('' for none). */
+  async setDropMessage(groupId: string, id: string, msg: string): Promise<DropView> {
+    const rt = this.rt(groupId);
+    const d = rt.g.state.drops?.[id];
+    if (!d || d.gone) throw new DropGoneError();
+    const next: DropRecord = { ...d };
+    msg = msg.trim().slice(0, DROP_MESSAGE_MAX);
+    if (msg) next.msg = msg;
+    else delete next.msg;
+    await this.dropRequest(rt, id, 'drop.update', { info: sealDropInfo(next) });
+    await this.putDrop(rt, id, next);
+    return this.dropView(rt, id);
+  }
+
+  /** Deletes a file request: nothing more comes through it. What came stays in the history. */
+  async deleteDrop(groupId: string, id: string) {
+    const rt = this.rt(groupId);
+    const d = rt.g.state.drops?.[id];
+    if (!d || d.gone) return;
+    await rt.conn.request('drop.delete', { drop: id });
+    await this.putDrop(rt, id, { ...d, gone: true });
+  }
+
+  /** The group's retention and history size changed: what comes through its requests follows. */
+  private syncDrops(rt: Runtime) {
+    const s = rt.g.state;
+    for (const d of this.dropViews(rt)) {
+      rt.conn.request('drop.update', { drop: d.id, itemTtl: s.ttl, max: maxItemsOf(s) }).catch(() => {});
+    }
   }
 
   /** Erases every group and the identity of this device (local only). */

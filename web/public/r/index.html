@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
+  <title>Entre Nous</title>
+  <link rel="icon" href="/app/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app/app.css">
+  <script type="module" src="/r/drop.js"></script>
+</head>
+<body>
+<!-- A file request, for someone outside the group: the secret is after the "#", never sent here. -->
+<main class="app visit deposit">
+  <header class="visit-head">
+    <a class="visit-brand" href="/"><span class="logo"></span><strong>Entre Nous</strong></a>
+  </header>
+  <section class="center" id="state">
+    <p class="muted" id="state-text"></p>
+  </section>
+  <section class="deposit-body" id="deposit" hidden>
+    <p class="visit-lead" id="lead"></p>
+    <div class="deposit-ask" id="ask" hidden>
+      <small id="ask-label"></small>
+      <p id="ask-text"></p>
+    </div>
+    <label class="field deposit-name"><span id="name-label"></span>
+      <input type="text" id="name" maxlength="60" autocomplete="given-name" enterkeyhint="done">
+    </label>
+    <ul class="deposit-list" id="list" hidden></ul>
+    <p class="alert" id="error" hidden></p>
+    <button class="deposit-zone" id="zone" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <strong id="pick"></strong>
+      <span class="muted small" id="drop-here"></span>
+    </button>
+    <p class="meta center-text" id="meta"></p>
+    <input type="file" multiple hidden id="files">
+  </section>
+  <footer class="visit-foot">
+    <p class="muted small" id="e2e"></p>
+    <a id="cta" href="/"></a>
+  </footer>
+</main>
+</body>
+</html>

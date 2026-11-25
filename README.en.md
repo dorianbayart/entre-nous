@@ -21,7 +21,7 @@ no trace.
 - **Text, photos, videos, files** of any size, plus a live shared note.
 - **Send a folder as easily as a file.** See what's inside, download only what you want.
 - **Read receipts**: see at a glance whether what you sent has reached your other devices, and whether it has been read.
-- **Share a file with anyone**, with a simple link (or a QR code).
+- **Share and receive files with anyone**, with a simple link (or a QR code).
 - **Find any text or file in a few keystrokes.**
 - **Previews**: preview a photo, a PDF or a Markdown document without downloading it, and watch a video
   (even in Picture-in-Picture) or listen to an audio file while it downloads.

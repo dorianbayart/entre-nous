@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.49 — 2026-11-24
+- Link to receive files from someone outside the group.
+
 ## 0.1.48 — 2026-11-24
 - Fix: read receipts also show on the receiving device in a group of two.
 

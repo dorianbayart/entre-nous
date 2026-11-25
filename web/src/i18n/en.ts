@@ -292,6 +292,36 @@ export const en: Strings = {
   'visit.e2e': 'End-to-end encrypted: the server cannot read this content.',
   'visit.cta': 'Share yours with Entre Nous',
 
+  // file requests: a link for someone outside the group to send files
+  'drop.open': 'Receive files',
+  'drop.title': 'File request',
+  'drop.hint': 'Send this link or have the QR code scanned. The person picks their files in a browser, with no account and nothing to install.',
+  'drop.message': 'Message shown on the page (optional)',
+  'drop.messagePlaceholder': 'For example: the photos from Saturday',
+  'drop.anyone': 'Anyone who has this link can send you files. They see nothing of your history.',
+  'drop.qrAlt': 'File request QR code',
+  'drop.received.one': '{n} upload',
+  'drop.received.other': '{n} uploads',
+  'drop.guest': 'Guest',
+  'drop.batch': 'Files from {by}',
+  'drop.batchGuest': 'Files from a guest',
+
+  // the page of a file request, for someone outside the group
+  'deposit.lead': 'Someone is asking you for files.',
+  'deposit.message': 'Their message',
+  'deposit.name': 'Your first name (optional)',
+  'deposit.pick': 'Choose files',
+  'deposit.more': 'Add files',
+  'deposit.dropHere': 'or drop them here',
+  'deposit.preparing': 'Preparing…',
+  'deposit.waiting': 'Waiting',
+  'deposit.sent': 'Sent',
+  'deposit.notSent': 'Not sent',
+  'deposit.failed': 'Failed: {msg}',
+  'deposit.full': 'The server is full: try again later.',
+  'deposit.e2e': 'End-to-end encrypted: the server cannot read what you send.',
+  'deposit.cta': 'Discover Entre Nous',
+
   // shared folders
   'name.folder': 'folder',
   folder: 'Folder',

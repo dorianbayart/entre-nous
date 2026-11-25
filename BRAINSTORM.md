@@ -350,6 +350,31 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   DOM simple, commun aux deux).
 - **Plus tard** : recherche par nom dans un dossier, avec la recherche dans l'historique.
 
+## 8 octies. Demandes de fichiers
+
+- **Pourquoi** : le sens inverse des liens de partage. Récupérer les photos des autres après un
+  évènement, ou les fichiers d'un collègue, sans l'inviter dans le groupe.
+- **Entrée** : icône « Recevoir des fichiers » dans la barre du haut ; la vue glisse vers une page
+  proche du lien de partage : message facultatif (affiché sur la page), QR code, lien, durée.
+  **Créée tout de suite, valable 24 h** ; 1 h, 24 h, 7 j. **Aucune limite de taille** propre à la
+  demande : seule la place du serveur compte.
+- **Connue de tout le groupe** : la demande est dans l'état du groupe (`drops`), avec son secret et
+  la graine de sa paire de clés ; tous les appareils l'affichent en tête de l'historique (pointillés),
+  la changent ou la suppriment. Une demande finie reste 8 jours dans l'état, pour ouvrir ce qui est
+  arrivé par elle.
+- **Page `/r/`** (`src/drop/`, servie par le relais seulement) : liste des fichiers qui avance,
+  prénom facultatif (gardé dans le navigateur) ; chaque choix part tout de suite, pas de page de fin.
+- **Un envoi = un élément** : un fichier seul reste un élément simple, plusieurs fichiers choisis
+  d'un coup forment un dossier (« Envoi de Marie »), qui ne compte qu'une fois dans l'historique.
+  Aperçus faits par la page, comme par l'émetteur dans l'appli.
+- **Cryptographie** : `https://<relais>/r/#<secret>` ; le relais voit `sha256(kdf(secret, "drop/id"))`
+  et `{ clé publique, message }` scellés avec `kdf(secret, "drop/info")`. Chaque élément est scellé
+  comme un élément du groupe, sa clé enveloppée pour la clé publique de la demande (X-Wing), sans
+  signature (`from` = l'identifiant de la demande). Le lien permet d'envoyer, jamais de lire.
+- **Relais** : `d:{demande}` (salle, durée et taille d'historique du groupe), qui suit le groupe lors
+  d'un retrait d'appareil ; un envoi commencé peut finir jusqu'à 24 h après la fin de la demande.
+  Pas en « Réseau local uniquement ».
+
 ## 9. Relais
 
 - Un conteneur `node:lts-alpine` : Node (HTTP + WebSocket, fichiers statiques) et Redis

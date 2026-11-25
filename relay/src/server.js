@@ -212,7 +212,7 @@ async function serveStatic(req, res) {
     res.writeHead(302, { Location: `https://github.com/${RELEASES}/releases/latest/download/${download[1]}` }).end();
     return;
   }
-  if (['/app', '/s', '/fr', '/en', '/nouveautes', '/en/changelog'].includes(url.pathname)) {
+  if (['/app', '/s', '/r', '/fr', '/en', '/nouveautes', '/en/changelog'].includes(url.pathname)) {
     res.writeHead(301, { Location: url.pathname + '/' }).end();
     return;
   }
@@ -351,6 +351,40 @@ async function liveShare(msg) {
 }
 
 const shareTtl = (ttl) => Math.min(Math.max(Number(ttl) || 0, 60), MAX_TTL);
+
+// File requests: people outside the group send items to its room through a link. Every device
+// of the group can make, change or delete them; `drop` is sha256(kdf(link secret)), never the
+// secret. Past its end, a request stays a day for the uploads under way (not for new ones).
+const DROP_GRACE = 24 * 3600 * 1000;
+const itemTtl = (ttl) => Math.min(Math.max(Number(ttl) || 0, 60), MAX_TTL);
+const maxItems = (max) => (Number.isInteger(max) && max > 0 ? max : 0);
+
+/** A file request of the room of this connection. */
+async function roomDrop(ws, msg) {
+  const room = requireRoom(ws);
+  if (!shareId(msg.drop)) throw new Error('bad drop');
+  const d = await store.getDrop(msg.drop);
+  if (!d || d.room !== room) throw new Error('unknown drop');
+  return d;
+}
+
+/** A file request that still takes new items. */
+async function liveDrop(msg) {
+  if (!shareId(msg.drop)) throw new Error('bad drop');
+  const d = await store.getDrop(msg.drop);
+  if (!d || d.expiresAt <= Date.now()) throw new Error('unknown drop');
+  return d;
+}
+
+/** An item being sent through a file request (the request may have just ended). */
+async function dropItem(msg) {
+  if (!shareId(msg.drop) || !safeId(msg.id)) throw new Error('bad item');
+  const d = await store.getDrop(msg.drop);
+  if (!d) throw new Error('unknown drop');
+  const item = await store.getItem(d.room, msg.id);
+  if (!item || item.from !== msg.drop) throw new Error('unknown item');
+  return { room: d.room, item };
+}
 
 const handlers = {
   /** What the versions after `since` bring (an app about to update shows it). */
@@ -613,6 +647,85 @@ const handlers = {
     return { $binary: data };
   },
 
+  /** A file request of the room, for `ttl` seconds; items sent through it live `itemTtl`. */
+  async 'drop.create'(ws, msg) {
+    const room = requireRoom(ws);
+    if (!shareId(msg.drop) || !b64(msg.info, 8192)) throw new Error('bad drop');
+    const expiresAt = Date.now() + shareTtl(msg.ttl) * 1000;
+    return store.createDrop(room, {
+      drop: msg.drop,
+      info: msg.info,
+      itemTtl: itemTtl(msg.itemTtl),
+      max: maxItems(msg.max),
+      expiresAt,
+      keepUntil: expiresAt + DROP_GRACE,
+    });
+  },
+
+  /** Changes a file request: its message (`info`), its lifetime from now, the group's settings. */
+  async 'drop.update'(ws, msg) {
+    const d = await roomDrop(ws, msg);
+    const fields = {};
+    if (msg.info !== undefined) {
+      if (!b64(msg.info, 8192)) throw new Error('bad drop');
+      fields.info = msg.info;
+    }
+    if (msg.itemTtl !== undefined) fields.itemTtl = itemTtl(msg.itemTtl);
+    if (msg.max !== undefined) fields.max = maxItems(msg.max);
+    let expiresAt = d.expiresAt;
+    if (msg.ttl !== undefined) {
+      expiresAt = Date.now() + shareTtl(msg.ttl) * 1000;
+      fields.expiresAt = expiresAt;
+    }
+    await store.updateDrop(msg.drop, fields, msg.ttl !== undefined ? expiresAt + DROP_GRACE : 0);
+    return { expiresAt };
+  },
+
+  /** Deletes a file request: nothing more comes through it, even an upload under way. */
+  async 'drop.delete'(ws, msg) {
+    const room = requireRoom(ws);
+    if (!shareId(msg.drop)) throw new Error('bad drop');
+    const d = await store.getDrop(msg.drop);
+    if (d && d.room === room) await store.deleteDrop(msg.drop);
+    return {};
+  },
+
+  /** Opens a file request, from outside the group: its public key and message, sealed. */
+  async 'drop.open'(ws, msg) {
+    const d = await liveDrop(msg);
+    return { info: d.info, expiresAt: d.expiresAt };
+  },
+
+  /** An item sent through a file request: announced to the group, then its chunks come. */
+  async 'drop.item'(ws, msg) {
+    const d = await liveDrop(msg);
+    const { id, meta, chunks, size } = msg;
+    if (!safeId(id) || !b64(meta, META_MAX)) throw new Error('bad item');
+    if (!Number.isInteger(chunks) || chunks < 1 || chunks > 10_000_000) throw new Error('bad chunks');
+    if (!Number.isInteger(size) || size < 0) throw new Error('bad size');
+    await checkQuota(meta.length + size);
+    const from = msg.drop;
+    const { createdAt, expiresAt } = await store.createItem(d.room, { id, meta, sig: '', from, chunks, size, ttl: Math.min(d.itemTtl, MAX_TTL) });
+    broadcast(d.room, {
+      ev: 'item',
+      item: { id, meta, sig: '', from, chunks, size, createdAt, expiresAt, complete: false, have: 0, progressAt: createdAt },
+    });
+    if (d.max > 0) for (const old of await store.trimItems(d.room, d.max)) broadcast(d.room, { ev: 'deleted', id: old });
+    return { createdAt, expiresAt, dropExpiresAt: d.expiresAt };
+  },
+
+  async 'drop.have'(ws, msg) {
+    const { room, item } = await dropItem(msg);
+    return { have: await store.haveChunks(room, msg.id, item.chunks) };
+  },
+
+  async 'drop.commit'(ws, msg) {
+    const { room } = await dropItem(msg);
+    const item = await store.commitItem(room, msg.id);
+    broadcast(room, { ev: 'item', item });
+    return {};
+  },
+
   async 'room.delete'(ws) {
     const room = requireRoom(ws);
     await store.deleteRoom(room);
@@ -658,7 +771,8 @@ async function handle(ws, msg, binary) {
     if (!PASSIVE_OPS.has(msg.op)) lastActivity = Date.now();
     let result;
     if (msg.op === 'chunk.put') {
-      const room = requireRoom(ws);
+      // a chunk of an item of the room, or of one sent through a file request
+      const room = msg.drop !== undefined ? (await dropItem({ drop: msg.drop, id: msg.itemId })).room : requireRoom(ws);
       if (!binary || binary.length > CHUNK_MAX || !safeId(msg.itemId) || !Number.isInteger(msg.idx)) {
         throw new Error('bad chunk');
       }
@@ -677,7 +791,7 @@ async function handle(ws, msg, binary) {
     }
     send(ws, { ...reply, ok: true, ...result });
   } catch (err) {
-    const message = /OOM|maxmemory/i.test(err.message) ? 'full' : err.message;
+    const message = /^OOM\b|maxmemory/.test(err.message) ? 'full' : err.message;
     send(ws, { ...reply, ok: false, error: message });
   }
 }

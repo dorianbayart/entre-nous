@@ -244,6 +244,26 @@ account (`https://<relay>/s/#<secret>`).
 The link only exists on the device that created it, with the second secret that changes its
 lifetime (`share.expire`) or deletes it (`share.delete`).
 
+## File requests
+
+A file request lets someone outside the group send files to the group, from a browser, with no
+account (`https://<relay>/r/#<secret>`).
+
+1. The device that creates the request draws a secret and a key pair (X-Wing, like the devices'
+   prekeys). The private key goes into the group's encrypted state: every device can open what
+   arrives, and manage the request. It sends the relay the identifier derived from the secret, and
+   the public key with the message, sealed with the secret (`drop.create`).
+2. The `/r/` page reads the secret after the `#`, opens the request (`drop.open`), then, for each
+   pick of files, makes the previews, encrypts the content with a random key and encrypts that key
+   for the request's public key (`drop.item`, `chunk.put`, `drop.commit`). Several files picked at
+   once make a folder.
+3. The relay puts the item in the group's room, with the group's retention and history size; the
+   devices receive it like the others. The request follows the group when the history moves to
+   another room (a device removed).
+
+Any device of the group changes the lifetime or the message (`drop.update`) or deletes the request
+(`drop.delete`).
+
 ## Relay protocol
 
 WebSocket on `/ws`. JSON requests `{ rid, op, … }`, responses `{ rid, ok, … }`, events
@@ -264,6 +284,8 @@ second one, reserved for chunks, so that a large upload never holds up anything 
 | `pair.join`, `pair.send`, `pair.leave` | temporary pairing channel |
 | `share.create`, `share.expire`, `share.delete` | share link: creation, lifetime, deletion (by its creator) |
 | `share.open`, `share.chunk` | opening a link and reading its chunks, without a room |
+| `drop.create`, `drop.update`, `drop.delete` | file request: creation, lifetime and message, deletion (by a device of the group) |
+| `drop.open`, `drop.item`, `chunk.put`, `drop.have`, `drop.commit` | a request's page: sending an item to the group, without a room |
 
 Events: `item`, `progress`, `ack`, `presence`, `state`, `prekey`, `note`, `deleted`, `refresh`,
 `gone`, `signal`, `pair`, `pair.peer`.
