@@ -13,6 +13,8 @@ export const en: Strings = {
   join: 'Join',
   send: 'Send',
   copy: 'Copy',
+  'boot.failed': 'Entre Nous could not start.',
+  'boot.retry': 'Try again',
   save: 'Save',
   delete: 'Delete',
   deleteEverywhere: 'Delete everywhere',

@@ -115,7 +115,7 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
     private func handle(_ cmd: String, _ a: [String: Any]) throws -> Any? {
         switch cmd {
         case "kvGet":
-            return keychain.get(a["key"] as! String) ?? NSNull()
+            return try keychain.get(a["key"] as! String) ?? NSNull()
         case "kvSet":
             try keychain.set(a["key"] as! String, a["value"] as! String)
             return true
@@ -305,6 +305,12 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             return
         }
         decisionHandler(.allow)
+    }
+
+    /// The page loads (again): Reload in the menu, or its Retry button when the Keychain could
+    /// not be read. A refusal is asked again then.
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        keychain.retry()
     }
 }
 

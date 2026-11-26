@@ -12,7 +12,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
+#[cfg(not(test))]
 const SERVICE: &str = "dev.xdba.entrenous";
+#[cfg(test)]
+const SERVICE: &str = "dev.xdba.entrenous.test"; // never the key of the app on this machine
 const ACCOUNT: &str = "store";
 const NONCE: usize = 24;
 
@@ -21,64 +24,77 @@ pub struct Store {
     key_file: PathBuf,
     key: Option<[u8; 32]>,
     cache: BTreeMap<String, String>,
-    /// The key could not be read while data exists (store locked, access refused): nothing is
-    /// written, so nothing is lost.
-    unreadable: bool,
+    /// Opened, at the first access (its key read). Until then, and after a failure (store locked
+    /// or not there yet, access refused, damaged file), nothing is read nor written, so nothing
+    /// is lost; it is opened again at the next access.
+    loaded: bool,
 }
 
 impl Store {
+    /// Nothing read yet: the store opens at the first access.
     pub fn open(dir: PathBuf) -> Store {
         let _ = fs::create_dir_all(&dir);
         restrict(&dir, 0o700);
-        let mut s = Store {
+        Store {
             data: dir.join("store.bin"),
             key_file: dir.join("store.key"),
             key: None,
             cache: BTreeMap::new(),
-            unreadable: false,
-        };
-        s.load();
-        s
+            loaded: false,
+        }
     }
 
-    pub fn get(&self, key: &str) -> Option<String> {
-        self.cache.get(key).cloned()
+    /// Unreadable, it fails: an empty store would look like a first launch, and the page would
+    /// make a new identity.
+    pub fn get(&mut self, key: &str) -> Result<Option<String>, String> {
+        self.readable()?;
+        Ok(self.cache.get(key).cloned())
     }
 
     pub fn set(&mut self, key: &str, value: &str) -> Result<(), String> {
-        if self.unreadable {
-            return Err(crate::l10n::t("noStorage").into());
-        }
+        self.readable()?;
         self.cache.insert(key.to_string(), value.to_string());
         self.save()
     }
 
     pub fn delete(&mut self, key: &str) {
-        if !self.unreadable && self.cache.remove(key).is_some() {
+        if self.readable().is_ok() && self.cache.remove(key).is_some() {
             let _ = self.save();
         }
+    }
+
+    /// Opened at the first access, not at launch (a session may start with the store still
+    /// locked, or its service not there yet), and again at each access after a failure. The page
+    /// stops at the first failure and shows its Try again button: a store that asks for its
+    /// password asks once per try.
+    fn readable(&mut self) -> Result<(), String> {
+        if !self.loaded {
+            self.load();
+        }
+        if !self.loaded {
+            return Err(crate::l10n::t("noStorage").into());
+        }
+        Ok(())
     }
 
     // ------------------------------------------------------------------ storage
 
     fn load(&mut self) {
         let Ok(sealed) = fs::read(&self.data) else {
-            return; // first launch: the key is created at the first write
+            self.loaded = true; // first launch: the key is created at the first write
+            return;
         };
         let Some(key) = self.read_key() else {
             eprintln!("entrenous: storage key unreadable, nothing will be written");
-            self.unreadable = true;
             return;
         };
         match open(&key, &sealed).and_then(|plain| serde_json::from_slice(&plain).ok()) {
             Some(map) => {
                 self.cache = map;
                 self.key = Some(key);
+                self.loaded = true;
             }
-            None => {
-                eprintln!("entrenous: storage unreadable (wrong key or damaged file)");
-                self.unreadable = true;
-            }
+            None => eprintln!("entrenous: storage unreadable (wrong key or damaged file)"),
         }
     }
 
@@ -164,4 +180,75 @@ pub fn restrict(path: &std::path::Path, mode: u32) {
 #[cfg(not(unix))]
 pub fn restrict(_path: &std::path::Path, _mode: u32) {
     // Windows: the user's profile folders are already private to the user
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+    use std::process::Command;
+
+    fn dir() -> PathBuf {
+        let d = std::env::temp_dir().join(format!("entrenous-store-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    /// The key unreadable at launch, then back: the store says so instead of looking empty,
+    /// writes nothing, and opens once the key is back, without restarting.
+    fn unreadable_then_back(lock: impl Fn(&Path), unlock: impl Fn(&Path)) {
+        let d = dir();
+        let mut s = Store::open(d.clone());
+        assert_eq!(s.get("device"), Ok(None), "first launch: empty");
+        s.set("device", "mine").unwrap();
+        let sealed = fs::read(d.join("store.bin")).unwrap();
+
+        lock(&d);
+        let mut s = Store::open(d.clone()); // launched while the key cannot be read
+        assert!(!s.loaded, "nothing read at launch: a locked store asks once per access");
+        assert!(s.get("device").is_err(), "unreadable, not empty");
+        assert!(s.set("device", "new identity").is_err());
+        s.delete("device");
+        assert_eq!(fs::read(d.join("store.bin")).unwrap(), sealed, "nothing written");
+
+        unlock(&d);
+        assert_eq!(s.get("device"), Ok(Some("mine".into())), "read again at the next access");
+        s.set("other", "x").unwrap();
+        assert_eq!(Store::open(d.clone()).get("other"), Ok(Some("x".into())));
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    /// No Secret Service (a minimal desktop, or Docker): the key is in store.key.
+    #[test]
+    fn key_file_unreadable_then_back() {
+        if keyring::Entry::new(SERVICE, ACCOUNT).and_then(|e| e.set_password("probe")).is_ok() {
+            let _ = keyring::Entry::new(SERVICE, ACCOUNT).and_then(|e| e.delete_credential());
+            eprintln!("a Secret Service is there: see secret_service_locked_then_unlocked");
+            return;
+        }
+        let hidden = |d: &Path| d.join("store.key.hidden");
+        unreadable_then_back(
+            |d| fs::rename(d.join("store.key"), hidden(d)).unwrap(),
+            |d| fs::rename(hidden(d), d.join("store.key")).unwrap(),
+        );
+    }
+
+    /// A real Secret Service (GNOME Keyring), locked when the app starts, as in a session opened
+    /// without its password: ENTRENOUS_LOCK and ENTRENOUS_UNLOCK are the shell commands.
+    #[test]
+    #[ignore = "needs a Secret Service and the commands that lock and unlock it"]
+    fn secret_service_locked_then_unlocked() {
+        let sh = |var: &str| {
+            let cmd = std::env::var(var).unwrap_or_else(|_| panic!("{var} not set"));
+            assert!(Command::new("sh").args(["-c", &cmd]).status().unwrap().success(), "{var} failed");
+        };
+        unreadable_then_back(
+            |d| {
+                assert!(!d.join("store.key").exists(), "the key is in the Secret Service");
+                sh("ENTRENOUS_LOCK");
+            },
+            |_| sh("ENTRENOUS_UNLOCK"),
+        );
+        let _ = keyring::Entry::new(SERVICE, ACCOUNT).and_then(|e| e.delete_credential());
+    }
 }

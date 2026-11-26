@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.55 — 2026-11-26
+- Fix: les applis Mac, Linux et Windows ne restent plus bloquées sur leur logo quand le trousseau est verrouillé ; un bouton Réessayer s'affiche.
+
 ## 0.1.54 — 2026-11-26
 - Lecteur audio : précédent, suivant et boucle.
 

@@ -8,28 +8,34 @@ final class Keychain {
     let service: String
     private static let account = "store"
     private var cache: [String: String]?
-    /// Access refused (or Keychain locked): nothing is written, so nothing is lost.
-    private var unreadable = false
+    /// Access refused in the system dialog: not asked again before the page loads again
+    /// (one refusal, one dialog). Unreadable, nothing is read nor written, so nothing is lost.
+    private var refusal: BridgeError?
 
     init(service: String) {
         self.service = service
     }
 
-    func get(_ key: String) -> String? {
-        load()[key]
+    /// Unreadable (refused, session locked), it throws: an empty store would look like a
+    /// first launch, and the page would make a new identity.
+    func get(_ key: String) throws -> String? {
+        try load()[key]
     }
 
     func set(_ key: String, _ value: String) throws {
-        var entries = load()
-        if unreadable { throw BridgeError(L10n.t("keychain")) }
+        var entries = try load()
         entries[key] = value
         try save(entries)
     }
 
     func delete(_ key: String) {
-        var entries = load()
-        guard !unreadable, entries.removeValue(forKey: key) != nil else { return }
+        guard var entries = try? load(), entries.removeValue(forKey: key) != nil else { return }
         try? save(entries)
+    }
+
+    /// The page loads again (Reload, its Retry button): a refusal is asked again.
+    func retry() {
+        refusal = nil
     }
 
     // ------------------------------------------------------------------ storage
@@ -49,28 +55,30 @@ final class Keychain {
         return (out as? Data, status)
     }
 
-    private func load() -> [String: String] {
+    private func load() throws -> [String: String] {
         if let cache { return cache }
+        if let refusal { throw refusal }
         let (data, status) = read(Keychain.account)
         var entries: [String: String]
         if status == errSecItemNotFound {
-            guard let migrated = migrateLegacy() else { return refused() }
+            guard let migrated = migrateLegacy() else { throw failure(remembered: true) }
             entries = migrated
         } else if status == errSecSuccess, let data,
                   let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
             entries = dict
         } else {
-            return refused()
+            // refused in the dialog (or unreadable content): remembered; locked session or any
+            // other error: tried again at the next access, which shows no dialog
+            throw failure(remembered: status == errSecAuthFailed || status == errSecUserCanceled || status == errSecSuccess)
         }
         cache = entries
         return entries
     }
 
-    /// Not asked again until the next launch: one refusal, one dialog.
-    private func refused() -> [String: String] {
-        unreadable = true
-        cache = [:]
-        return [:]
+    private func failure(remembered: Bool) -> BridgeError {
+        let error = BridgeError(L10n.t("keychain"))
+        if remembered { refusal = error }
+        return error
     }
 
     private func save(_ entries: [String: String]) throws {

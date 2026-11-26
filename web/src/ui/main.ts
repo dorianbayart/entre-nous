@@ -322,7 +322,25 @@ Alpine.data('app', () => ({
   langNames: { fr: 'Français', en: 'English' } as Record<Lang, string>,
   langs: LANGS,
 
+  /** The app could not start (Keychain unavailable…): shown under the logo, with Retry. */
+  bootError: '',
+
   async init() {
+    try {
+      await this.boot();
+    } catch (err) {
+      // still on the logo: rather than nothing, why, and a way out
+      if (this.view !== 'loading') throw err;
+      this.bootError = err instanceof Error ? err.message : String(err);
+    }
+  },
+
+  /** The Mac app reads the Keychain again (a refusal too). */
+  retryBoot() {
+    location.reload();
+  },
+
+  async boot() {
     await platform.init?.();
     this.prefs = { ...this.prefs, ...((await platform.kv.get<Prefs>('prefs')) ?? {}) };
     this.applyLang();

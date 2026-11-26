@@ -203,7 +203,7 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
     let s = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").to_string();
     let cmd = s("cmd");
     match cmd.as_str() {
-        "kvGet" => Ok(b.store.lock().unwrap().get(&s("key")).map(Value::from).unwrap_or(Value::Null)),
+        "kvGet" => Ok(b.store.lock().unwrap().get(&s("key"))?.map(Value::from).unwrap_or(Value::Null)),
         "kvSet" => {
             b.store.lock().unwrap().set(&s("key"), &s("value"))?;
             Ok(json!(true))

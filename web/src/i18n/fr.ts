@@ -13,6 +13,8 @@ export const fr = {
   join: 'Rejoindre',
   send: 'Envoyer',
   copy: 'Copier',
+  'boot.failed': 'Entre Nous n’a pas pu démarrer.',
+  'boot.retry': 'Réessayer',
   save: 'Enregistrer',
   delete: 'Supprimer',
   deleteEverywhere: 'Supprimer partout',

@@ -1358,3 +1358,36 @@ test('scrolls: each screen on its own, the history kept under a page or a previe
   for (const d of [a, b]) await d.context.close();
   assert.deepEqual(problems, []);
 });
+
+test('desktop app: Keychain unreadable at start, the logo with why and Try again', { timeout: 60_000 }, async () => {
+  const mac = await device('Mac');
+  // the native side refuses its storage until it is unlocked (kept across the reload)
+  await mac.context.addInitScript(`(() => {
+    const kv = new Map();
+    window.__entrenous = {
+      config: { relay: location.origin, name: 'MacBook' },
+      event() {},
+      call: async (m) => {
+        if (m.cmd.startsWith('kv') && !sessionStorage.unlocked) throw new Error('Trousseau inaccessible');
+        if (m.cmd === 'kvGet') return kv.has(m.key) ? kv.get(m.key) : null;
+        if (m.cmd === 'kvSet') return void kv.set(m.key, m.value);
+        if (m.cmd === 'clipRead') return null;
+        return true;
+      },
+    };
+  })();`);
+  await mac.page.goto(APP);
+  const loading = mac.page.locator('.app > .center').first();
+  await loading.getByText('Entre Nous n’a pas pu démarrer.').waitFor();
+  assert.ok(await loading.locator('.logo').isVisible(), 'the logo stays');
+  assert.ok(await loading.getByText('Trousseau inaccessible').isVisible(), 'why');
+
+  // unlocked: Try again starts the app
+  await mac.page.evaluate(() => (sessionStorage.unlocked = '1'));
+  await button(mac.page, 'Réessayer').click();
+  await mac.page.locator('section.main').waitFor();
+  assert.ok(!(await loading.isVisible()));
+
+  await mac.context.close();
+  assert.deepEqual(problems, []);
+});

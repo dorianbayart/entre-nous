@@ -21,9 +21,12 @@
      @dragenter="onDragEnter($event)" @dragover.prevent="onDragOver" @dragleave="onDragLeave"
      @drop.prevent="onDrop($event)">
 
-  <!-- Loading -->
+  <!-- Loading; the app could not start (Keychain unavailable…): why, and Retry -->
   <div class="center" x-show="view === 'loading'">
     <div class="logo"></div>
+    <p x-show="bootError" x-text="t('boot.failed')"></p>
+    <p class="muted small" x-show="bootError" x-text="bootError"></p>
+    <button class="primary" x-show="bootError" @click="retryBoot" x-text="t('boot.retry')"></button>
   </div>
 
   <!-- iOS: install first (a home screen web app does not share Safari's storage) -->
