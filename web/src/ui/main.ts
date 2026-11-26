@@ -14,11 +14,12 @@ import { isIOS, isStandalone, webPlatform } from '../platform/web.ts';
 import { webrtcAvailable, webrtcLinks } from '../core/webrtc.ts';
 import { preview } from './previews.ts';
 import { NotStreamable, stream } from './player.ts';
+import { nowPlaying, type NowPlayingApi } from './now-playing.ts';
 import { renderMarkdown } from './markdown.ts';
 import { drawLayers, drawPage, openPdf, pageSize, type PdfDocument } from './pdf.ts';
 import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
 import { SEARCH_TYPES, highlight, isType, linkOf, matches, snippet, type Part, type SearchType } from '../core/search.ts';
-import type { FolderSource, LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
+import type { FolderSource, LocalCopy, MediaAction, Outgoing, PlatformApi } from '../platform/types.ts';
 import { type ContentReader } from '../core/reader.ts';
 import { type FolderFile, type FolderIndex, baseName, emptyDirs, fileReader, readBlob, readIndex, safePath } from '../core/folder.ts';
 import { FolderBrowser } from './folder-view.ts';
@@ -53,6 +54,7 @@ interface Prefs {
   updateSeen?: string; // new version whose banner was closed
   newsSeen?: string; // version whose "What's new" was seen (none: first run, nothing to show)
   updateNotified?: string; // new version already announced by a system notification
+  audioLoop?: 'one' | 'all'; // songs played again: this file, or all of them (none: no loop)
 }
 
 /** The apps are published on GitHub: the latest release, and each platform's file in it. */
@@ -155,9 +157,12 @@ function chunksOf(files: FolderFile[]) {
 /** What the open preview holds outside Alpine: stopped and released when it closes. */
 let viewerSeq = 0; // each opening; an older one still loading gives up
 let stopMedia: (() => void) | undefined;
+let mediaReader: ContentReader | undefined; // the video or song being opened: closed if left before it plays
 let viewerUrl = ''; // object URL of an image or of a whole video
 let textShown = ''; // the text of a text preview, for "Copy the text"
 let swipeX: number | null = null;
+let media: NowPlayingApi = { set() {}, clear() {} }; // the song playing, told to the system
+let pauseAsked = false; // paused (headset, lock screen) while the song was still opening: it does not start
 /** An open PDF: its document, what closes it, what draws its pages as they show. */
 let pdf: { doc: PdfDocument; close: () => void; observer?: IntersectionObserver; drawing: Promise<void>; onSelect?: () => void } | undefined;
 const PDF_ZOOMS = [1, 1.5, 2, 3];
@@ -359,6 +364,7 @@ Alpine.data('app', () => ({
     document.addEventListener('paste', (e) => this.onPaste(e as ClipboardEvent));
     document.addEventListener('keydown', (e) => this.onKey(e));
     this.keepScrolls();
+    media = nowPlaying(platform, (a, position) => this.onMediaAction(a, position));
     // the app's own picture-in-picture (Android, Linux, Windows)
     platform.pip?.onChange((active, closed) => {
       this.pipMode = active;
@@ -1399,6 +1405,8 @@ Alpine.data('app', () => ({
     const kind = this.previewOf(item);
     if (!kind || !this.groupId) return;
     this.releaseViewer();
+    if (kind !== 'audio') media.clear();
+    pauseAsked = false;
     const seq = ++viewerSeq;
     const groupId = this.groupId;
     engine.markRead(groupId, item.id);
@@ -1468,7 +1476,9 @@ Alpine.data('app', () => ({
     // Mac: back from the picture-in-picture window, the popover shows again
     video.onleavepictureinpicture = () => platform.show?.();
     try {
-      stopMedia = await stream(video, this.readerOf(groupId, item, { keep: 8, ahead: 3 }));
+      const stop = await stream(video, (mediaReader = this.readerOf(groupId, item, { keep: 8, ahead: 3 })));
+      if (stale()) return stop();
+      stopMedia = stop;
     } catch (err) {
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
@@ -1497,8 +1507,18 @@ Alpine.data('app', () => ({
     };
     audio.onerror = onError;
     audio.addEventListener('streamerror', onError);
+    // the system (Bluetooth, lock screen) follows it; at its end, the next one
+    audio.onplay = audio.onpause = audio.onseeked = audio.ondurationchange = () => {
+      if (!stale()) this.tellNowPlaying();
+    };
+    audio.onended = () => {
+      if (!stale()) this.onAudioEnded();
+    };
+    this.tellNowPlaying();
     try {
-      stopMedia = await stream(audio, this.readerOf(groupId, item, { keep: 4, ahead: 2 }), { duration: item.duration });
+      const stop = await stream(audio, (mediaReader = this.readerOf(groupId, item, { keep: 4, ahead: 2 })), { duration: item.duration });
+      if (stale()) return stop();
+      stopMedia = stop;
     } catch (err) {
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
@@ -1511,7 +1531,7 @@ Alpine.data('app', () => ({
       viewerUrl = URL.createObjectURL(c.blob!);
       audio.src = viewerUrl;
     }
-    if (stale()) return;
+    if (stale() || pauseAsked) return;
     audio.play().catch(() => {}); // may wait for a tap (no sound without a gesture)
   },
 
@@ -1650,11 +1670,157 @@ Alpine.data('app', () => ({
     return (this as any).$refs?.audio;
   },
 
+  /**
+   * The songs played one after another: those of the open folder in its order, or those of the
+   * history in the order they were sent (the oldest first, whatever is pinned).
+   */
+  get audioList(): ItemView[] {
+    if (this.viewerFiles.length) return this.viewerFiles.filter((i) => this.isAudio(i));
+    return this.items
+      .map((item, at) => ({ item, at }))
+      .filter((x) => this.isAudio(x.item))
+      .sort((a, b) => a.item.createdAt - b.item.createdAt || b.at - a.at)
+      .map((x) => x.item);
+  },
+
+  get loopMode(): 'off' | 'one' | 'all' {
+    return this.prefs.audioLoop ?? 'off';
+  },
+
+  /** The song `delta` away from the one playing; past either end, back to the other one when everything loops. */
+  audioAt(delta: number): ItemView | undefined {
+    const list = this.audioList;
+    const i = list.findIndex((x) => x.id === this.viewer.id);
+    if (i < 0) return undefined;
+    const j = i + delta;
+    if (j >= 0 && j < list.length) return list[j];
+    return this.loopMode === 'all' ? list[(j + list.length) % list.length] : undefined;
+  },
+
+  get audioHasNext() {
+    return !!this.audioAt(1);
+  },
+
+  /** "Up next": the song playing, then the next ones (going round when everything loops). */
+  get audioQueue() {
+    const list = this.audioList;
+    const i = list.findIndex((x) => x.id === this.viewer.id);
+    if (i < 0 || list.length < 2) return [];
+    const queue = [];
+    for (let k = 0; k < Math.min(4, list.length); k++) {
+      let j = i + k;
+      if (j >= list.length) {
+        if (this.loopMode !== 'all') break;
+        j -= list.length;
+      }
+      const item = list[j];
+      queue.push({ id: item.id, item, name: this.label(item), time: item.duration ? clock(item.duration) : '', cls: k === 0 ? 'now' : '' });
+    }
+    return queue;
+  },
+
+  get loopTitle() {
+    const m = this.loopMode;
+    return this.t(m === 'all' && this.viewerInFolder ? 'audio.loop.folder' : m === 'all' ? 'audio.loop.all' : m === 'one' ? 'audio.loop.one' : 'audio.loop.off');
+  },
+
+  get loopShort() {
+    const m = this.loopMode;
+    return this.t(m === 'all' && this.viewerInFolder ? 'audio.loopShort.folder' : m === 'all' ? 'audio.loopShort.all' : m === 'one' ? 'audio.loopShort.one' : 'audio.loopShort.off');
+  },
+
+  get loopClass() {
+    return 'loop-mode' + (this.loopMode === 'off' ? '' : ' on');
+  },
+
+  /** No loop, this file, all of them: kept on this device. */
+  cycleLoop() {
+    const m = this.loopMode;
+    this.prefs.audioLoop = m === 'off' ? 'one' : m === 'one' ? 'all' : undefined;
+    this.savePrefs();
+    this.tellNowPlaying();
+  },
+
+  /** Like a music player: past its first 3 seconds, back to the start of the song. */
+  audioPrev() {
+    const audio = this.audioEl();
+    const prev = this.audioAt(-1);
+    if (!prev || prev.id === this.viewer.id || (audio && audio.currentTime > 3 && !this.viewer.error)) return this.restartAudio();
+    this.openAudio(prev);
+  },
+
+  audioNext() {
+    const next = this.audioAt(1);
+    if (!next) return;
+    if (next.id === this.viewer.id) this.restartAudio();
+    else this.openAudio(next);
+  },
+
+  openQueued(q: { item: ItemView }) {
+    if (q.item.id !== this.viewer.id) this.openAudio(q.item);
+  },
+
+  restartAudio() {
+    const audio = this.audioEl();
+    if (!audio || this.viewer.error) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  },
+
+  onAudioEnded() {
+    if (this.loopMode === 'one') return this.restartAudio();
+    if (this.audioHasNext) this.audioNext();
+    else this.tellNowPlaying();
+  },
+
+  /** Opens another song; in the background, the connection waits for its reader. */
+  async openAudio(item: ItemView) {
+    const release = engine.hold();
+    try {
+      if (this.viewerInFolder) await this.openFolderFile(item as FileView);
+      else await this.openPreview(item);
+    } finally {
+      release();
+    }
+  },
+
+  /** The song playing, told to the system: its name on a Bluetooth headset or car, the lock screen. */
+  tellNowPlaying() {
+    const item = this.viewerItem;
+    const audio = this.audioEl();
+    if (!item || !audio || !this.viewerIs('audio')) return;
+    const name = this.label(item);
+    media.set({
+      title: name.replace(/\.[^.\s]{1,5}$/, ''),
+      artist: 'Entre Nous',
+      album: this.group?.name ?? '',
+      duration: Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : item.duration ?? 0,
+      position: audio.currentTime || 0,
+      playing: !audio.paused,
+      hasNext: this.audioHasNext,
+    });
+  },
+
+  /** A button of the headset, the car, the lock screen or the keyboard. */
+  onMediaAction(action: MediaAction, position?: number) {
+    const audio = this.audioEl();
+    if (!this.viewer.open || !this.viewerIs('audio') || !audio) return;
+    pauseAsked = action === 'pause' || action === 'stop';
+    if (action === 'play') audio.play().catch(() => {});
+    else if (pauseAsked) audio.pause();
+    else if (action === 'prev') this.audioPrev();
+    else if (action === 'next') this.audioNext();
+    else if (action === 'seek' && position !== undefined && Number.isFinite(position)) audio.currentTime = position;
+  },
+
   /** Stops what the preview holds: video, song, object URL, picture-in-picture. */
   releaseViewer() {
     viewerSeq++;
     stopMedia?.();
     stopMedia = undefined;
+    // still opening (left, or the next song asked): it gives up, and leaves the player alone
+    mediaReader?.close();
+    mediaReader = undefined;
     const video = this.videoEl();
     if (video) {
       if ((document as any).pictureInPictureElement === video) (document as any).exitPictureInPicture().catch(() => {});
@@ -1667,7 +1833,7 @@ Alpine.data('app', () => ({
     }
     const audio = this.audioEl();
     if (audio) {
-      audio.onerror = null;
+      audio.onerror = audio.onplay = audio.onpause = audio.onseeked = audio.ondurationchange = audio.onended = null;
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
@@ -1690,6 +1856,7 @@ Alpine.data('app', () => ({
 
   closeViewer() {
     this.releaseViewer();
+    media.clear();
     this.viewer.open = false;
     this.viewer.kind = '';
     this.viewer.id = '';

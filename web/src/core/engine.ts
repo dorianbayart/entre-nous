@@ -345,6 +345,8 @@ export class Engine {
   private running = false;
   /** Sent to the background during a transfer: disconnects once it is over. */
   private stopWhenIdle = false;
+  /** Holds on the connection (`hold()`), counted like readers. */
+  private holds = 0;
   private sweeper?: ReturnType<typeof setInterval>;
   /** The share links made here, until they expire or are deleted. */
   private shareList: LocalShare[] = [];
@@ -436,8 +438,23 @@ export class Engine {
 
   /** App in the background: disconnects, but only once the transfers in progress are over. */
   background() {
-    if (this.busy || this.readers.size) this.stopWhenIdle = true;
+    if (this.busy || this.readers.size || this.holds) this.stopWhenIdle = true;
     else this.stop();
+  }
+
+  /**
+   * Keeps the connection, even in the background, until the returned function is called:
+   * the next song opens its reader once the previous one is closed.
+   */
+  hold() {
+    this.holds++;
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      this.holds--;
+      this.stopIfIdle();
+    };
   }
 
   /** Disconnects. */
@@ -1498,7 +1515,7 @@ export class Engine {
   }
 
   private stopIfIdle() {
-    if (this.stopWhenIdle && !this.busy && !this.readers.size) this.stop();
+    if (this.stopWhenIdle && !this.busy && !this.readers.size && !this.holds) this.stop();
   }
 
   /**

@@ -4,4 +4,10 @@
     <string name="title_activity_main">Entre Nous</string>
     <string name="package_name">dev.xdba.entrenous</string>
     <string name="custom_url_scheme">dev.xdba.entrenous</string>
+    <!-- the notification of a song playing -->
+    <string name="media_channel">Audio playback</string>
+    <string name="media_prev">Previous track</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Next track</string>
 </resources>

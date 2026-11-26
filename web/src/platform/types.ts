@@ -128,9 +128,32 @@ export interface PlatformApi {
     /** Android: the play/pause button of the small window. */
     onToggle?(cb: () => void): void;
   };
+  /**
+   * Android app: the song playing, told to the system (Bluetooth headset or car, lock screen,
+   * notification), which sends back its buttons. Elsewhere, the page's Media Session does it.
+   */
+  media?: {
+    set(m: NowPlaying): void;
+    clear(): void;
+    onAction(cb: (action: MediaAction, position?: number) => void): void;
+  };
   /** Mac: shows the window (popover) again: back from the browser's picture-in-picture. */
   show?(): void;
   /** Mac: the keystrokes go to the page (its window key, the web view first responder), for a
    *  field it focuses. */
   focus?(): void;
 }
+
+/** The song playing, as the system shows it (seconds). */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  position: number;
+  playing: boolean;
+  hasNext: boolean;
+}
+
+/** A button of the system (headset, car, lock screen): `seek` comes with its position. */
+export type MediaAction = 'play' | 'pause' | 'prev' | 'next' | 'seek' | 'stop';

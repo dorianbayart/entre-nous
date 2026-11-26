@@ -132,7 +132,8 @@ clavier) passent d'un élément à l'autre ; Échap ferme.
 - **Audio** : il s'écoute pendant qu'il arrive, sans être téléchargé en entier, et on peut avancer
   ou reculer à tout moment. MP3, M4A, Opus, FLAC et WAV (8, 16 ou 24 bits) ; les autres formats
   (Ogg Vorbis, WAV en virgule flottante…) se téléchargent d'abord, puis s'écoutent si l'appareil
-  sait les lire.
+  sait les lire. Quand un audio se termine, le suivant démarre tout seul. **Précédent** et
+  **Suivant** passent d'un audio à l'autre ; **Boucle** répète le fichier, ou tout l'historique.
 - **PDF** : ses pages défilent, chacune affichée en arrivant à l'écran ; seules les parties du
   fichier dont elles ont besoin sont téléchargées. **−** et **+** zooment, le pourcentage revient à
   la largeur de l'écran. Son texte se sélectionne, et **Copier la sélection** le copie ; ses liens

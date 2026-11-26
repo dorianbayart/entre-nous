@@ -126,7 +126,9 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
   cannot play (HEVC on some PCs, for instance) offers **Save**.
 - **Audio**: it plays while it arrives, without being downloaded whole, and you can jump forward
   or back at any time. MP3, M4A, Opus, FLAC and WAV (8, 16 or 24 bits); other formats (Ogg
-  Vorbis, floating-point WAV…) download first, then play if the device can play them.
+  Vorbis, floating-point WAV…) download first, then play if the device can play them. When a
+  track ends, the next one starts on its own. **Previous** and **Next** move from one track to
+  another; **Repeat** plays the same file again, or the whole history.
 - **PDF**: its pages scroll, each drawn as it comes on screen; only the parts of the file they need
   are downloaded. **−** and **+** zoom, the percentage goes back to the width of the screen. Its text
   can be selected, and **Copy the selection** copies it; its web links (http, https, mailto) open in

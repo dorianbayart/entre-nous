@@ -3,7 +3,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { b64, fromJSON, toJSON, unb64 } from '../core/bytes.ts';
 import type { KV } from '../core/storage.ts';
-import type { Outgoing, PlatformApi } from './types.ts';
+import type { MediaAction, Outgoing, PlatformApi } from './types.ts';
 import { folderFromNative } from '../ui/folder-send.ts';
 import { t } from '../i18n/index.ts';
 
@@ -159,6 +159,23 @@ export function androidPlatform(): PlatformApi {
       },
       onToggle(cb) {
         Native.addListener('pipToggle', () => cb());
+      },
+    },
+
+    // The WebView tells the system nothing: the app's own media session gives the song's name
+    // to a Bluetooth headset or car, the lock screen and the notification, and their buttons
+    // back to the page; it keeps the app alive while a song plays in the background.
+    media: {
+      set(m) {
+        Native.mediaSet({ ...m, duration: Math.round(m.duration * 1000), position: Math.round(m.position * 1000) }).catch(() => {});
+      },
+      clear() {
+        Native.mediaClear().catch(() => {});
+      },
+      onAction(cb) {
+        Native.addListener('media', (e: { action: MediaAction; position?: number }) =>
+          cb(e.action, e.position === undefined ? undefined : e.position / 1000),
+        );
       },
     },
   };

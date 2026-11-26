@@ -683,11 +683,108 @@ test('songs: MP3, M4A, Opus, FLAC and WAV streamed, jumps to the middle and near
     await audio.evaluate((el, t) => (el.currentTime = t), middle);
     await until(`${f} plays from the middle`, () => audio.evaluate((el, t) => el.currentTime > t + 1 && el.currentTime < t + 10, middle), 20_000);
     await audio.evaluate((el, t) => (el.currentTime = t), length - 4);
-    await until(`${f} ends`, () => audio.evaluate((el) => el.ended), 30_000);
+    // at its end, the next one sent; the last one stops there
+    const next = songs[songs.findIndex((s) => s.f === f) + 1];
+    if (next) await viewer.locator('.viewer-title strong', { hasText: next.f }).waitFor({ timeout: 30_000 });
+    else await until(`${f} ends`, () => audio.evaluate((el) => el.ended), 30_000);
     assert.ok(!(await viewer.locator('.viewer-actions').getByText('Copier le texte').isVisible()), 'no text to copy');
     await b.page.keyboard.press('Escape');
     await viewer.waitFor({ state: 'hidden' });
   }
+  await a.context.close();
+  await b.context.close();
+  assert.deepEqual(problems, []);
+});
+
+test('songs one after another: previous, next, loop, up next, the system told', { timeout: 180_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  // the Media Session: what the system is told, and its buttons, kept to be checked
+  await b.context.addInitScript(`window.__media = {};
+    navigator.mediaSession.setActionHandler = (name, fn) => { window.__media[name] = fn; };`);
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  // three songs sent in this order, a photo between them
+  for (const f of ['song.mp3', 'photo.jpg', 'song.m4a', 'song.opus']) {
+    await a.page.locator('input[type=file][multiple]').setInputFiles(`${FIXTURES}${f}`);
+    await b.page.locator('.history .item', { hasText: f }).waitFor();
+  }
+  await until('uploads over', async () => (await b.page.locator('.transfer').count()) === 0, 90_000);
+  const viewer = b.page.locator('section.viewer');
+  const audio = viewer.locator('audio');
+  const title = viewer.locator('.viewer-title strong');
+  const playing = (f) => viewer.locator('.viewer-title strong', { hasText: f }).waitFor({ timeout: 30_000 });
+  const plays = () => until('it plays', () => audio.evaluate((el) => !el.paused && el.currentTime > 0.3), 20_000);
+  const queue = () => viewer.locator('.audio-queue button').allTextContents();
+  const loop = viewer.locator('.loop-mode');
+
+  await button(b.page.locator('.history .item', { hasText: 'song.m4a' }), 'Écouter').click();
+  await audio.evaluate((el) => {
+    el.muted = true;
+    return el.play().catch(() => {});
+  });
+  await plays();
+  // up next: this one, then the next one sent (not the photo), in sending order
+  assert.deepEqual(await queue(), ['song.m4a5:00', 'song.opus5:00']);
+  assert.equal(await loop.textContent().then((x) => x.trim()), 'Pas de boucle');
+  // the system: the song's name, playing, and its buttons
+  await until('told to the system', () => b.page.evaluate(() => navigator.mediaSession.metadata?.title === 'song' && navigator.mediaSession.playbackState === 'playing'));
+  assert.ok(await b.page.evaluate(() => typeof window.__media.nexttrack === 'function' && typeof window.__media.previoustrack === 'function'));
+
+  // previous, early in the song: the one sent before
+  await viewer.getByLabel('Audio précédent').click();
+  await playing('song.mp3');
+  await plays();
+  assert.deepEqual(await queue(), ['song.mp35:00', 'song.m4a5:00', 'song.opus5:00']);
+  // later in the song: back to its start
+  await audio.evaluate((el) => (el.currentTime = 60));
+  await until('at 60 s', () => audio.evaluate((el) => el.currentTime > 60));
+  await viewer.getByLabel('Audio précédent').click();
+  await until('back to the start', () => audio.evaluate((el) => el.currentTime < 5));
+  assert.match(await title.textContent(), /song\.mp3/);
+
+  // next, from the headset (the system's button)
+  await b.page.evaluate(() => window.__media.nexttrack({ action: 'nexttrack' }));
+  await playing('song.m4a');
+  await b.page.evaluate(() => window.__media.nexttrack({ action: 'nexttrack' }));
+  await playing('song.opus');
+  await plays();
+  // the last one: no next, unless everything loops
+  assert.ok(await viewer.getByLabel('Audio suivant').isDisabled());
+  assert.equal(await b.page.evaluate(() => window.__media.nexttrack), null, 'no next button for the system');
+
+  // the loop, kept on this device: this file, then the whole history
+  await loop.click();
+  assert.equal(await loop.textContent().then((x) => x.trim()), 'Ce fichier');
+  assert.equal(await loop.getAttribute('title'), 'Boucle sur le fichier');
+  await audio.evaluate((el) => (el.currentTime = 296));
+  await until('ended, then again from the start', () => audio.evaluate((el) => el.currentTime > 0.3 && el.currentTime < 10 && !el.paused), 30_000);
+  assert.match(await title.textContent(), /song\.opus/);
+  await loop.click();
+  assert.equal(await loop.getAttribute('title'), 'Boucle sur l’historique');
+  assert.deepEqual(await queue(), ['song.opus5:00', 'song.mp35:00', 'song.m4a5:00']);
+  await audio.evaluate((el) => (el.currentTime = 296));
+  await playing('song.mp3'); // round again
+  await plays();
+  // a song of the queue, touched
+  await viewer.locator('.audio-queue button', { hasText: 'song.opus' }).click();
+  await playing('song.opus');
+
+  // paused from the lock screen, then closed: the system is told
+  await b.page.evaluate(() => window.__media.pause({ action: 'pause' }));
+  await until('paused', () => audio.evaluate((el) => el.paused));
+  await until('told paused', () => b.page.evaluate(() => navigator.mediaSession.playbackState === 'paused'));
+  await b.page.keyboard.press('Escape');
+  await viewer.waitFor({ state: 'hidden' });
+  assert.equal(await b.page.evaluate(() => navigator.mediaSession.metadata), null);
+
+  // the loop mode, still there after a reload
+  await b.page.reload();
+  await button(b.page.locator('.history .item', { hasText: 'song.mp3' }), 'Écouter').click();
+  assert.equal(await loop.getAttribute('title'), 'Boucle sur l’historique');
+  await loop.click();
+  assert.equal(await loop.getAttribute('title'), 'Pas de boucle');
   await a.context.close();
   await b.context.close();
   assert.deepEqual(problems, []);

@@ -1,5 +1,8 @@
 package dev.xdba.entrenous;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
 import android.app.RemoteAction;
@@ -13,12 +16,19 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.os.PersistableBundle;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
@@ -94,6 +104,7 @@ public class EntreNousPlugin extends Plugin {
     public void load() {
         prefs = getContext().getSharedPreferences("entrenous", Context.MODE_PRIVATE);
         registerPipReceiver();
+        registerMediaReceiver();
         io.execute(this::purgeOldFiles);
         getActivity()
             .getOnBackPressedDispatcher()
@@ -740,6 +751,217 @@ public class EntreNousPlugin extends Plugin {
         o.put("active", active);
         o.put("closed", closed);
         notifyListeners("pip", o);
+    }
+
+    // ------------------------------------------------------------------ now playing
+
+    // The WebView tells the system nothing about what it plays: this media session gives the
+    // song's name to a Bluetooth headset or car, the lock screen and the notification, and sends
+    // their buttons to the page; a foreground service keeps the app playing in the background.
+
+    private static final String MEDIA_ACTION = "dev.xdba.entrenous.MEDIA";
+    private static final String MEDIA_CHANNEL = "playback";
+    private MediaSession session;
+    private boolean playbackService = false;
+    private Bitmap mediaArt;
+
+    @PluginMethod
+    public void mediaSet(PluginCall call) {
+        JSObject d = call.getData();
+        String title = d.optString("title", "");
+        String artist = d.optString("artist", "");
+        String album = d.optString("album", "");
+        long duration = Math.max(0, d.optLong("duration", 0));
+        long position = Math.max(0, d.optLong("position", 0));
+        boolean playing = d.optBoolean("playing", false);
+        boolean hasNext = d.optBoolean("hasNext", false);
+        main.post(() -> {
+            try {
+                showMedia(title, artist, album, duration, position, playing, hasNext);
+            } catch (RuntimeException e) {
+                // a service the system refuses to start (in the background): the session stays
+            }
+        });
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void mediaClear(PluginCall call) {
+        main.post(this::clearMedia);
+        call.resolve();
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        clearMedia();
+    }
+
+    private void showMedia(String title, String artist, String album, long duration, long position, boolean playing, boolean hasNext) {
+        Context ctx = getContext();
+        if (session == null) {
+            session = new MediaSession(ctx, "EntreNous");
+            session.setCallback(
+                new MediaSession.Callback() {
+                    @Override
+                    public void onPlay() {
+                        mediaAction("play", -1);
+                    }
+
+                    @Override
+                    public void onPause() {
+                        mediaAction("pause", -1);
+                    }
+
+                    @Override
+                    public void onStop() {
+                        mediaAction("stop", -1);
+                    }
+
+                    @Override
+                    public void onSkipToNext() {
+                        mediaAction("next", -1);
+                    }
+
+                    @Override
+                    public void onSkipToPrevious() {
+                        mediaAction("prev", -1);
+                    }
+
+                    @Override
+                    public void onSeekTo(long pos) {
+                        mediaAction("seek", pos);
+                    }
+                }
+            );
+            session.setSessionActivity(openApp(ctx));
+        }
+        MediaMetadata.Builder meta = new MediaMetadata.Builder()
+            .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+            .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
+            .putLong(MediaMetadata.METADATA_KEY_DURATION, duration);
+        Bitmap art = mediaArt(ctx);
+        if (art != null) meta.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
+        session.setMetadata(meta.build());
+        long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_STOP
+            | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SEEK_TO | (hasNext ? PlaybackState.ACTION_SKIP_TO_NEXT : 0);
+        session.setPlaybackState(
+            new PlaybackState.Builder()
+                .setActions(actions)
+                .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, position, playing ? 1f : 0f, SystemClock.elapsedRealtime())
+                .build()
+        );
+        session.setActive(true);
+
+        Notification n = mediaNotification(ctx, title, album, art, playing, hasNext);
+        PlaybackService.notification = n;
+        if (!playbackService) {
+            Intent service = new Intent(ctx, PlaybackService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(service);
+            else ctx.startService(service);
+            playbackService = true;
+        } else {
+            ctx.getSystemService(NotificationManager.class).notify(PlaybackService.NOTIFICATION_ID, n);
+        }
+    }
+
+    private void clearMedia() {
+        Context ctx = getContext();
+        if (session != null) {
+            session.setActive(false);
+            session.release();
+            session = null;
+        }
+        if (playbackService) {
+            ctx.stopService(new Intent(ctx, PlaybackService.class));
+            playbackService = false;
+        }
+        PlaybackService.notification = null;
+        ctx.getSystemService(NotificationManager.class).cancel(PlaybackService.NOTIFICATION_ID);
+    }
+
+    private void mediaAction(String action, long position) {
+        JSObject o = new JSObject();
+        o.put("action", action);
+        if (position >= 0) o.put("position", position);
+        notifyListeners("media", o);
+    }
+
+    /** The song's notification: its name, previous / play or pause / next. */
+    private Notification mediaNotification(Context ctx, String title, String album, Bitmap art, boolean playing, boolean hasNext) {
+        Notification.Builder b;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+            if (nm.getNotificationChannel(MEDIA_CHANNEL) == null) {
+                NotificationChannel ch = new NotificationChannel(MEDIA_CHANNEL, ctx.getString(R.string.media_channel), NotificationManager.IMPORTANCE_LOW);
+                ch.setShowBadge(false);
+                nm.createNotificationChannel(ch);
+            }
+            b = new Notification.Builder(ctx, MEDIA_CHANNEL);
+        } else {
+            b = new Notification.Builder(ctx);
+        }
+        b.setSmallIcon(R.drawable.ic_stat_music)
+            .setContentTitle(title)
+            .setContentText(album)
+            .setContentIntent(openApp(ctx))
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setShowWhen(false)
+            .setOngoing(playing);
+        if (art != null) b.setLargeIcon(art);
+        b.addAction(mediaButton(ctx, "prev", android.R.drawable.ic_media_previous, R.string.media_prev));
+        b.addAction(
+            playing
+                ? mediaButton(ctx, "pause", android.R.drawable.ic_media_pause, R.string.media_pause)
+                : mediaButton(ctx, "play", android.R.drawable.ic_media_play, R.string.media_play)
+        );
+        if (hasNext) b.addAction(mediaButton(ctx, "next", android.R.drawable.ic_media_next, R.string.media_next));
+        Notification.MediaStyle style = new Notification.MediaStyle().setMediaSession(session.getSessionToken());
+        style.setShowActionsInCompactView(hasNext ? new int[] { 0, 1, 2 } : new int[] { 0, 1 });
+        b.setStyle(style);
+        return b.build();
+    }
+
+    private Notification.Action mediaButton(Context ctx, String action, int icon, int label) {
+        Intent i = new Intent(MEDIA_ACTION).setPackage(ctx.getPackageName()).putExtra("action", action);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, action.hashCode(), i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        return new Notification.Action.Builder(Icon.createWithResource(ctx, icon), ctx.getString(label), pi).build();
+    }
+
+    private static PendingIntent openApp(Context ctx) {
+        Intent i = new Intent(ctx, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        return PendingIntent.getActivity(ctx, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    /** The app's icon, for the lock screen and the notification. */
+    private Bitmap mediaArt(Context ctx) {
+        if (mediaArt != null) return mediaArt;
+        try {
+            Drawable icon = ctx.getPackageManager().getApplicationIcon(ctx.getPackageName());
+            Bitmap bmp = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(bmp);
+            icon.setBounds(0, 0, 256, 256);
+            icon.draw(c);
+            mediaArt = bmp;
+        } catch (PackageManager.NameNotFoundException ignored) {}
+        return mediaArt;
+    }
+
+    /** The notification's buttons: handed over to the web side. */
+    private void registerMediaReceiver() {
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                String action = i.getStringExtra("action");
+                if (action != null) mediaAction(action, -1);
+            }
+        };
+        IntentFilter filter = new IntentFilter(MEDIA_ACTION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            getContext().registerReceiver(receiver, filter);
+        }
     }
 
     // ------------------------------------------------------------------ intents

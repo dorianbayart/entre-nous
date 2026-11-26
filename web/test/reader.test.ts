@@ -97,7 +97,18 @@ test('reader: ranges on demand, during the upload, own copy, preview', { timeout
   assert.equal(phone.groups[0].status, 'online', 'a reader keeps the connection');
   const full = new Uint8Array(await (await phone.content(gid, item.id)).blob!.arrayBuffer());
   assert.deepEqual(full, data);
+  // the next song, still in the background: its reader opens once the previous one is closed
+  const held = phone.hold();
   r2.close();
+  await new Promise((res) => setTimeout(res, 200));
+  assert.equal(phone.groups[0].status, 'online', 'held between two songs');
+  const r3 = phone.reader(gid, item.id);
+  held();
+  held(); // twice: counted once
+  await new Promise((res) => setTimeout(res, 200));
+  assert.equal(phone.groups[0].status, 'online', 'the next reader keeps it');
+  assert.deepEqual(await r3.read(0, 10), data.subarray(0, 10));
+  r3.close();
   await until('disconnected once nothing is read', () => phone.groups[0].status !== 'online');
 
   mac.stop();

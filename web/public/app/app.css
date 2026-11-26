@@ -92,7 +92,9 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: opacity .15s, background .15s;
+  /* never opacity: WebKit animates it in a layer of its own, and a button that changes size
+     while pressed (the loop button) leaves a piece of its old shape on screen */
+  transition: background .15s;
   color: inherit;
   background: none;
 }
@@ -405,16 +407,35 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 .segmented .zoom { min-width: 62px; font-variant-numeric: tabular-nums; }
 .segmented button:disabled { opacity: .4; }
 .thumb.pic.pdf img { object-position: top; }
-/* a song: its note, its player */
-.viewer-audio { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+/* a song: its note, its player, previous / next / loop, then what comes next */
+.viewer-audio { width: 100%; max-width: 480px; max-height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .viewer-audio .note {
-  width: 140px; height: 140px; border-radius: 28px; background: var(--accent-soft);
+  width: 120px; height: 120px; border-radius: 26px; background: var(--accent-soft); flex: none;
   display: flex; align-items: center; justify-content: center;
 }
-.viewer-audio .note svg { width: 64px; height: 64px; stroke: var(--accent); stroke-width: 1.6; fill: none; }
-.viewer-audio audio { width: 100%; }
+.viewer-audio .note svg { width: 56px; height: 56px; stroke: var(--accent); stroke-width: 1.6; fill: none; }
+.viewer-audio audio { width: 100%; flex: none; }
+.audio-controls { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.audio-skip { display: flex; gap: 4px; }
+.audio-skip .icon { padding: 11px; color: var(--text); border-radius: 22px; }
+.audio-skip .icon svg { width: 20px; height: 20px; }
+.audio-skip .icon:disabled { opacity: .3; background: none; }
+.loop-mode {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 18px; font-size: 13px;
+  color: var(--muted); border: 1px solid var(--line); background: var(--surface); white-space: nowrap;
+}
+.loop-mode svg { width: 16px; height: 16px; }
+.loop-mode.on { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+.loop-mode.on svg { stroke: var(--accent); }
+.audio-queue { width: 100%; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.audio-queue .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 2px 8px; }
+.audio-queue button { display: flex; justify-content: flex-start; gap: 10px; padding: 8px; border-radius: 9px; text-align: left; min-width: 0; width: 100%; }
+.audio-queue button:hover { background: var(--accent-soft); }
+.audio-queue button span:first-child { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.audio-queue button span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+.audio-queue button.now { background: var(--accent-soft); font-weight: 600; }
 .viewer-state { position: absolute; padding: 8px 14px; border-radius: 10px; background: rgb(0 0 0 / .55); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
-.viewer-error { color: var(--muted); text-align: center; max-width: 320px; }
+.viewer-error, .audio-error { color: var(--muted); text-align: center; max-width: 320px; }
 .viewer .nav {
   position: absolute; top: 50%; width: 44px; height: 44px; margin-top: -22px; padding: 0; border-radius: 22px;
   background: rgb(0 0 0 / .4); color: #fff;

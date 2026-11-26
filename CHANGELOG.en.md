@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.54 — 2026-11-26
+- Audio player: previous, next and repeat.
+
 ## 0.1.53 — 2026-11-26
 - Fix: the history stays where it was when coming back from another page or a preview.
 

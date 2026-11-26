@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="media_channel">Lecture audio</string>
+    <string name="media_prev">Audio précédent</string>
+    <string name="media_play">Lecture</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Audio suivant</string>
+</resources>

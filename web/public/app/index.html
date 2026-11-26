@@ -626,9 +626,31 @@
       <img class="viewer-blur" x-show="viewerThumb" :src="viewerThumb" alt="">
       <img class="viewer-image" x-show="viewerIs('image') && viewer.src" :src="viewer.src" :alt="viewerName" @error="onViewerImageError">
       <video x-ref="player" class="viewer-video" x-show="viewerIs('video') && !viewer.error" :controls="videoControls" playsinline preload="metadata"></video>
-      <div class="viewer-audio" x-show="viewerIs('audio') && !viewer.error">
-        <span class="note" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
-        <audio x-ref="audio" controls preload="metadata"></audio>
+      <!-- a song: its player, the previous and next songs, the loop; then what comes next -->
+      <div class="viewer-audio" x-show="viewerIs('audio')">
+        <span class="note" aria-hidden="true" x-show="!viewer.error"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <audio x-ref="audio" controls preload="metadata" x-show="!viewer.error"></audio>
+        <p class="audio-error" x-show="viewer.error" x-text="viewer.error"></p>
+        <div class="audio-controls">
+          <div class="audio-skip">
+            <button class="icon" @click="audioPrev" :aria-label="t('audio.prev')" :title="t('audio.prev')">
+              <svg viewBox="0 0 24 24"><path d="M19 20 9 12l10-8z"/><path d="M5 19V5"/></svg>
+            </button>
+            <button class="icon" @click="audioNext" :disabled="!audioHasNext" :aria-label="t('audio.next')" :title="t('audio.next')">
+              <svg viewBox="0 0 24 24"><path d="m5 4 10 8-10 8z"/><path d="M19 5v14"/></svg>
+            </button>
+          </div>
+          <button :class="loopClass" @click="cycleLoop" :aria-label="loopTitle" :title="loopTitle">
+            <svg viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+            <span x-text="loopShort"></span>
+          </button>
+        </div>
+        <div class="audio-queue" x-show="audioQueue.length > 1">
+          <span class="label" x-text="t('audio.upNext')"></span>
+          <template x-for="q in audioQueue" :key="q.id">
+            <button :class="q.cls" @click="openQueued(q)"><span x-text="q.name"></span><span x-text="q.time"></span></button>
+          </template>
+        </div>
       </div>
       <div class="pdf-pages" x-ref="pdf" x-show="viewerIs('pdf') && !viewer.error" @scroll="onPdfScroll"></div>
       <article class="markdown" x-ref="md" x-show="viewerRendered"></article>
@@ -636,7 +658,7 @@
       <div class="viewer-state" x-show="viewer.loading && !viewerIs('video') && !viewerIs('audio')">
         <span x-text="viewerProgress || t('viewer.loading')"></span>
       </div>
-      <p class="viewer-error" x-show="viewer.error" x-text="viewer.error"></p>
+      <p class="viewer-error" x-show="viewer.error && !viewerIs('audio')" x-text="viewer.error"></p>
       <button class="nav prev" x-show="viewerTotal > 1 && viewerIndex > 0" @click="viewerPrev" :aria-label="t('viewer.prev')" :title="t('viewer.prev')">
         <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
       </button>
