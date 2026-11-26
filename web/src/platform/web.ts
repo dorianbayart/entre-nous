@@ -114,6 +114,11 @@ export function webPlatform(): PlatformApi {
       return text ? { kind: 'text', text } : null;
     },
 
+    // a new tab (the installed app: the browser); during the tap, or the browser blocks it
+    async openUrl(url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+
     async save(blob, name) {
       const file = new File([blob], name, { type: blob.type });
       if ((isIOS || isAndroid) && navigator.canShare?.({ files: [file] })) {

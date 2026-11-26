@@ -25,6 +25,8 @@ sans trace.
 - **Partage et reçois des fichiers avec n'importe qui**, avec un simple lien (ou un QR code).
 - **Retrouve un texte ou un fichier en quelques lettres.**
 - **Épingle ce qui sert souvent** : il reste en haut de l'historique, sur tous tes appareils.
+- **Un lien reçu s'ouvre d'un geste**, et un texte s'affiche en QR code pour un téléphone hors du groupe :
+  le mot de passe du Wi-Fi pour un invité.
 - **Aperçus** : prévisualise une photo, un PDF ou un document Markdown sans le télécharger, et regarde une
   vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.
 

@@ -264,6 +264,18 @@ export const fr = {
   'err.inviteExpired': 'invitation expirée',
   'err.useSave': 'utilise « Enregistrer »',
 
+  // a text of the history: its link opened, or shown as a QR code (made on the device)
+  'link.open': 'Ouvrir',
+  'link.openTitle': 'Ouvrir {url} dans le navigateur',
+  'qr.show': 'QR code',
+  'qr.title': 'QR code',
+  'qr.hint': 'Fais-le scanner par un téléphone qui n’est pas dans le groupe : le texte s’affiche, sans appli ni compte.',
+  'qr.hintLink': 'Fais-le scanner par un téléphone qui n’est pas dans le groupe : il ouvre le lien.',
+  'qr.local': 'Le QR code est fait sur cet appareil : rien ne passe par Internet.',
+  'qr.alt': 'QR code du texte',
+  'qr.reading': 'Lecture du fichier…',
+  'qr.tooLong': 'Trop long pour un QR code',
+
   // share links (for someone outside the group)
   share: 'Partager',
   'share.title': 'Lien de partage',

@@ -496,18 +496,19 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 .link-tile img + .link-mark svg { width: 22px; height: 22px; padding: 5px; box-sizing: content-box; border-radius: 50%; background: var(--surface); }
 .link-meta { color: var(--accent); }
 .share-name { margin: 0; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.share-page .qr-wait, .drop-page .qr-wait { height: 256px; display: flex; align-items: center; margin: 8px 0; }
+.share-page .qr-wait, .drop-page .qr-wait, .qr-page .qr-wait { height: 256px; display: flex; align-items: center; margin: 8px 0; }
 .share-ttl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .share-page .link, .drop-page .link { width: 100%; }
+.qr-page .qr { width: min(300px, 100%); height: auto; aspect-ratio: 1; }
 .share-bottom { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 /* the share page slides in from the right; the history slides back from the left */
 @keyframes slide-in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slide-back { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
-.share-page, .drop-page { animation: slide-in .26s cubic-bezier(.2, .8, .2, 1); }
+.share-page, .drop-page, .qr-page { animation: slide-in .26s cubic-bezier(.2, .8, .2, 1); }
 .main.slide-back { animation: slide-back .26s cubic-bezier(.2, .8, .2, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .share-page, .drop-page, .main.slide-back { animation: none; }
+  .share-page, .drop-page, .qr-page, .main.slide-back { animation: none; }
 }
 
 /* ---------------------------------------------------------- share link page (/s/) */

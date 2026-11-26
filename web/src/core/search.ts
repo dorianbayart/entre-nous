@@ -26,6 +26,31 @@ export interface Part {
 
 const LINK = /\bhttps?:\/\/\S/i;
 
+const LINKS = /\bhttps?:\/\/[^\s<>"]+/gi;
+
+/**
+ * The first web link of a text, without the punctuation that ends its sentence; `whole`: the
+ * text is only that link. Undefined when it holds none.
+ */
+export function linkOf(text: string): { url: string; whole: boolean } | undefined {
+  for (const m of text.matchAll(LINKS)) {
+    let url = m[0].replace(/[.,;:!?'"»”’]+$/, '');
+    // a closing bracket ends the link unless it opened in it (Wikipedia: "…_(film)")
+    while (/[)\]]$/.test(url) && count(url, url.endsWith(')') ? '(' : '[') < count(url, url.slice(-1))) {
+      url = url.slice(0, -1).replace(/[.,;:!?'"»”’]+$/, '');
+    }
+    try {
+      if (!/^https?:$/.test(new URL(url).protocol)) continue;
+    } catch {
+      continue;
+    }
+    return { url, whole: url === text.trim() };
+  }
+  return undefined;
+}
+
+const count = (s: string, c: string) => s.split(c).length - 1;
+
 /** Lower case, without accents, hyphens or apostrophes: "Étoile" is "etoile", "Wi-Fi" is "wifi",
  *  "l’été" is "l'ete". */
 export const normalize = (s: string) =>

@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.52 — 2026-11-26
+- Open a received link, show a text as a QR code.
+
 ## 0.1.51 — 2026-11-26
 - Pin an item to the top of the history.
 

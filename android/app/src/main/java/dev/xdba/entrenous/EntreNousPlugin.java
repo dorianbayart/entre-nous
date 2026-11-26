@@ -145,6 +145,22 @@ public class EntreNousPlugin extends Plugin {
         call.resolve();
     }
 
+    /** A web link of the history: opened in the browser (or the app that handles it). */
+    @PluginMethod
+    public void openUrl(PluginCall call) {
+        Uri uri = Uri.parse(call.getString("url", ""));
+        if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
+            call.reject("not a web link");
+            return;
+        }
+        try {
+            getActivity().startActivity(new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE));
+            call.resolve();
+        } catch (android.content.ActivityNotFoundException e) {
+            call.reject("no app opens this link");
+        }
+    }
+
     /** During a transfer: the screen stays on (a sleeping phone suspends the app). */
     @PluginMethod
     public void keepAwake(PluginCall call) {

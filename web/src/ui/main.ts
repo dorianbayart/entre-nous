@@ -17,7 +17,7 @@ import { NotStreamable, stream } from './player.ts';
 import { renderMarkdown } from './markdown.ts';
 import { drawLayers, drawPage, openPdf, pageSize, type PdfDocument } from './pdf.ts';
 import { TEXT_PREVIEW_MAX, audioMime, decodeStart, previewKind, type PreviewKind } from '../core/media.ts';
-import { SEARCH_TYPES, highlight, isType, matches, snippet, type Part, type SearchType } from '../core/search.ts';
+import { SEARCH_TYPES, highlight, isType, linkOf, matches, snippet, type Part, type SearchType } from '../core/search.ts';
 import type { FolderSource, LocalCopy, Outgoing, PlatformApi } from '../platform/types.ts';
 import { type ContentReader } from '../core/reader.ts';
 import { type FolderFile, type FolderIndex, baseName, emptyDirs, fileReader, readBlob, readIndex, safePath } from '../core/folder.ts';
@@ -26,6 +26,11 @@ import { droppedEntries, folderFromInput, needsConfirm, prepareFolder } from './
 import { chooseTarget, writeFolder } from './folder-save.ts';
 import { CHUNK_SIZE } from '../core/crypto.ts';
 import { LANGS, duration, humanSize, storageSpace, lang as currentLang, pick, setLang, systemLangs, t as translate, tn as translateN, type Key, type Lang } from '../i18n/index.ts';
+
+// QR codes of texts: their accents too (invitation and share links are plain ASCII)
+qrcode.stringToBytes = (s: string) => Array.from(utf8(s));
+/** Longest text shown as a QR code (bytes): beyond, a phone can hardly read it on a screen. */
+const QR_MAX = 1000;
 
 const platform: PlatformApi = isDesktopApp() ? desktopPlatform() : isAndroidApp() ? androidPlatform() : webPlatform();
 
@@ -260,6 +265,11 @@ Alpine.data('app', () => ({
   share: null as ShareView | null,
   shareName: '',
   shareQr: '',
+  // a text shown as a QR code (its page): made on the device, never sent
+  qrId: '',
+  qrName: '',
+  qrImg: '',
+  qrLink: false,
   // the file request shown (its page: message, QR code, lifetime)
   drop: null as DropView | null,
   dropQr: '',
@@ -1243,7 +1253,7 @@ Alpine.data('app', () => ({
   },
 
   copyClass(item: ItemView) {
-    return this.opensFirst(item) ? 'small secondary' : 'small primary';
+    return this.opensFirst(item) || this.linkFirst(item) ? 'small secondary' : 'small primary';
   },
 
   openClass(item: ItemView) {
@@ -1699,6 +1709,7 @@ Alpine.data('app', () => ({
     }
     if (!this.viewer.open) {
       if (this.folderView.open && e.key === 'Escape') this.closeFolder();
+      else if (this.view === 'qr' && e.key === 'Escape') this.closeQr();
       return;
     }
     const tag = (e.target as HTMLElement)?.tagName;
@@ -2426,6 +2437,79 @@ Alpine.data('app', () => ({
     return this.items.find((i) => i.id === share.itemId)?.thumb ?? '';
   },
 
+  // ---------------------------------------------------------------- links and QR codes of texts
+
+  /** The web link of a text item (the first one), to open it. */
+  linkIn(item: ItemView) {
+    return item.kind === 'text' && item.text && !item.error ? linkOf(item.text) : undefined;
+  },
+
+  /** A text that is only a link: Open comes first, Copy after. */
+  linkFirst(item: ItemView) {
+    return !!this.linkIn(item)?.whole;
+  },
+
+  /** A text holding a link among other words: Open after Copy. */
+  linkAfter(item: ItemView) {
+    const link = this.linkIn(item);
+    return !!link && !link.whole;
+  },
+
+  linkTitle(item: ItemView) {
+    return this.t('link.openTitle', { url: this.linkIn(item)?.url ?? '' });
+  },
+
+  /** In the browser (the app that handles it, on Android); during the tap. */
+  openLink(item: ItemView) {
+    const link = this.linkIn(item);
+    if (!link) return;
+    engine.markRead(this.groupId!, item.id);
+    platform.openUrl(link.url).catch((err) => this.toast(failure('toast.error', err)));
+  },
+
+  /** A short text, or a small text file (.txt, .md): shown as a QR code. */
+  canQr(item: ItemView) {
+    if (item.error || item.unavailable || this.interrupted(item)) return false;
+    if (item.kind === 'text') return item.text !== undefined && utf8(item.text).length <= QR_MAX;
+    const k = item.kind === 'file' ? previewKind(item.name, item.mime) : undefined;
+    return (k === 'text' || k === 'markdown') && !item.pending && (item.size ?? Infinity) <= QR_MAX;
+  },
+
+  /** Its page slides in over the history; a file is read first. */
+  async showQr(item: ItemView) {
+    const groupId = this.groupId;
+    if (!groupId) return;
+    this.confirming = '';
+    this.qrId = item.id;
+    this.qrName = this.label(item);
+    this.qrImg = '';
+    this.qrLink = false;
+    this.slide = '';
+    this.view = 'qr';
+    engine.markRead(groupId, item.id);
+    try {
+      const text = item.kind === 'text' ? (item.text ?? '') : await (await this.contentOf(groupId, item)).blob!.text();
+      if (this.view !== 'qr' || this.qrId !== item.id) return;
+      const qr = qrcode(0, 'M');
+      qr.addData(text.replace(/^\uFEFF/, ''));
+      qr.make();
+      // about 320 pixels, whatever its size (shown pixelated)
+      this.qrImg = qr.createDataURL(Math.max(2, Math.ceil(320 / qr.getModuleCount())), 2);
+      this.qrLink = !!linkOf(text)?.whole;
+    } catch (err: any) {
+      this.toast(/overflow/i.test(String(err?.message ?? err)) ? this.t('qr.tooLong') : failure('toast.error', err));
+      this.closeQr();
+    }
+  },
+
+  closeQr() {
+    this.qrImg = '';
+    if (this.view !== 'qr') return;
+    this.slide = 'slide-back';
+    this.view = this.groups.length ? 'main' : 'welcome';
+    setTimeout(() => (this.slide = ''), 400);
+  },
+
   // ---------------------------------------------------------------- file requests
 
   /** A file request needs the relay: not in local mode. */
@@ -2707,6 +2791,7 @@ Alpine.data('app', () => ({
     else if (this.view === 'scan') this.stopScan();
     else if (this.view === 'share') this.closeShare();
     else if (this.view === 'drop') this.closeDrop();
+    else if (this.view === 'qr') this.closeQr();
     else if (this.view === 'settings' || this.view === 'invite') this.back();
     else if (this.search.open) this.closeSearch();
     else platform.background?.();

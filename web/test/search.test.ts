@@ -2,7 +2,7 @@
 //   node test/run.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { type Searchable, highlight, isType, matches, normalize, snippet } from '../src/core/search.ts';
+import { type Searchable, highlight, isType, linkOf, matches, normalize, snippet } from '../src/core/search.ts';
 
 const wifi: Searchable = { kind: 'text', text: 'Code Wi-Fi invités : Merlin-étoile-2026', fromName: 'Pixel' };
 const link: Searchable = { kind: 'text', text: 'Le train : https://www.sncf-connect.com/app/trips', fromName: 'Mac' };
@@ -86,4 +86,18 @@ test('snippet: a long text shows where the word is', () => {
   assert.equal(snippet(text, 'absent'), text);
   const lines = 'un\ndeux\ntrois\nquatre\ncinq Merlin';
   assert.equal(snippet(lines, 'merlin'), '…cinq Merlin');
+});
+
+test('linkOf: the first link of a text, to open it', () => {
+  assert.deepEqual(linkOf('https://example.org/a?b=1'), { url: 'https://example.org/a?b=1', whole: true });
+  assert.deepEqual(linkOf('  https://example.org/\n'), { url: 'https://example.org/', whole: true });
+  assert.deepEqual(linkOf('Regarde ça : https://example.org/page.'), { url: 'https://example.org/page', whole: false });
+  assert.deepEqual(linkOf('Titre de la page\nhttps://example.org/x'), { url: 'https://example.org/x', whole: false });
+  assert.equal(linkOf('(voir https://example.org/a)')?.url, 'https://example.org/a');
+  assert.equal(linkOf('https://fr.wikipedia.org/wiki/Alien_(film)')?.url, 'https://fr.wikipedia.org/wiki/Alien_(film)');
+  assert.equal(linkOf('« https://example.org/b »')?.url, 'https://example.org/b');
+  assert.equal(linkOf('un https://a.org/ puis https://b.org/')?.url, 'https://a.org/');
+  assert.equal(linkOf('mot de passe : Merlin42'), undefined);
+  assert.equal(linkOf('ftp://example.org/ javascript:alert(1)'), undefined);
+  assert.equal(linkOf('http://'), undefined);
 });

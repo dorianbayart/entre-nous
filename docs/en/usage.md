@@ -91,6 +91,10 @@ history as a single item, with all its subfolders.
   search results too. It still expires on time, but it isn't deleted when the group keeps a
   limited number of items. If the item is older than those the group keeps, unpinning it deletes
   it: the app asks first.
+- **Links**: a text holding a link has an **Open** button, which opens it in the browser.
+- **QR code**: the QR code icon of a short text, or of a small text file, shows it as a QR code.
+  Handy to give the Wi-Fi password to a guest: they scan it with their phone's camera, with
+  nothing to install. The QR code is made on the device: nothing goes through the internet.
 - **Upload in progress**: an "↑ name" line above the history shows its progress and speed on
   every device, and disappears when it's done. The item appears right away: you can **Save** it
   before the upload finishes (the download follows the upload), while **Copy** becomes available

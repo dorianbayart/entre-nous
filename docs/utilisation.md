@@ -93,6 +93,10 @@ aussi). Il arrive dans l'historique en un seul élément, avec tous ses sous-dos
   et aussi en haut des résultats de recherche. Il expire quand même à son heure, mais il n'est pas
   supprimé quand le groupe garde un nombre limité d'éléments. Si l'élément est plus ancien que ceux
   que le groupe garde, le désépingler le supprime : l'appli le demande d'abord.
+- **Liens** : un texte qui contient un lien a un bouton **Ouvrir**, qui l'ouvre dans le navigateur.
+- **QR code** : l'icône QR code d'un texte court, ou d'un petit fichier texte, l'affiche en QR code.
+  Pratique pour donner le mot de passe du Wi-Fi à un invité : il le scanne avec l'appareil photo de
+  son téléphone, sans rien installer. Le QR code est fait sur l'appareil, rien ne passe par Internet.
 - **Envoi en cours** : une ligne « ↑ nom » au-dessus de l'historique montre sa progression et sa
   vitesse, sur tous les appareils, et disparaît à la fin. L'élément apparaît dès le début :
   **Enregistrer** est possible avant la fin, le téléchargement suit l'envoi ; **Copier** arrive une

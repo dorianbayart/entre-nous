@@ -117,6 +117,12 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   éléments en trop (le relais ne coupe plus de lui-même). Désépingler un élément trop ancien le
   supprime : l'appli le demande d'abord. Le « dernier élément » (copie automatique, `get` du CLI)
   suit la date, pas la position à l'écran.
+- **Liens et QR codes des textes** : un texte qui contient un lien (`core/search.ts`, `linkOf` :
+  le premier, sans la ponctuation qui le suit) a un bouton « Ouvrir » (avant « Copier » s'il n'est
+  qu'un lien), qui passe par la plateforme (`openUrl` : nouvel onglet, `NSWorkspace`, plugin opener
+  de Tauri, `Intent.ACTION_VIEW` ; `http` et `https` seulement). Un texte de 1 000 octets au plus, ou
+  un fichier texte (`.txt`, `.md`…) de cette taille, s'affiche en QR code (UTF-8), fait sur
+  l'appareil : rien ne passe par le relais, à la différence d'un lien de partage.
 - **Recherche** : sur l'appareil seulement (`core/search.ts`, partagé avec le CLI), dans ce que
   l'en-tête donne déjà : texte, nom de fichier, extrait d'un fichier texte, appareil. Sans accents,
   majuscules, tirets ni apostrophes ; tous les mots doivent y être. Loupe dans la barre du haut

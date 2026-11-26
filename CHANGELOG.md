@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.52 — 2026-11-26
+- Ouvrir un lien reçu, afficher un texte en QR code.
+
 ## 0.1.51 — 2026-11-26
 - Épingler un élément en haut de l'historique.
 

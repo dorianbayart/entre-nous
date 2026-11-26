@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium } from 'playwright-core';
+import jsQR from 'jsqr';
 
 const APP = (process.env.RELAY ?? 'http://127.0.0.1:8080') + '/app/';
 
@@ -899,6 +900,98 @@ test('share links: made from the history, opened outside the group, kept for the
   await visitor.page.getByText('Ce lien est incomplet. Vérifie qu’il a été copié en entier.').waitFor();
 
   for (const d of [a, b, visitor]) await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
+test('texts: a link opens in the browser, a short text or a small text file as a QR code', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  // no real web: the link opened answers here
+  await b.context.route('https://example.org/**', (r) => r.fulfill({ contentType: 'text/html', body: 'ok' }));
+
+  const send = async (text) => {
+    await a.page.locator('.note textarea').fill(text);
+    await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  };
+  const wifi = 'Wi-Fi « Maison » : mot de passe ç€🙂 Merlin42';
+  await send('https://example.org/page?a=1');
+  await send('Regarde ça : https://example.org/autre.');
+  await send(wifi);
+  await send('long '.repeat(300));
+  const md = '# Courses\n\n- pain\n- fromage\n';
+  await a.page.locator('input[type=file][multiple]').setInputFiles({ name: 'notes.md', mimeType: 'text/markdown', buffer: Buffer.from(md) });
+  const item = (text) => b.page.locator('.history .item:not(.shared-link)', { hasText: text });
+  await item('notes.md').waitFor();
+  await until('file complete', async () => !/envoi/.test(await item('notes.md').locator('.meta').textContent()));
+
+  // ---- a link alone: Open first, Copy after; opened in a new tab
+  const link = item('https://example.org/page');
+  const open = button(link, 'Ouvrir');
+  assert.ok(await open.isVisible());
+  assert.match(await open.getAttribute('class'), /primary/);
+  assert.match(await button(link, 'Copier').getAttribute('class'), /secondary/);
+  assert.equal(await open.getAttribute('title'), 'Ouvrir https://example.org/page?a=1 dans le navigateur');
+  const tab = b.context.waitForEvent('page');
+  await open.click();
+  const opened = await tab;
+  await opened.waitForLoadState();
+  assert.equal(opened.url(), 'https://example.org/page?a=1');
+  await opened.close();
+
+  // ---- a link among other words: Copy first, Open after, without the final dot
+  const among = item('Regarde ça');
+  assert.match(await button(among, 'Copier').getAttribute('class'), /primary/);
+  assert.equal(await button(among, 'Ouvrir').getAttribute('title'), 'Ouvrir https://example.org/autre dans le navigateur');
+  assert.equal(await button(item(wifi), 'Ouvrir').count(), 0, 'no link: no Open');
+
+  // ---- a QR code, made here: what a phone reads is the text itself
+  const read = async () => {
+    const { w, h, px } = await b.page.locator('section.qr-page img.qr').evaluate(async (img) => {
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      return { w: c.width, h: c.height, px: Array.from(g.getImageData(0, 0, c.width, c.height).data) };
+    });
+    return jsQR(Uint8ClampedArray.from(px), w, h)?.data;
+  };
+  const qr = button(item(wifi), 'QR code');
+  assert.equal((await qr.textContent()).trim(), '', 'an icon only');
+  await qr.click();
+  const page = b.page.locator('section.qr-page');
+  await page.locator('img.qr').waitFor();
+  assert.ok(await b.page.locator('section.main').isHidden());
+  assert.equal(await page.locator('.share-name').textContent(), wifi);
+  assert.match(await page.textContent(), /le texte s’affiche/);
+  assert.equal(await read(), wifi, 'accents and emoji kept');
+  await button(page, 'Retour').click();
+  await b.page.locator('section.main').waitFor();
+
+  // a link: the phone opens it
+  await button(link, 'QR code').click();
+  await page.locator('img.qr').waitFor();
+  assert.match(await page.textContent(), /il ouvre le lien/);
+  assert.equal(await read(), 'https://example.org/page?a=1');
+  await b.page.keyboard.press('Escape');
+  await b.page.locator('section.main').waitFor();
+
+  // a small text file: read, then shown
+  await button(item('notes.md'), 'QR code').click();
+  await page.locator('img.qr').waitFor();
+  assert.equal(await read(), md);
+  await button(page, 'Retour').click();
+  await b.page.locator('section.main').waitFor();
+
+  // too long for a phone to read on a screen: no QR code
+  assert.equal(await button(item('long long'), 'QR code').count(), 0);
+  assert.ok(await button(item(wifi), 'QR code').isVisible());
+
+  for (const d of [a, b]) await d.context.close();
   assert.deepEqual(problems, []);
 });
 

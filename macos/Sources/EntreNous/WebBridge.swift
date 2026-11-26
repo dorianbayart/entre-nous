@@ -147,6 +147,14 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             notify(title: a["title"] as? String ?? "Entre Nous", body: a["body"] as? String ?? "")
             return true
 
+        // a web link of the history: opened in the browser
+        case "openUrl":
+            guard let url = URL(string: a["url"] as? String ?? ""), url.scheme == "http" || url.scheme == "https" else {
+                throw BridgeError("not a web link")
+            }
+            NSWorkspace.shared.open(url)
+            return true
+
         case "keepAwake":
             // during a transfer: no idle sleep (the display may still turn off)
             if a["on"] as? Bool ?? false {

@@ -236,6 +236,16 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
             Ok(json!(true))
         }
 
+        // a web link of the history: opened in the browser
+        "openUrl" => {
+            let url = s("url");
+            if !(url.starts_with("http://") || url.starts_with("https://")) {
+                return Err("not a web link".into());
+            }
+            app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())?;
+            Ok(json!(true))
+        }
+
         "keepAwake" => {
             let mut awake = b.awake.lock().unwrap();
             if a.get("on").and_then(Value::as_bool).unwrap_or(false) {

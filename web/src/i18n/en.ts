@@ -264,6 +264,18 @@ export const en: Strings = {
   'err.inviteExpired': 'invitation expired',
   'err.useSave': 'use “Save”',
 
+  // a text of the history: its link opened, or shown as a QR code (made on the device)
+  'link.open': 'Open',
+  'link.openTitle': 'Open {url} in the browser',
+  'qr.show': 'QR code',
+  'qr.title': 'QR code',
+  'qr.hint': 'Have a phone outside the group scan it: the text shows up, with no app and no account.',
+  'qr.hintLink': 'Have a phone outside the group scan it: it opens the link.',
+  'qr.local': 'The QR code is made on this device: nothing goes through the Internet.',
+  'qr.alt': 'QR code of the text',
+  'qr.reading': 'Reading the file…',
+  'qr.tooLong': 'Too long for a QR code',
+
   // share links (for someone outside the group)
   share: 'Share',
   'share.title': 'Share link',

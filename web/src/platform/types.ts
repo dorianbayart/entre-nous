@@ -72,6 +72,8 @@ export interface PlatformApi {
   read(): Promise<Outgoing | null>;
   /** Saves or shares a received file. */
   save(blob: Blob, name: string): Promise<void>;
+  /** Opens a web link (`http`, `https`) in the browser; called during the tap (browsers need it). */
+  openUrl(url: string): Promise<void>;
   /** Apps: picks a folder to send (browsers use <input webkitdirectory>); null: cancelled. */
   pickFolder?(): Promise<FolderSource | null>;
   /**

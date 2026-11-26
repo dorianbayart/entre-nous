@@ -76,6 +76,10 @@ export function androidPlatform(): PlatformApi {
       return null;
     },
 
+    async openUrl(url) {
+      await Native.openUrl({ url });
+    },
+
     async save(blob, name) {
       const { token } = await Native.fileCreate({ name });
       for (let offset = 0; offset < blob.size; offset += FILE_PART) {

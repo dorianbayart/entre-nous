@@ -190,6 +190,10 @@ export function desktopPlatform(): PlatformApi {
       return payload ? ((await fromNative(payload, Infinity)) as Outgoing) : null;
     },
 
+    async openUrl(url) {
+      await call('openUrl', { url });
+    },
+
     async save(blob, name) {
       const token = await writeNativeFile(blob, name);
       await call('fileSaveAs', { token, name });
