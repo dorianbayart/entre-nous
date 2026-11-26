@@ -1,0 +1,44 @@
+# winget (Windows Package Manager): once a day, proposes the latest release to
+# microsoft/winget-pkgs (DorianBayart.EntreNous), unless winget already has it or a proposal is still
+# waiting there. Keeps one version only: the older releases are deleted (apps.yml), and winget
+# would then point at files that no longer exist.
+# Needs the secret WINGET_TOKEN: a classic GitHub token with the public_repo scope only (it opens
+# the pull request from the fork dorianbayart/winget-pkgs). Without it, nothing happens.
+name: winget
+
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  winget:
+    runs-on: windows-latest
+    steps:
+      - name: New version?
+        id: v
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo '::notice::no WINGET_TOKEN secret'; exit 0; fi
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          if gh api "repos/microsoft/winget-pkgs/contents/manifests/d/DorianBayart/EntreNous/${tag#v}" --silent 2>/dev/null; then
+            echo "winget already has $tag"; exit 0
+          fi
+          waiting=$(gh pr list --repo microsoft/winget-pkgs --state open --author "$GITHUB_REPOSITORY_OWNER" \
+            --search 'DorianBayart.EntreNous in:title' --json url --jq '.[0].url')
+          if [ -n "$waiting" ]; then echo "still waiting: $waiting"; exit 0; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54 # v2
+        if: steps.v.outputs.tag
+        with:
+          identifier: DorianBayart.EntreNous
+          release-tag: ${{ steps.v.outputs.tag }}
+          installers-regex: 'Entre-Nous-windows\.exe$'
+          max-versions-to-keep: 1
+          release-notes-url: https://github.com/${{ github.repository }}/releases/tag/${{ steps.v.outputs.tag }}
+          token: ${{ secrets.WINGET_TOKEN }}

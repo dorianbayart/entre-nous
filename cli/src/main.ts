@@ -13,6 +13,8 @@ const DOCS = { en: 'https://github.com/dorianbayart/entre-nous/blob/master/docs/
 
 /** The CLI of the latest release (not on the npm registry: installed from this file). */
 const PACKAGE_URL = 'https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz';
+/** How to update: Homebrew (dorianbayart/tap) installs it under its Cellar, npm anywhere else. */
+const UPDATE = import.meta.url.includes('/Cellar/entrenous/') ? 'brew upgrade entrenous' : `npm install -g ${PACKAGE_URL}`;
 
 const GLOBAL: Record<string, Option> = {
   group: { type: 'string', short: 'g', arg: 'GROUP', desc: 'opt.group' },
@@ -185,7 +187,7 @@ async function main(argv: string[]): Promise<number> {
     const code = (await command.run(ctx, parsed.positionals, o)) ?? EXIT.ok;
     const latest = ctx.loaded ? (await ctx.engine()).latest : null;
     if (latest && newer(latest, VERSION) && process.stderr.isTTY && !globals.quiet && !globals.json) {
-      process.stderr.write(err.dim(tr('msg.update', { v: latest, url: PACKAGE_URL })) + '\n');
+      process.stderr.write(err.dim(tr('msg.update', { v: latest, cmd: UPDATE })) + '\n');
     }
     return code;
   } finally {

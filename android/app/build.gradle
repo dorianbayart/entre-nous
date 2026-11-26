@@ -44,6 +44,11 @@ android {
             }
         }
     }
+    // no dependency list encrypted for Google in the APK: F-Droid and IzzyOnDroid refuse it
+    // (the bundle for Google Play keeps it)
+    dependenciesInfo {
+        includeInApk = false
+    }
     buildTypes {
         release {
             signingConfig signingFile.exists() ? signingConfigs.release : null

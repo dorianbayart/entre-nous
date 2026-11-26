@@ -67,7 +67,7 @@ Essayer : <https://entrenous.0xdba.dev>
 ## Dans un terminal
 
 ```sh
-npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
+brew install dorianbayart/tap/entrenous                 # ou : npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
 entrenous join 'https://entrenous.0xdba.dev/app/#p=…'   # lien de Réglages → Inviter un appareil
 entrenous send build/app.apk                            # arrive sur le téléphone
 entrenous wait --timeout 10m                            # attend ce que le téléphone envoie

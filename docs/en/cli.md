@@ -23,7 +23,13 @@ Hello from the phone
 
 ## Install
 
-It needs **Node.js 22** or newer. The CLI is a single file, with no dependencies.
+With [Homebrew](https://brew.sh), on Mac or Linux:
+
+```sh
+brew install dorianbayart/tap/entrenous
+```
+
+Otherwise with npm: it needs **Node.js 22** or newer. The CLI is a single file, with no dependencies.
 
 ```sh
 npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
@@ -36,7 +42,8 @@ Without installing anything, for a try or in CI:
 npx --yes --package=https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz entrenous status
 ```
 
-The same `npm install -g` updates it. When a newer version exists, the CLI says so in the terminal.
+To update it: `brew upgrade entrenous`, or the same `npm install -g`. When a newer version exists,
+the CLI says so in the terminal, with the command to run.
 
 ## Getting started
 

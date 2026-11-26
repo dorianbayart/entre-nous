@@ -24,7 +24,13 @@ Bonjour depuis le téléphone
 
 ## Installer
 
-Il faut **Node.js 22** ou plus récent. Le CLI est un seul fichier, sans dépendance.
+Avec [Homebrew](https://brew.sh), sur Mac ou Linux :
+
+```sh
+brew install dorianbayart/tap/entrenous
+```
+
+Sinon avec npm : il faut **Node.js 22** ou plus récent. Le CLI est un seul fichier, sans dépendance.
 
 ```sh
 npm install -g https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz
@@ -37,8 +43,8 @@ Sans rien installer, pour un essai ou dans une CI :
 npx --yes --package=https://github.com/dorianbayart/entre-nous/releases/latest/download/entrenous-cli.tgz entrenous status
 ```
 
-La même commande `npm install -g` le met à jour. Quand une version plus récente existe, le CLI le
-signale lui-même dans le terminal.
+Pour le mettre à jour : `brew upgrade entrenous`, ou la même commande `npm install -g`. Quand une
+version plus récente existe, le CLI le signale lui-même dans le terminal, avec la commande à lancer.
 
 ## Premiers pas
 

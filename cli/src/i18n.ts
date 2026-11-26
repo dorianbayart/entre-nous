@@ -133,7 +133,7 @@ const en = {
   'msg.groups': 'Groups',
   'msg.noGroups': 'No group yet.',
   'msg.expires': 'expires in {d}',
-  'msg.update': 'New version available ({v}): npm install -g {url}',
+  'msg.update': 'New version available ({v}): {cmd}',
 
   // ---------------------------------------------------------------- errors
   'err.usage': 'Usage: {usage}',
@@ -296,7 +296,7 @@ const fr: Strings = {
   'msg.groups': 'Groupes',
   'msg.noGroups': 'Aucun groupe pour l’instant.',
   'msg.expires': 'expire dans {d}',
-  'msg.update': 'Nouvelle version disponible ({v}) : npm install -g {url}',
+  'msg.update': 'Nouvelle version disponible ({v}) : {cmd}',
 
   'err.usage': 'Utilisation : {usage}',
   'err.unknownCommand': 'Commande inconnue « {cmd} ».',

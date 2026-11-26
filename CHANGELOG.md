@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.59 — 2026-11-26
+- Le CLI s'installe avec Homebrew.
+
 ## 0.1.58 — 2026-11-26
 - Jauge des dons sur la page d'accueil.
 
