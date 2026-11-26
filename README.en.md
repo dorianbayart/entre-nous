@@ -116,8 +116,8 @@ Details, proxy and settings: [docs/en/deployment.md](docs/en/deployment.md).
 
 ## Support the project
 
-Entre Nous is free, with no ads and no trackers. The public relay runs on a server paid for by
-donations: [Liberapay](https://liberapay.com/0xdba/donate) or
+Entre Nous is free, with no ads and no trackers. Donations pay for the public relay's server and
+fund maintenance and new features: [Liberapay](https://liberapay.com/0xdba/donate) or
 [GitHub Sponsors](https://github.com/sponsors/dorianbayart).
 
 ## License

@@ -24,8 +24,8 @@ qr.make();
 const img = document.getElementById('qr') as HTMLImageElement | null;
 if (img) img.src = qr.createDataURL(5, 2);
 
-// Donations: the share of the public relay's cost they cover each month (Liberapay, asked by the
-// relay); shown only once a goal is set.
+// Donations: how far they are from their monthly goal (Liberapay, asked by the relay); shown only
+// once a goal is set.
 type Funding = { receiving: number; goal: number | null; currency: string };
 fetch('/funding.json')
   .then((res) => (res.ok ? (res.json() as Promise<Funding>) : null))
@@ -37,9 +37,14 @@ fetch('/funding.json')
     const money = (n: number) =>
       new Intl.NumberFormat(en ? 'en' : 'fr', { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(n);
     (box.querySelector('.meter span') as HTMLElement).style.width = pct + '%';
-    box.querySelector('.note')!.textContent = en
-      ? `Donations cover ${pct}% of the server: ${money(f.receiving)} of ${money(f.goal)} a month.`
-      : `Les dons couvrent ${pct} % du serveur : ${money(f.receiving)} sur ${money(f.goal)} par mois.`;
+    box.querySelector('.note')!.textContent =
+      pct >= 100
+        ? en
+          ? `Goal reached (${money(f.goal)} a month), thank you!`
+          : `Objectif atteint (${money(f.goal)} par mois), merci !`
+        : en
+          ? `${pct}% of the goal: ${money(f.receiving)} of ${money(f.goal)} a month.`
+          : `${pct} % de l'objectif : ${money(f.receiving)} sur ${money(f.goal)} par mois.`;
     box.hidden = false;
   });
 

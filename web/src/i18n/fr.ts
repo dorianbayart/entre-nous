@@ -249,7 +249,7 @@ export const fr = {
   'settings.changeRelay': 'Changer de serveur',
   'settings.relayHint': 'Pour utiliser ton propre serveur. Un groupe partagé avec d’autres appareils reste sur son serveur.',
   'settings.version': 'Version {v}',
-  'donate.text': 'Entre Nous est gratuit et sans publicité. Le relais public vit de dons.',
+  'donate.text': 'Entre Nous est gratuit et sans publicité. Les dons paient le relais public et financent la maintenance et les nouveautés.',
   'donate.button': 'Faire un don',
   'settings.reset': 'Tout effacer sur cet appareil',
   'settings.resetConfirm': 'Confirmer : tout effacer sur cet appareil',

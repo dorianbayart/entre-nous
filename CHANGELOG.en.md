@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.58 — 2026-11-26
+- Donation gauge on the home page.
+
 ## 0.1.57 — 2026-11-26
 - Donate, from Settings.
 

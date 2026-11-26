@@ -249,7 +249,7 @@ export const en: Strings = {
   'settings.changeRelay': 'Change server',
   'settings.relayHint': 'To use your own server. A group shared with other devices stays on its server.',
   'settings.version': 'Version {v}',
-  'donate.text': 'Entre Nous is free, with no ads. The public relay runs on donations.',
+  'donate.text': 'Entre Nous is free, with no ads. Donations pay for the public relay and fund maintenance and new features.',
   'donate.button': 'Donate',
   'settings.reset': 'Erase everything on this device',
   'settings.resetConfirm': 'Confirm: erase everything on this device',

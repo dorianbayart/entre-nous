@@ -117,8 +117,8 @@ Détails, proxy et réglages : [docs/deploiement.md](docs/deploiement.md).
 
 ## Soutenir le projet
 
-Entre Nous est gratuit, sans publicité ni traceur. Le relais public tourne sur un serveur que
-paient les dons : [Liberapay](https://liberapay.com/0xdba/donate) ou
+Entre Nous est gratuit, sans publicité ni traceur. Les dons paient le serveur du relais public
+et financent la maintenance et les nouveautés : [Liberapay](https://liberapay.com/0xdba/donate) ou
 [GitHub Sponsors](https://github.com/sponsors/dorianbayart).
 
 ## Licence

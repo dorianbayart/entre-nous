@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.58 — 2026-11-26
+- Jauge des dons sur la page d'accueil.
+
 ## 0.1.57 — 2026-11-26
 - Faire un don, depuis les Réglages.
 

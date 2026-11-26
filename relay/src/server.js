@@ -118,9 +118,10 @@ if (RELEASES !== 'off') {
 
 // ---------------------------------------------------------------- donations
 
-// The donations received on Liberapay and their goal (the cost of the public relay), checked
-// every hour, for the gauge of the landing page: per month, in its currency. Liberapay gives
-// weekly amounts. Only the relay asks Liberapay: the visitors never do.
+// The donations received on Liberapay and their goal (the public relay, then maintenance and new
+// features), checked every hour, for the gauge of the landing page: per month, in its currency.
+// Liberapay gives weekly amounts; the goal is shown as a round number (5 € a week: 20 € a month).
+// Only the relay asks Liberapay: the visitors never do.
 let funding = null; // { receiving, goal, currency, patrons }
 
 async function checkFunding() {
@@ -131,10 +132,11 @@ async function checkFunding() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const p = await res.json();
-    const monthly = (a) => (a && Number.isFinite(Number(a.amount)) ? Math.round((Number(a.amount) * 52) / 12) : null);
+    const monthly = (a) => (a && Number.isFinite(Number(a.amount)) ? (Number(a.amount) * 52) / 12 : null);
+    const goal = monthly(p.goal);
     funding = {
-      receiving: monthly(p.receiving) ?? 0,
-      goal: monthly(p.goal),
+      receiving: Math.round(monthly(p.receiving) ?? 0),
+      goal: goal ? Math.max(5, Math.round(goal / 5) * 5) : null,
       currency: p.receiving?.currency ?? p.goal?.currency ?? 'EUR',
       patrons: Number(p.npatrons) || 0,
     };

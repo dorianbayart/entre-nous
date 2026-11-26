@@ -95,7 +95,7 @@ h2 {
 
 .steps { padding-left: 22px; margin: 0; }
 
-/* Donations: the share of the relay's cost they cover (/funding.json) */
+/* Donations: how far they are from their monthly goal (/funding.json) */
 .funding { margin: 16px 0 0; }
 .meter { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; margin-bottom: 8px; }
 .meter span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; }
