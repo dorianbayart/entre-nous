@@ -1201,3 +1201,63 @@ test('search: words without accents, highlighted, a long text from its match, ty
   for (const d of [a, b]) await d.context.close();
   assert.deepEqual(problems, []);
 });
+
+test('scrolls: each screen on its own, the history kept under a page or a preview', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+  await b.page.setViewportSize({ width: 420, height: 640 });
+  await a.page.locator('input[type=file][multiple]').setInputFiles(`${FIXTURES}photo.jpg`);
+  for (let i = 1; i <= 8; i++) {
+    await a.page.locator('.note textarea').fill(`Texte numéro ${i}`);
+    await button(a.page.locator('.note-bar'), 'Envoyer').click();
+  }
+  const photo = b.page.locator('.history .item', { hasText: 'photo.jpg' });
+  await photo.waitFor();
+  await b.page.locator('.history .item', { hasText: 'Texte numéro 8' }).waitFor();
+  const scrollY = () => b.page.evaluate(() => Math.round(window.scrollY));
+
+  // ---- the history scrolled down; a file request, scrolled to its end, deleted: back where it was
+  await photo.scrollIntoViewIfNeeded();
+  const kept = await scrollY();
+  assert.ok(kept > 200, 'the history is scrolled down');
+  // clicked where it is (a click by Playwright would scroll up to the top bar first)
+  await b.page.getByLabel('Recevoir des fichiers', { exact: true }).dispatchEvent('click');
+  const page = b.page.locator('section.drop-page');
+  await until('request link', () => page.locator('input.link').inputValue());
+  await until('the page at its top', async () => (await scrollY()) === 0);
+  await button(page, 'Supprimer le lien').scrollIntoViewIfNeeded();
+  await button(page, 'Supprimer le lien').click();
+  await button(page, 'Confirmer : supprimer le lien').click();
+  await b.page.locator('section.main').waitFor();
+  await until('the history where it was', async () => (await scrollY()) === kept);
+
+  // ---- the settings from the top, then the history again where it was
+  await b.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bottom = await scrollY();
+  await b.page.getByLabel('Réglages').dispatchEvent('click');
+  await until('the settings at their top', async () => (await scrollY()) === 0);
+  await b.page.evaluate(() => window.scrollTo(0, 300));
+  await b.page.locator('section.settings').getByLabel('Retour', { exact: true }).click();
+  await until('the history at its bottom', async () => (await scrollY()) === bottom);
+
+  // ---- a preview: the history under it does not scroll
+  await photo.scrollIntoViewIfNeeded();
+  const under = await scrollY();
+  await photo.locator('.thumb').click();
+  await b.page.locator('.viewer-image').waitFor();
+  assert.ok(await b.page.evaluate(() => document.documentElement.classList.contains('locked')));
+  await b.page.mouse.move(210, 320);
+  await b.page.mouse.wheel(0, 600);
+  await sleep(300);
+  assert.equal(await scrollY(), under, 'the history stays still under the preview');
+  await b.page.keyboard.press('Escape');
+  await until('preview closed', () => b.page.locator('.viewer-image').isHidden());
+  assert.ok(!(await b.page.evaluate(() => document.documentElement.classList.contains('locked'))));
+  assert.equal(await scrollY(), under, 'the history where it was');
+
+  for (const d of [a, b]) await d.context.close();
+  assert.deepEqual(problems, []);
+});

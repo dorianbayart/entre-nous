@@ -358,6 +358,7 @@ Alpine.data('app', () => ({
     });
     document.addEventListener('paste', (e) => this.onPaste(e as ClipboardEvent));
     document.addEventListener('keydown', (e) => this.onKey(e));
+    this.keepScrolls();
     // the app's own picture-in-picture (Android, Linux, Windows)
     platform.pip?.onChange((active, closed) => {
       this.pipMode = active;
@@ -423,6 +424,21 @@ Alpine.data('app', () => ({
       if (url.includes('#p=')) this.join(url);
     });
     platform.onBack?.(() => this.onBack());
+  },
+
+  /** Each screen scrolls on its own: the history comes back where it was left, a page opens
+   *  at its top; under a preview, a folder or a sheet, the history does not move. */
+  keepScrolls() {
+    const at: Record<string, number> = {};
+    const locked = () => this.viewer.open || this.folderView.open || !!this.folderAsk || this.view === 'scan';
+    // registered before the screens: called while the screen left is still the one shown
+    (this as any).$watch('view', (to: string, from: string) => {
+      at[from] = window.scrollY;
+      const back = to === 'main' || (to === 'settings' && from === 'invite');
+      // the next frame, before it is drawn: the new screen is shown by then ($nextTick is too early)
+      requestAnimationFrame(() => window.scrollTo(0, back ? at[to] ?? 0 : 0));
+    });
+    Alpine.effect(() => document.documentElement.classList.toggle('locked', locked()));
   },
 
   refresh() {

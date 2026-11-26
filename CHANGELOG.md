@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.53 — 2026-11-26
+- Fix: l'historique reste à sa place quand on revient d'une autre page ou d'un aperçu.
+
 ## 0.1.52 — 2026-11-26
 - Ouvrir un lien reçu, afficher un texte en QR code.
 

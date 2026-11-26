@@ -49,6 +49,9 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* a preview, a folder or a sheet over the history: the history does not scroll under it */
+html.locked { overflow: hidden; overscroll-behavior: none; }
+
 .app {
   max-width: 560px;
   margin: 0 auto;
@@ -427,6 +430,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
   align-self: stretch; flex: 1; overflow: auto; display: grid; grid-template-columns: max-content minmax(0, 1fr);
   align-content: start; padding: 10px 12px 10px 0; background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overscroll-behavior: contain;
 }
 .lines .ln { text-align: right; padding: 0 10px 0 12px; color: var(--muted); user-select: none; -webkit-user-select: none; }
 .lines .tx { white-space: pre; }
@@ -435,7 +439,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 
 /* Markdown, formatted */
 .markdown {
   align-self: stretch; flex: 1; overflow: auto; padding: 4px 18px 18px; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--radius); overflow-wrap: anywhere;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow-wrap: anywhere; overscroll-behavior: contain;
 }
 .markdown h1 { font-size: 21px; line-height: 1.25; margin: 16px 0 8px; }
 .markdown h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 20px 0 6px; }

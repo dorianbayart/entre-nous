@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.53 — 2026-11-26
+- Fix: the history stays where it was when coming back from another page or a preview.
+
 ## 0.1.52 — 2026-11-26
 - Open a received link, show a text as a QR code.
 
