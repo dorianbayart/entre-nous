@@ -316,7 +316,7 @@ Alpine.data('app', () => ({
   /** A folder shown before it is sent (large, or copied): what it holds. */
   folderAsk: null as null | { name: string; files: number; dirs: number; bytes: number; ignored: number; copied: boolean },
   /** Folders being prepared here (their previews), before their upload. */
-  preparing: [] as Array<{ id: string; name: string; done: number; total: number }>,
+  preparing: [] as Array<{ id: string; name: string; done: number; total: number; queued?: boolean }>,
   /** Phones: the File button's small menu (files, or a folder). */
   fileMenu: false,
   canPickFolder: !!platform.pickFolder || (!isIOS && !(platform.kind === 'android') && 'webkitdirectory' in document.createElement('input')),
@@ -1130,8 +1130,9 @@ Alpine.data('app', () => ({
     return lines;
   },
 
-  transferState(t: { error?: string; paused?: boolean; preparing?: boolean; done: number; total: number; rate?: number }) {
+  transferState(t: { error?: string; paused?: boolean; preparing?: boolean; queued?: boolean; done: number; total: number; rate?: number }) {
     if (t.error) return t.error;
+    if (t.queued) return this.t('transfer.queued');
     if (t.preparing) return this.t('folder.preparing', { n: t.done, total: t.total });
     return t.paused ? this.t('transfer.paused', { p: this.progress(t) }) : this.progress(t);
   },
@@ -2090,14 +2091,26 @@ Alpine.data('app', () => ({
   // ---------------------------------------------------------------- sending
 
   async send(o: Outgoing) {
-    if (!this.groupId) return;
+    // the group chosen now, even if another one is open by the time it leaves
+    const groupId = this.groupId;
+    if (!groupId) return;
     if (o.kind === 'folder') return this.sendFolder(o.folder);
     try {
       if (o.kind === 'text') {
-        await engine.sendText(this.groupId, o.text);
+        await engine.sendText(groupId, o.text);
       } else {
-        const { kind, extra } = await preview(o.blob, o.name);
-        await engine.sendBlob(this.groupId, o.blob, o.name, kind, extra);
+        // shown at once: its preview waits for those of the files before it
+        const id = 'prep:' + ++prepareSeq;
+        this.preparing = [...this.preparing, { id, name: o.name, done: 0, total: 0, queued: true }];
+        let sending: Promise<string>;
+        try {
+          const { kind, extra } = await preview(o.blob, o.name);
+          sending = engine.sendBlob(groupId, o.blob, o.name, kind, extra);
+        } finally {
+          // the engine's line takes over
+          this.preparing = this.preparing.filter((p) => p.id !== id);
+        }
+        await sending;
       }
       this.toast(this.t('toast.sent'));
     } catch (err: any) {

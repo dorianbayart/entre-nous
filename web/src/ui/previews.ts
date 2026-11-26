@@ -225,8 +225,17 @@ async function textPreview(blob: Blob): Promise<SendExtra> {
   return excerpt ? { excerpt } : {};
 }
 
+/** Previews are made one after the other: many photos decoded at once can fill a phone's memory. */
+let previewTurn: Promise<unknown> = Promise.resolve();
+
 /** The kind of item and its preview, for a file about to be sent. Never fails. */
-export async function preview(blob: Blob, name: string): Promise<{ kind: 'image' | 'file'; extra: SendExtra }> {
+export function preview(blob: Blob, name: string): Promise<{ kind: 'image' | 'file'; extra: SendExtra }> {
+  const made = previewTurn.then(() => makePreview(blob, name));
+  previewTurn = made.catch(() => {});
+  return made;
+}
+
+async function makePreview(blob: Blob, name: string): Promise<{ kind: 'image' | 'file'; extra: SendExtra }> {
   const kind = previewKind(name, blob.type);
   // an image (for the clipboard too), unless too big to be copied anyway
   const asImage = blob.type.startsWith('image/') && blob.size < IMAGE_PREVIEW_MAX;

@@ -176,6 +176,7 @@ export const fr = {
   'receipt.delivered': 'reçu · {at}',
   'receipt.read': 'lu · {at}',
   'transfer.paused': '{p} · en pause',
+  'transfer.queued': 'En attente',
   'transfer.from': '↑ {name} · envoyé par {from}',
   'transfer.direct': '↑ {name} · en direct',
   'transfer.directTo': '↑ {name} · en direct vers {peer}',

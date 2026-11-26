@@ -1476,3 +1476,46 @@ test('desktop app: Keychain unreadable at start, the logo with why and Try again
   await mac.context.close();
   assert.deepEqual(problems, []);
 });
+
+test('many photos at once: previews one after another, the waiting ones shown, all sent', { timeout: 120_000 }, async () => {
+  const a = await device('Alice');
+  const b = await device('Bob');
+  // how many images are decoded at once (each preview decodes its photo)
+  await a.context.addInitScript(`(() => {
+    const decode = window.createImageBitmap.bind(window);
+    window.__decoding = { now: 0, max: 0 };
+    window.createImageBitmap = async (...args) => {
+      const d = window.__decoding;
+      d.max = Math.max(d.max, ++d.now);
+      try {
+        return await decode(...args);
+      } finally {
+        d.now--;
+      }
+    };
+  })();`);
+  await a.page.goto(APP);
+  await a.page.locator('section.main').waitFor();
+  await pair(a, b, (link) => b.page.goto(link));
+
+  // dropped together: like a share from the phone's gallery, they all start at once
+  const photo = [...(await readFile(`${FIXTURES}photo.jpg`))];
+  const queued = await a.page.evaluate(async (bytes) => {
+    const dt = new DataTransfer();
+    for (let i = 0; i < 10; i++) dt.items.add(new File([new Uint8Array(bytes)], `vacances${i}.jpg`, { type: 'image/jpeg' }));
+    window.__decoding.max = 0;
+    document.querySelector('.app').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return [...document.querySelectorAll('.transfer')].filter((l) => l.textContent.includes('En attente')).length;
+  }, photo);
+  assert.ok(queued >= 5, `the photos waiting their turn are shown (${queued})`);
+  for (let i = 0; i < 10; i++) await b.page.locator('.history .item', { hasText: `vacances${i}.jpg` }).waitFor({ timeout: 30_000 });
+  await until('uploads over', async () => (await a.page.locator('.transfer').count()) === 0, 30_000);
+  assert.equal(await a.page.evaluate(() => window.__decoding.max), 1, 'one preview at a time');
+  // each one with its preview
+  assert.equal(await b.page.locator('.history .item', { hasText: 'vacances' }).locator('.thumb img').count(), 10);
+
+  await a.context.close();
+  await b.context.close();
+  assert.deepEqual(problems, []);
+});

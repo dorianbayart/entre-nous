@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.61 — 2026-11-26
+- More reliable sending of many files.
+
 ## 0.1.59 — 2026-11-26
 - The CLI installs with Homebrew.
 

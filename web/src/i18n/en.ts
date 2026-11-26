@@ -176,6 +176,7 @@ export const en: Strings = {
   'receipt.read': 'read · {at}',
   'left.sending': 'uploading',
   'transfer.paused': '{p} · paused',
+  'transfer.queued': 'Waiting',
   'transfer.from': '↑ {name} · sent by {from}',
   'transfer.direct': '↑ {name} · direct',
   'transfer.directTo': '↑ {name} · direct to {peer}',

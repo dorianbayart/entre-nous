@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.61 — 2026-11-26
+- Envoi plus fiable de nombreux fichiers.
+
 ## 0.1.59 — 2026-11-26
 - Le CLI s'installe avec Homebrew.
 

@@ -187,6 +187,8 @@ export interface Transfer {
   done: number;
   total: number;
   error?: string;
+  /** Upload waiting for its turn (see UPLOAD_SLOTS). */
+  queued?: boolean;
 }
 
 interface Entry {
@@ -328,6 +330,10 @@ export const UPLOAD_STALLED = 5 * 60 * 1000;
 const DOWNLOAD_WORKERS = 3;
 /** Upload back-pressure: bytes allowed to wait in the relay socket before the next chunk. */
 const SEND_QUEUE_MAX = 256 * 1024;
+/** Chunks uploaded at once, all files together: the others wait for their turn. */
+const UPLOAD_SLOTS = 4;
+/** The connection dropped or did not answer: tried again once it is back. */
+const retryable = (err: any) => err?.message === 'disconnected' || err?.message === 'timeout' || err?.message === 'connection failed';
 
 export class Engine {
   device!: Device;
@@ -336,6 +342,9 @@ export class Engine {
   /** Latest version of the apps, as published on GitHub and reported by a relay (or null). */
   latest: string | null = null;
   private uploadSeq = 0;
+  /** Upload slots left (UPLOAD_SLOTS), and the uploads waiting for one, in order. */
+  private slotsFree = UPLOAD_SLOTS;
+  private slotQueue: Array<() => void> = [];
   /** Contents being read (previews, a video playing): the connections stay up meanwhile. */
   private readers = new Set<ChunkReader>();
   private servedTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -881,11 +890,29 @@ export class Engine {
     const o = rt.outbox.get(itemId);
     if (!o) throw new Error(t('err.contentGone'));
     const key = `up-${++this.uploadSeq}`;
-    const transfer: Transfer = { id: key, groupId, name: o.name, direction: 'up', done: 0, total: o.chunks, itemId };
+    const transfer: Transfer = { id: key, groupId, name: o.name, direction: 'up', done: 0, total: o.chunks, itemId, queued: true };
     this.transfers.set(key, transfer);
     this.changed();
+    let slot = false;
     try {
-      const res = await rt.conn.request('item.publish', { id: itemId, size: sealedSize(o.blob.size, o.chunks) });
+      await this.takeSlot();
+      slot = true;
+      transfer.queued = false;
+      this.changed();
+      const expiresAt = () => rt.items.get(itemId)?.relay.expiresAt ?? 0;
+      const until = Math.max(expiresAt(), Date.now() + rt.g.state.ttl * 1000);
+      let sent = false;
+      const res = await this.retrying(rt, until, async () => {
+        try {
+          return await rt.conn.request('item.publish', { id: itemId, size: sealedSize(o.blob.size, o.chunks) });
+        } catch (err: any) {
+          // already published by a request whose answer was lost
+          if (sent && err.message === 'not local') return { expiresAt: expiresAt() || until };
+          throw err;
+        } finally {
+          sent = true;
+        }
+      });
       await this.upload(rt, itemId, o.key, o.chunks, o.blob, transfer, res.expiresAt);
       await this.retrying(rt, res.expiresAt, () => rt.conn.request('item.commit', { id: itemId }));
       this.transfers.delete(key);
@@ -897,6 +924,7 @@ export class Engine {
       transfer.error = err.message === 'full' ? t('err.full') : String(err.message ?? err);
       throw err;
     } finally {
+      if (slot) this.freeSlot();
       this.changed();
       this.stopIfIdle();
     }
@@ -1426,10 +1454,13 @@ export class Engine {
     const rt = this.rt(groupId);
     // local mode: not even a short text in the announcement, it is fetched from here
     if (localOnlyOf(rt.g.state)) return this.sendBlob(groupId, new Blob([text], { type: 'text/plain' }), '', 'text', { text });
-    await this.whenReady(rt);
+    // the connection may be lost (phone asleep, network change): waits for it, as long as
+    // the item would have lived
+    const until = Date.now() + rt.g.state.ttl * 1000;
+    await this.reconnected(rt, until);
     const header: Header = { kind: 'text', ts: Date.now(), text, size: text.length };
     const sealed = sealItem(this.device, this.recipients(rt), header, 0);
-    await rt.conn.request('item.create', {
+    await this.createItem(rt, until, {
       id: sealed.id,
       meta: sealed.meta,
       sig: sealed.sig,
@@ -1439,6 +1470,22 @@ export class Engine {
       ttl: rt.g.state.ttl,
     });
     return sealed.id;
+  }
+
+  /** Announces an item to the relay; tried again when the connection drops, until `until`. */
+  private async createItem(rt: Runtime, until: number, item: Record<string, unknown>): Promise<{ expiresAt: number }> {
+    let sent = false;
+    return this.retrying(rt, until, async () => {
+      try {
+        return await rt.conn.request('item.create', item);
+      } catch (err: any) {
+        // created by a request whose answer was lost
+        if (sent && err.message === 'exists') return { expiresAt: until };
+        throw err;
+      } finally {
+        sent = true;
+      }
+    });
   }
 
   /**
@@ -1451,11 +1498,20 @@ export class Engine {
     const rt = this.rt(groupId);
     // shown at once, even while the connection is still being set up
     const key = `up-${++this.uploadSeq}`;
-    const transfer: Transfer = { id: key, groupId, name, direction: 'up', done: 0, total: 0 };
+    const transfer: Transfer = { id: key, groupId, name, direction: 'up', done: 0, total: 0, queued: true };
     this.transfers.set(key, transfer);
     this.changed();
+    let slot = false;
     try {
-      await this.whenReady(rt);
+      // its turn first: the item is announced only once it can be uploaded at once
+      await this.takeSlot();
+      slot = true;
+      transfer.queued = false;
+      this.changed();
+      // the connection may be lost (phone asleep, network change): waits for it, as long
+      // as the item would have lived
+      let until = Date.now() + rt.g.state.ttl * 1000;
+      await this.reconnected(rt, until);
       // local mode: only the announcement goes to the relay (no preview: it is content too)
       const local = localOnlyOf(rt.g.state);
       const mime = blob instanceof Blob ? blob.type : undefined;
@@ -1469,7 +1525,7 @@ export class Engine {
       // served from here to the devices on the same network, before even the relay has it
       rt.outbox.set(sealed.id, { blob, key: sealed.key, chunks: sealed.chunks, name: name || 'texte', text });
       this.changed();
-      const created = await rt.conn.request('item.create', {
+      const created = await this.createItem(rt, until, {
         id: sealed.id,
         meta: sealed.meta,
         sig: sealed.sig,
@@ -1483,7 +1539,7 @@ export class Engine {
         this.transfers.delete(key);
         return sealed.id;
       }
-      const until: number = created.expiresAt;
+      until = created.expiresAt;
       await this.upload(rt, sealed.id, sealed.key, sealed.chunks, blob, transfer, until);
       await this.retrying(rt, until, () => rt.conn.request('item.commit', { id: sealed.id }));
       this.transfers.delete(key);
@@ -1497,9 +1553,33 @@ export class Engine {
       transfer.error = err.message === 'full' ? t('err.full') : String(err.message ?? err);
       throw err;
     } finally {
+      if (slot) this.freeSlot();
       this.changed();
       this.stopIfIdle();
     }
+  }
+
+  /** Waits for an upload slot, first come first served. */
+  private takeSlot(): Promise<void> {
+    if (this.slotsFree > 0 && !this.slotQueue.length) {
+      this.slotsFree--;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => this.slotQueue.push(resolve));
+  }
+
+  /** A slot at once, only if no upload is waiting for one. */
+  private trySlot(): boolean {
+    if (this.slotsFree <= 0 || this.slotQueue.length) return false;
+    this.slotsFree--;
+    return true;
+  }
+
+  /** The slot goes to the next upload waiting, if any. */
+  private freeSlot() {
+    const next = this.slotQueue.shift();
+    if (next) next();
+    else this.slotsFree++;
   }
 
   /** A failed transfer stays listed with its error until the user closes it. */
@@ -1527,7 +1607,7 @@ export class Engine {
       try {
         return await fn();
       } catch (err: any) {
-        if (err.message !== 'disconnected' && err.message !== 'timeout') throw err;
+        if (!retryable(err)) throw err;
         await this.reconnected(rt, until);
       }
     }
@@ -1546,8 +1626,10 @@ export class Engine {
   }
 
   /**
-   * Uploads chunks 4 at a time. After a disconnection (or the phone waking up), waits for the
-   * connection and resumes with the chunks the relay does not have yet.
+   * Uploads the chunks: the caller holds an upload slot; up to 3 more chunks at once on the
+   * slots no other upload waits for (a single file goes 4 at a time, many files 1 each).
+   * After a disconnection (or the phone waking up), waits for the connection and resumes with
+   * the chunks the relay does not have yet.
    */
   private async upload(rt: Runtime, id: string, key: Uint8Array, chunks: number, blob: Blob | ByteSource, t: Transfer, until: number) {
     for (let attempt = 0; ; attempt++) {
@@ -1558,10 +1640,11 @@ export class Engine {
         t.done = chunks - missing.length;
         this.changed();
       }
-      try {
-        const queue = [...missing];
-        const worker = async () => {
-          for (let idx = queue.shift(); idx !== undefined; idx = queue.shift()) {
+      const queue = [...missing];
+      let failure: any;
+      const worker = async () => {
+        try {
+          for (let idx = queue.shift(); idx !== undefined && !failure; idx = queue.shift()) {
             if (rt.cancelled.has(id)) throw new Error('unknown item'); // deleted meanwhile
             const slice = await readSource(blob, idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE);
             const data = sealContentChunk(key, id, idx, chunks, slice);
@@ -1573,13 +1656,24 @@ export class Engine {
             track(t, t.done + 1);
             this.changed();
           }
-        };
-        await Promise.all([worker(), worker(), worker(), worker()]);
-        return;
-      } catch (err: any) {
-        if (err.message !== 'disconnected' && err.message !== 'timeout') throw err;
-        await this.reconnected(rt, until);
-      }
+        } catch (err) {
+          failure ??= err;
+        }
+      };
+      const extra = async () => {
+        try {
+          await worker();
+        } finally {
+          this.freeSlot();
+        }
+      };
+      let more = 0;
+      while (more < UPLOAD_SLOTS - 1 && more < missing.length - 1 && this.trySlot()) more++;
+      // every worker over before going on: never more chunks at once than slots
+      await Promise.all([worker(), ...Array.from({ length: more }, () => extra())]);
+      if (!failure) return;
+      if (!retryable(failure)) throw failure;
+      await this.reconnected(rt, until);
     }
   }
 
