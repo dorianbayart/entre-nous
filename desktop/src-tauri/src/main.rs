@@ -277,7 +277,8 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
                 return Ok(json!(b.files.create_in(folder, &s("path"))?));
             }
             let name = a.get("name").and_then(Value::as_str).unwrap_or("fichier");
-            Ok(json!(b.files.create(name, a.get("expiresAt").and_then(Value::as_f64))?))
+            let opened = a.get("open").and_then(Value::as_bool).unwrap_or(false);
+            Ok(json!(b.files.create(name, a.get("expiresAt").and_then(Value::as_f64), opened)?))
         }
         // a folder to send: picked here, its files read through tokens
         "folderPick" => {
@@ -326,6 +327,12 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
                     let _ = std::fs::copy(&src, dest);
                 }
             });
+            Ok(json!(true))
+        }
+        // a received file, opened by the app the system gives it (its copy stays in the temporary folder)
+        "fileOpen" => {
+            let path = b.files.path(&s("token")).ok_or("unknown file")?;
+            app.opener().open_path(path.to_string_lossy(), None::<&str>).map_err(|e| e.to_string())?;
             Ok(json!(true))
         }
         "pipEnter" => {
@@ -462,12 +469,19 @@ fn main() {
 
             tray(app)?;
             clip::watch(handle.clone());
+            handle.state::<Bridge>().files.purge_opened();
             std::thread::spawn(move || loop {
                 handle.state::<Bridge>().files.purge();
                 std::thread::sleep(Duration::from_secs(600));
             });
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("Entre Nous n'a pas pu démarrer");
+        .build(tauri::generate_context!())
+        .expect("Entre Nous n'a pas pu démarrer")
+        .run(|app, event| {
+            // the files given to other apps go with the app
+            if let tauri::RunEvent::Exit = event {
+                app.state::<Bridge>().files.purge_opened();
+            }
+        });
 }

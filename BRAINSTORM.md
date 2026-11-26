@@ -123,6 +123,14 @@ Ce document garde les choix structurants et ce qui est réellement implémenté 
   de Tauri, `Intent.ACTION_VIEW` ; `http` et `https` seulement). Un texte de 1 000 octets au plus, ou
   un fichier texte (`.txt`, `.md`…) de cette taille, s'affiche en QR code (UTF-8), fait sur
   l'appareil : rien ne passe par le relais, à la différence d'un lien de partage.
+- **Ouvrir un fichier dans une autre appli** (applis seulement, `openFile` de la plateforme) : le
+  fichier est écrit déchiffré dans le dossier temporaire de l'appli, puis ouvert par le système
+  (`NSWorkspace`, `open_path` du plugin opener de Tauri, `Intent.ACTION_VIEW` sur le `FileProvider`,
+  qui demande l'appli s'il n'y en a pas par défaut). Bouton « Ouvrir » et vignette avec l'extension
+  sur un fichier sans aperçu, « Ouvrir » dans l'aperçu, et dans un dossier quand un seul fichier
+  sans aperçu est coché. Ces copies sont effacées à l'expiration de l'élément et à la fermeture de
+  l'appli (et au démarrage suivant, après un plantage). Pas de bouton dans un navigateur (iPhone :
+  la feuille de partage d'« Enregistrer » propose déjà « Ouvrir dans… »).
 - **Recherche** : sur l'appareil seulement (`core/search.ts`, partagé avec le CLI), dans ce que
   l'en-tête donne déjà : texte, nom de fichier, extrait d'un fichier texte, appareil. Sans accents,
   majuscules, tirets ni apostrophes ; tous les mots doivent y être. Loupe dans la barre du haut

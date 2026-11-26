@@ -72,6 +72,11 @@ export interface PlatformApi {
   read(): Promise<Outgoing | null>;
   /** Saves or shares a received file. */
   save(blob: Blob, name: string): Promise<void>;
+  /**
+   * Apps: opens a received file with the app the system gives it (Word for a .docx); Android
+   * asks which one. Its decrypted copy stays in the app's temporary folder until `expiresAt`.
+   */
+  openFile?(blob: Blob, name: string, expiresAt?: number): Promise<void>;
   /** Opens a web link (`http`, `https`) in the browser; called during the tap (browsers need it). */
   openUrl(url: string): Promise<void>;
   /** Apps: picks a folder to send (browsers use <input webkitdirectory>); null: cancelled. */

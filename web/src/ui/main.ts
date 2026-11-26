@@ -196,6 +196,9 @@ function clock(seconds: number) {
 }
 
 /** Toast text of a failed copy or save: a deleted item says so plainly. */
+/** In the apps, the viewer's messages say to open the file with another app (not to save it). */
+const hint = <K extends 'viewer.unreadable' | 'viewer.noPreview' | 'viewer.truncated'>(key: K) =>
+  platform.openFile ? (`${key}Open` as const) : key;
 const failure = (key: Key, err: any) => (err instanceof ItemGoneError ? err.message : translate(key, { msg: err?.message ?? err }));
 
 /** The nodes of a text with **bold**, [[glyph]] and line breaks (never parsed as HTML). */
@@ -1203,6 +1206,30 @@ Alpine.data('app', () => ({
     }
   },
 
+  /** Apps: a file the system opens itself (Word for a .docx); Android asks with which app. */
+  canOpenWith(item: ItemView) {
+    return !!platform.openFile && this.canSave(item);
+  },
+
+  /** On the card, for a file without a preview here: it opens first. */
+  opensOutside(item: ItemView) {
+    return this.canOpenWith(item) && !this.previewOf(item);
+  },
+
+  async openWith(item: ItemView) {
+    engine.markRead(this.groupId!, item.id);
+    try {
+      const c = await this.contentOf(this.groupId!, item);
+      await platform.openFile!(c.blob!, c.name ?? this.t('name.file'), item.expiresAt);
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    }
+  },
+
+  openWithTitle(item: ItemView) {
+    return this.t('openWith.title', { name: this.label(item) });
+  },
+
   /** Deleted for every device of the group. */
   async remove(item: ItemView) {
     if (this.prefs.confirmDelete && !this.isConfirming(this.itemKey(item))) {
@@ -1293,26 +1320,29 @@ Alpine.data('app', () => ({
   },
 
   copyClass(item: ItemView) {
-    return this.opensFirst(item) || this.linkFirst(item) ? 'small secondary' : 'small primary';
+    return this.opensFirst(item) || this.linkFirst(item) || this.opensOutside(item) ? 'small secondary' : 'small primary';
   },
 
   openClass(item: ItemView) {
     return this.opensFirst(item) ? 'small primary' : 'small secondary';
   },
 
-  /** A tile at the left of the item: its thumbnail, or a drawn page for a document. */
+  /** A tile at the left of the item: its thumbnail, or a drawn page with its extension. */
   hasTile(item: ItemView) {
-    return !!item.thumb || !!this.previewOf(item) || item.kind === 'folder';
+    return !!item.thumb || !!this.previewOf(item) || item.kind === 'folder' || this.canSave(item);
   },
 
-  /** The tile opens the preview, or a folder's browser. */
+  /** The tile opens the preview, a folder's browser, or (apps) the file in its own app. */
   openTile(item: ItemView) {
     if (item.kind === 'folder') this.openFolder(item);
-    else this.openPreview(item);
+    else if (this.previewOf(item)) this.openPreview(item);
+    else if (this.canOpenWith(item)) this.openWith(item);
   },
 
   tileDisabled(item: ItemView) {
-    return item.kind === 'folder' ? !this.canBrowse(item) : !this.previewOf(item);
+    if (item.kind === 'folder') return !this.canBrowse(item);
+    if (this.previewOf(item)) return false;
+    return !this.canOpenWith(item) || this.downloading(item);
   },
 
   tileClass(item: ItemView) {
@@ -1392,7 +1422,7 @@ Alpine.data('app', () => ({
   onViewerImageError() {
     if (this.viewer.open && this.viewer.kind === 'image' && this.viewer.src) {
       this.viewer.src = '';
-      this.viewer.error = this.t('viewer.unreadable');
+      this.viewer.error = this.t(hint('viewer.unreadable'));
     }
   },
 
@@ -1443,7 +1473,7 @@ Alpine.data('app', () => ({
           if (stale()) return;
           viewerUrl = URL.createObjectURL(c.blob!);
           this.viewer.src = viewerUrl;
-        } else this.viewer.error = this.t('viewer.noPreview');
+        } else this.viewer.error = this.t(hint('viewer.noPreview'));
       } else if (kind === 'video') {
         await this.playVideo(groupId, item, stale);
       } else if (kind === 'audio') {
@@ -1464,7 +1494,7 @@ Alpine.data('app', () => ({
         const text = decodeStart(bytes, whole);
         textShown = text;
         const cut = drawLines((this as any).$refs.lines, text);
-        if (!whole || cut) this.viewer.note = this.t('viewer.truncated', { size: humanSize(item.size) });
+        if (!whole || cut) this.viewer.note = this.t(hint('viewer.truncated'), { size: humanSize(item.size) });
         if (kind === 'markdown') await renderMarkdown((this as any).$refs.md, text);
       }
     } catch (err: any) {
@@ -1483,7 +1513,7 @@ Alpine.data('app', () => ({
     const video = this.videoEl()!;
     video.poster = item.thumb ?? '';
     const onError = () => {
-      if (!stale()) this.viewer.error = this.t('viewer.unreadable');
+      if (!stale()) this.viewer.error = this.t(hint('viewer.unreadable'));
     };
     video.onerror = onError;
     video.addEventListener('streamerror', onError);
@@ -1501,7 +1531,7 @@ Alpine.data('app', () => ({
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
       if (!video.canPlayType(item.mime || 'video/mp4')) {
-        this.viewer.error = this.t('viewer.unreadable');
+        this.viewer.error = this.t(hint('viewer.unreadable'));
         return;
       }
       const c = await this.contentOf(groupId, item);
@@ -1521,7 +1551,7 @@ Alpine.data('app', () => ({
   async playAudio(groupId: string, item: ItemView, stale: () => boolean) {
     const audio = this.audioEl()!;
     const onError = () => {
-      if (!stale()) this.viewer.error = this.t('viewer.unreadable');
+      if (!stale()) this.viewer.error = this.t(hint('viewer.unreadable'));
     };
     audio.onerror = onError;
     audio.addEventListener('streamerror', onError);
@@ -1541,7 +1571,7 @@ Alpine.data('app', () => ({
       if (stale()) return;
       if (!(err instanceof NotStreamable)) throw err;
       if (!audio.canPlayType(item.mime || audioMime(item.name))) {
-        this.viewer.error = this.t('viewer.unreadable');
+        this.viewer.error = this.t(hint('viewer.unreadable'));
         return;
       }
       const c = await this.contentOf(groupId, item);
@@ -1978,6 +2008,26 @@ Alpine.data('app', () => ({
     if (item) this.save(item);
   },
 
+  get viewerCanOpenWith() {
+    const item = this.viewerItem;
+    return !!item && this.canOpenWith(item);
+  },
+
+  /** A format this device does not read: opening it elsewhere comes first. */
+  get viewerOpenWithClass() {
+    return this.viewer.error ? 'primary' : 'secondary';
+  },
+
+  get viewerOpenWithTitle() {
+    const item = this.viewerItem;
+    return item ? this.openWithTitle(item) : '';
+  },
+
+  viewerOpenWith() {
+    const item = this.viewerItem;
+    if (item) this.openWith(item);
+  },
+
   viewerRemove() {
     const item = this.viewerItem;
     if (item && !this.viewerInFolder) this.remove(item);
@@ -2236,6 +2286,7 @@ Alpine.data('app', () => ({
         thumb: (f) => this.folderThumb(open, f),
         open: (f, siblings) => this.openFolderFiles(f, siblings),
         download: (files, dirs, base, name) => this.downloadFolderFiles(open, files, dirs, base, name),
+        ...(platform.openFile ? { openFile: (f: FolderFile) => this.openFolderFileWith(open, f) } : {}),
         close: () => this.closeFolder(),
       });
     } catch (err: any) {
@@ -2364,6 +2415,19 @@ Alpine.data('app', () => ({
       } finally {
         reader.close();
       }
+    } catch (err: any) {
+      this.toast(failure('toast.error', err));
+    } finally {
+      open.browser?.setBusy('');
+    }
+  },
+
+  /** Apps: a file of the folder, opened in its own app. */
+  async openFolderFileWith(open: NonNullable<typeof folderOpen>, f: FolderFile) {
+    try {
+      open.browser?.setBusy(this.t('viewer.loading'));
+      const c = await this.contentOf(open.groupId, this.fileView(open, f));
+      await platform.openFile!(c.blob!, c.name ?? this.t('name.file'), open.item.expiresAt);
     } catch (err: any) {
       this.toast(failure('toast.error', err));
     } finally {

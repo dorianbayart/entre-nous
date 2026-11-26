@@ -299,6 +299,7 @@
             <button class="small secondary" x-show="canBrowse(item) && !downloading(item)" @click="downloadFolder(item)" x-text="t('folder.downloadAll')"></button>
             <button :class="openClass(item)" x-show="opensFirst(item) && !downloading(item)" @click="openPreview(item)" x-text="openLabel(item)"></button>
             <button class="small primary" x-show="linkFirst(item)" @click="openLink(item)" :title="linkTitle(item)" x-text="t('link.open')"></button>
+            <button class="small primary" x-show="opensOutside(item) && !downloading(item)" @click="openWith(item)" :title="openWithTitle(item)" x-text="t('openWith')"></button>
             <button :class="copyClass(item)" x-show="canCopy(item) && !downloading(item)" @click="copy(item)" x-text="t('copy')"></button>
             <button class="small secondary" x-show="linkAfter(item)" @click="openLink(item)" :title="linkTitle(item)" x-text="t('link.open')"></button>
             <button :class="openClass(item)" x-show="previewOf(item) && !opensFirst(item) && !downloading(item)" @click="openPreview(item)" x-text="openLabel(item)"></button>
@@ -688,6 +689,7 @@
       </template>
       <div class="row">
         <button class="primary" x-show="viewerCanCopy" @click="viewerCopy" x-text="viewerCopyLabel"></button>
+        <button :class="viewerOpenWithClass" x-show="viewerCanOpenWith" @click="viewerOpenWith" :title="viewerOpenWithTitle" x-text="t('openWith')"></button>
         <button class="secondary" @click="viewerSave" x-text="t('save')"></button>
         <button class="secondary" x-show="viewerIs('video') && !viewer.error" @click="fullscreen" x-text="t('viewer.fullscreen')"></button>
         <button class="ghost danger" x-show="!viewerInFolder" @click="viewerRemove" :aria-label="t('item.deleteTitle')" :title="t('item.deleteTitle')">

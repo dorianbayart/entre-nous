@@ -81,12 +81,15 @@ export function androidPlatform(): PlatformApi {
     },
 
     async save(blob, name) {
-      const { token } = await Native.fileCreate({ name });
-      for (let offset = 0; offset < blob.size; offset += FILE_PART) {
-        const part = new Uint8Array(await blob.slice(offset, offset + FILE_PART).arrayBuffer());
-        await Native.fileAppend({ token, data: b64(part) });
-      }
+      const token = await writeFile(blob, name);
       await Native.fileShare({ token, mime: blob.type || 'application/octet-stream' });
+    },
+
+    async openFile(blob, name) {
+      const token = await writeFile(blob, name, true);
+      await Native.fileOpen({ token, mime: blob.type || 'application/octet-stream' }).catch((err: any) => {
+        throw err?.code === 'NO_APP' ? new Error(t('openWith.none')) : err;
+      });
     },
 
     // a folder: picked with Android's folder picker, its files read through the plugin
@@ -180,4 +183,15 @@ export function androidPlatform(): PlatformApi {
     },
   };
   return p;
+}
+
+/** A received file, written in the app's cache (piece by piece): its token. `open`: a copy for
+ *  another app, deleted when the app closes. */
+async function writeFile(blob: Blob, name: string, open = false): Promise<string> {
+  const { token } = await Native.fileCreate({ name, open });
+  for (let offset = 0; offset < blob.size; offset += FILE_PART) {
+    const part = new Uint8Array(await blob.slice(offset, offset + FILE_PART).arrayBuffer());
+    await Native.fileAppend({ token, data: b64(part) });
+  }
+  return token;
 }

@@ -15,6 +15,8 @@ export interface FolderHost {
   open(file: FolderFile, siblings: FolderFile[]): void;
   /** Downloads files (paths kept from `base`, the folder shown), as `name`. */
   download(files: FolderFile[], dirs: string[], base: string, name: string): void;
+  /** Apps: opens a file in the app the system gives it (one file ticked, without a preview). */
+  openFile?(file: FolderFile): void;
   /** Closes the browser (the app); none: it stays (a share link's page). */
   close?(): void;
 }
@@ -383,7 +385,13 @@ export class FolderBrowser {
         while (base && !files.every((f) => f.path.startsWith(base + '/'))) base = dirName(base);
         this.host.download(files, [], base, base ? baseName(base) : index.name);
       };
-      actions.push(clear, go);
+      actions.push(clear);
+      if (files.length === 1 && !this.previewable(files[0]) && this.host.openFile) {
+        const one = el('button', 'secondary', t('openWith'));
+        one.onclick = () => this.host.openFile!(files[0]);
+        actions.push(one);
+      }
+      actions.push(go);
     } else {
       const files = filesUnder(index, this.dir);
       sum.append(el('strong', '', this.dir ? baseName(this.dir) : t('folder.whole')), el('span', '', this.metaOf(files)));
@@ -397,6 +405,7 @@ export class FolderBrowser {
       sum.replaceChildren(el('strong', '', t('folder.downloading')), el('span', '', this.busy));
       for (const a of actions) (a as HTMLButtonElement).disabled = true;
     }
+    b.classList.toggle('three', actions.length > 2);
     b.replaceChildren(sum, ...actions);
   }
 }

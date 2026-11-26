@@ -27,6 +27,7 @@ sans trace.
 - **Épingle ce qui sert souvent** : il reste en haut de l'historique, sur tous tes appareils.
 - **Un lien reçu s'ouvre d'un geste**, et un texte s'affiche en QR code pour un téléphone hors du groupe :
   le mot de passe du Wi-Fi pour un invité.
+- **Ouvre un fichier sans l'enregistrer** : Entre Nous le télécharge le temps que tu t'en serves, puis l'efface.
 - **Aperçus** : prévisualise une photo, un PDF ou un document Markdown sans le télécharger, et regarde une
   vidéo (même en Picture-in-Picture) ou écoute un fichier audio pendant son téléchargement.
 

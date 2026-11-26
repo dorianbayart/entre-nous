@@ -156,7 +156,8 @@ A file request lets someone outside the group send files to the group.
   exclusion formats on Windows, KDE hint on Linux): clipboard history tools ignore it. Conversely,
   anything password managers mark this way is never shared.
 - Files received by the desktop apps are stored in the user's temporary folder and deleted when
-  the item expires.
+  the item expires. A file opened in another app (**Open**, in the desktop and Android apps) is also
+  deleted when Entre Nous quits.
 - Notifications only show the type and the sender ("Text from Pixel"), never the content.
 
 ## The relay

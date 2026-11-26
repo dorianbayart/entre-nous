@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.56 — 2026-11-26
+- An Open button on every file.
+
 ## 0.1.55 — 2026-11-26
 - Fix: the Mac, Linux and Windows apps no longer get stuck on their logo when the keychain is locked; a Try again button shows.
 

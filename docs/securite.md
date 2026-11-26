@@ -160,7 +160,8 @@ Une demande de fichiers permet à une personne hors du groupe d'envoyer des fich
   presse-papier l'ignorent. À l'inverse, ce que les gestionnaires de mots de passe marquent ainsi
   n'est jamais partagé.
 - Les fichiers reçus par les applis de bureau sont rangés dans le dossier temporaire de l'utilisateur
-  et effacés à l'expiration de l'élément.
+  et effacés à l'expiration de l'élément. Un fichier ouvert dans une autre appli (**Ouvrir**, sur les
+  applis de bureau et Android) est aussi effacé à la fermeture d'Entre Nous.
 - Les notifications n'indiquent que le type et l'expéditeur (« Texte reçu de Pixel »), jamais le contenu.
 
 ## Le relais

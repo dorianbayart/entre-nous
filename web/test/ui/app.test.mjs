@@ -1359,6 +1359,71 @@ test('scrolls: each screen on its own, the history kept under a page or a previe
   assert.deepEqual(problems, []);
 });
 
+test('apps: Open gives a file to another app (card, tile, preview); none in a browser', { timeout: 90_000 }, async () => {
+  const mac = await device('Mac');
+  await mac.context.addInitScript(`(() => {
+    const kv = new Map();
+    window.__calls = [];
+    window.__entrenous = {
+      config: { relay: location.origin, name: 'MacBook' },
+      event() {},
+      call: async (m) => {
+        if (m.cmd === 'kvGet') return kv.has(m.key) ? kv.get(m.key) : null;
+        if (m.cmd === 'kvSet') return void kv.set(m.key, m.value);
+        if (m.cmd === 'clipRead') return null;
+        if (m.cmd === 'fileCreate') {
+          const token = 'tok' + window.__calls.length;
+          window.__calls.push({ cmd: 'fileCreate', name: m.name, open: !!m.open, token });
+          return token;
+        }
+        if (m.cmd === 'fileOpen') window.__calls.push({ cmd: 'fileOpen', token: m.token });
+        return true;
+      },
+    };
+  })();`);
+  const b = await device('Bob');
+  await mac.page.goto(APP);
+  await mac.page.locator('section.main').waitFor();
+  await b.page.goto(APP);
+  await b.page.locator('section.main').waitFor();
+  await pair(mac, b, (link) => b.page.goto(link));
+  await mac.page.locator('section.settings').getByLabel('Retour', { exact: true }).click().catch(() => {});
+
+  const opened = () => mac.page.evaluate(() => {
+    const c = window.__calls;
+    return c.filter((x) => x.cmd === 'fileOpen').map((o) => c.find((x) => x.token === o.token));
+  });
+  const input = b.page.locator('input[type=file][multiple]');
+  await input.setInputFiles({ name: 'devis.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: randomFillSync(Buffer.alloc(5000)) });
+  const docx = mac.page.locator('.history .item', { hasText: 'devis.docx' });
+  await docx.waitFor();
+  assert.equal(await docx.locator('.thumb .badge').textContent(), 'DOCX', 'a tile with its extension');
+  await button(docx, 'Ouvrir').click();
+  await until('opened from the card', async () => (await opened()).length === 1);
+  assert.deepEqual((await opened())[0], { cmd: 'fileCreate', name: 'devis.docx', open: true, token: (await opened())[0].token });
+  await docx.locator('button.thumb').click();
+  await until('opened from the tile', async () => (await opened()).length === 2);
+
+  // a browser: the tile but no Open (Save opens it elsewhere)
+  const onBob = b.page.locator('.history .item', { hasText: 'devis.docx' });
+  assert.ok(await button(onBob, 'Ouvrir').isHidden(), 'no Open in a browser');
+  assert.ok(await onBob.locator('button.thumb').isDisabled());
+
+  // the preview of a PDF
+  await input.setInputFiles({ name: 'plan.pdf', mimeType: 'application/pdf', buffer: await readFile(new URL('fixtures/doc.pdf', import.meta.url)) });
+  const pdf = mac.page.locator('.history .item', { hasText: 'plan.pdf' });
+  await pdf.waitFor();
+  await button(pdf, 'Ouvrir').click();
+  const viewer = mac.page.locator('section.viewer');
+  await viewer.locator('.pdf-pages canvas').first().waitFor();
+  await button(viewer.locator('.viewer-actions'), 'Ouvrir').click();
+  await until('opened from the preview', async () => (await opened()).some((c) => c?.name === 'plan.pdf'));
+  await mac.page.keyboard.press('Escape');
+
+  for (const d of [mac, b]) await d.context.close();
+  assert.deepEqual(problems, []);
+});
+
 test('desktop app: Keychain unreadable at start, the logo with why and Try again', { timeout: 60_000 }, async () => {
   const mac = await device('Mac');
   // the native side refuses its storage until it is unlocked (kept across the reload)

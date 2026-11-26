@@ -105,7 +105,10 @@ public class EntreNousPlugin extends Plugin {
         prefs = getContext().getSharedPreferences("entrenous", Context.MODE_PRIVATE);
         registerPipReceiver();
         registerMediaReceiver();
-        io.execute(this::purgeOldFiles);
+        io.execute(() -> {
+            deleteTree(new File(getContext().getCacheDir(), "opened")); // left by a closed app
+            purgeOldFiles();
+        });
         getActivity()
             .getOnBackPressedDispatcher()
             .addCallback(
@@ -359,7 +362,9 @@ public class EntreNousPlugin extends Plugin {
             return;
         }
         String token = UUID.randomUUID().toString();
-        File dir = new File(new File(getContext().getCacheDir(), "received"), token);
+        // a copy given to another app: deleted when the app closes
+        String where = Boolean.TRUE.equals(call.getBoolean("open", false)) ? "opened" : "received";
+        File dir = new File(new File(getContext().getCacheDir(), where), token);
         dir.mkdirs();
         File f = new File(dir, safeName(call.getString("name", "fichier")));
         files.put(token, f);
@@ -409,6 +414,27 @@ public class EntreNousPlugin extends Plugin {
         main.post(() -> {
             getActivity().startActivity(chooser);
             call.resolve();
+        });
+    }
+
+    /** A received file, opened by its app (Android asks which one when there is no default). */
+    @PluginMethod
+    public void fileOpen(PluginCall call) {
+        File f = files.get(call.getString("token", ""));
+        if (f == null) {
+            call.reject("unknown file");
+            return;
+        }
+        Intent view = new Intent(Intent.ACTION_VIEW);
+        view.setDataAndType(fileUri(f), call.getString("mime", "application/octet-stream"));
+        view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        main.post(() -> {
+            try {
+                getActivity().startActivity(view);
+                call.resolve();
+            } catch (android.content.ActivityNotFoundException e) {
+                call.reject("no app opens this file", "NO_APP");
+            }
         });
     }
 
@@ -794,6 +820,7 @@ public class EntreNousPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         clearMedia();
+        deleteTree(new File(getContext().getCacheDir(), "opened"));
     }
 
     private void showMedia(String title, String artist, String album, long duration, long position, boolean playing, boolean hasNext) {

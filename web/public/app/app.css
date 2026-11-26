@@ -655,13 +655,15 @@ html.pip .viewer-media:hover .pip-back, .pip-back:focus-visible { opacity: 1; }
 
 /* the bar at the bottom: what is downloaded */
 .folder-bottom {
-  display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-radius: var(--radius);
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 10px 10px 14px; border-radius: var(--radius);
   background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
 }
 .folder-sum { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; }
 .folder-sum strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
 .folder-sum span { color: var(--muted); font-variant-numeric: tabular-nums; }
 .folder-bottom .primary { white-space: nowrap; }
+/* three buttons (Open too): the summary on its own line above them */
+.folder-bottom.three .folder-sum { flex-basis: 100%; }
 
 /* a large folder, shown before it is sent */
 .sheet-backdrop {

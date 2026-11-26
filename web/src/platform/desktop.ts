@@ -199,6 +199,11 @@ export function desktopPlatform(): PlatformApi {
       await call('fileSaveAs', { token, name });
     },
 
+    async openFile(blob, name, expiresAt) {
+      const token = await writeNativeFile(blob, name, expiresAt, true);
+      await call('fileOpen', { token });
+    },
+
     async pickFolder() {
       const payload = await call('folderPick');
       return payload ? folderFromNative(payload, readToken) : null;
@@ -234,8 +239,9 @@ export function desktopPlatform(): PlatformApi {
   };
 }
 
-async function writeNativeFile(blob: Blob, name: string, expiresAt?: number): Promise<string> {
-  const token: string = await call('fileCreate', { name, expiresAt });
+/** `open`: a copy for another app, also deleted when the app quits. */
+async function writeNativeFile(blob: Blob, name: string, expiresAt?: number, open = false): Promise<string> {
+  const token: string = await call('fileCreate', { name, expiresAt, open });
   for (let offset = 0; offset < blob.size; offset += FILE_PART) {
     const part = new Uint8Array(await blob.slice(offset, offset + FILE_PART).arrayBuffer());
     await call('fileAppend', { token, data: b64(part) });

@@ -26,6 +26,7 @@ no trace.
 - **Pin what you use often**: it stays at the top of the history, on all your devices.
 - **Open a received link in one tap**, and show a text as a QR code for a phone outside the group:
   the Wi-Fi password for a guest.
+- **Open a file without saving it**: Entre Nous downloads it for as long as you need it, then erases it.
 - **Previews**: preview a photo, a PDF or a Markdown document without downloading it, and watch a video
   (even in Picture-in-Picture) or listen to an audio file while it downloads.
 

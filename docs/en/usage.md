@@ -95,6 +95,10 @@ history as a single item, with all its subfolders.
 - **QR code**: the QR code icon of a short text, or of a small text file, shows it as a QR code.
   Handy to give the Wi-Fi password to a guest: they scan it with their phone's camera, with
   nothing to install. The QR code is made on the device: nothing goes through the internet.
+- **Open without saving** (Mac, Linux, Windows and Android apps): **Open** downloads the file to a
+  temporary folder and opens it with the app your device uses for that type of file, for example
+  Word for a `.docx`. That folder is emptied when you quit Entre Nous. To keep the file, use
+  **Save**.
 - **Upload in progress**: an "↑ name" line above the history shows its progress and speed on
   every device, and disappears when it's done. The item appears right away: you can **Save** it
   before the upload finishes (the download follows the upload), while **Copy** becomes available
@@ -119,11 +123,11 @@ swipe on a phone, ← → on a keyboard) go from one item to the next; Escape cl
 - **Photo**: you see it full size at once, without downloading it. It is downloaded only when you
   copy or save it. JPEG, PNG, GIF, WebP, AVIF and SVG get a preview from any device; HEIC and TIFF
   photos, when they come from an iPhone or a Mac. A photo the sending device cannot read (a HEIC
-  photo sent from Chrome) arrives without a preview: save it to open it.
+  photo sent from Chrome) arrives without a preview: open it in another app (**Open**, in the apps) or save it.
 - **Video**: it plays while it arrives, without being downloaded whole, and you can jump forward
   or back at any time (even while the other device is still sending it). MP4 and MOV (what phones
   record); other formats, or an iPhone older than iOS 17.1, download it first. A format the device
-  cannot play (HEVC on some PCs, for instance) offers **Save**.
+  cannot play (HEVC on some PCs, for instance) offers **Open** in another app (in the apps) and **Save**.
 - **Audio**: it plays while it arrives, without being downloaded whole, and you can jump forward
   or back at any time. MP3, M4A, Opus, FLAC and WAV (8, 16 or 24 bits); other formats (Ogg
   Vorbis, floating-point WAV…) download first, then play if the device can play them. When a

@@ -97,6 +97,10 @@ aussi). Il arrive dans l'historique en un seul élément, avec tous ses sous-dos
 - **QR code** : l'icône QR code d'un texte court, ou d'un petit fichier texte, l'affiche en QR code.
   Pratique pour donner le mot de passe du Wi-Fi à un invité : il le scanne avec l'appareil photo de
   son téléphone, sans rien installer. Le QR code est fait sur l'appareil, rien ne passe par Internet.
+- **Ouvrir sans enregistrer** (applis Mac, Linux, Windows et Android) : **Ouvrir** télécharge le
+  fichier dans un dossier temporaire et l'ouvre avec l'appli que ton appareil utilise pour ce type
+  de fichier, par exemple Word pour un `.docx`. Ce dossier est vidé quand tu fermes Entre Nous.
+  Pour garder le fichier, utilise **Enregistrer**.
 - **Envoi en cours** : une ligne « ↑ nom » au-dessus de l'historique montre sa progression et sa
   vitesse, sur tous les appareils, et disparaît à la fin. L'élément apparaît dès le début :
   **Enregistrer** est possible avant la fin, le téléchargement suit l'envoi ; **Copier** arrive une
@@ -123,12 +127,12 @@ clavier) passent d'un élément à l'autre ; Échap ferme.
   tu la copies ou l'enregistres. JPEG, PNG, GIF, WebP, AVIF et SVG ont un aperçu depuis tous les
   appareils ; les photos HEIC et les TIFF, quand elles viennent d'un iPhone ou d'un Mac. Une photo
   que l'appareil qui l'envoie ne sait pas lire (une photo HEIC envoyée depuis Chrome) arrive sans
-  aperçu : enregistre-la pour l'ouvrir.
+  aperçu : ouvre-la dans une autre appli (**Ouvrir**, sur les applis) ou enregistre-la.
 - **Vidéo** : elle se lit pendant qu'elle arrive, sans être téléchargée en entier, et on peut avancer
   ou reculer à tout moment (même pendant que l'autre appareil l'envoie encore). MP4 et MOV (ceux
   des téléphones) ; les autres formats, ou un iPhone plus ancien qu'iOS 17.1, la téléchargent
   d'abord. Un format que l'appareil ne sait pas lire (HEVC sur certains PC, par exemple) propose
-  **Enregistrer**.
+  **Ouvrir** dans une autre appli (sur les applis) et **Enregistrer**.
 - **Audio** : il s'écoute pendant qu'il arrive, sans être téléchargé en entier, et on peut avancer
   ou reculer à tout moment. MP3, M4A, Opus, FLAC et WAV (8, 16 ou 24 bits) ; les autres formats
   (Ogg Vorbis, WAV en virgule flottante…) se téléchargent d'abord, puis s'écoutent si l'appareil

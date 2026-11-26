@@ -10,6 +10,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_LIFETIME_MS: u64 = 24 * 3600 * 1000;
+const OPENED_MARK: &str = "ouvert-";
 
 pub struct Files {
     root: PathBuf,
@@ -44,10 +45,12 @@ impl Files {
         self.inner.lock().unwrap().paths.get(token).cloned()
     }
 
-    /// Folder name = expiry timestamp, so the purge needs no index.
-    pub fn create(&self, name: &str, expires_at: Option<f64>) -> Result<String, String> {
+    /// Folder name = expiry timestamp, so the purge needs no index. `opened`: a copy given to
+    /// another app, also deleted when the app quits (and at the next launch, after a crash).
+    pub fn create(&self, name: &str, expires_at: Option<f64>, opened: bool) -> Result<String, String> {
         let expiry = expires_at.map(|e| e as u64).unwrap_or_else(|| now_ms() + DEFAULT_LIFETIME_MS);
-        let dir = self.root.join(format!("{expiry}-{}", uuid::Uuid::new_v4()));
+        let mark = if opened { OPENED_MARK } else { "" };
+        let dir = self.root.join(format!("{expiry}-{mark}{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         // a received file: no leading dot either (it would be hidden)
         let safe = safe(name);
@@ -130,6 +133,17 @@ impl Files {
         let mut buf = Vec::with_capacity(length);
         file.take(length as u64).read_to_end(&mut buf).map_err(|e| e.to_string())?;
         Ok(buf)
+    }
+
+    /// The copies given to other apps: the app quits (or starts again after a crash).
+    pub fn purge_opened(&self) {
+        if let Ok(dirs) = fs::read_dir(&self.root) {
+            for dir in dirs.flatten() {
+                if dir.file_name().to_string_lossy().contains(&format!("-{OPENED_MARK}")) {
+                    let _ = fs::remove_dir_all(dir.path());
+                }
+            }
+        }
     }
 
     pub fn purge(&self) {

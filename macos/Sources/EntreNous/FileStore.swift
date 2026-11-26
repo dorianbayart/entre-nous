@@ -24,10 +24,11 @@ final class FileStore {
 
     func url(_ token: String) -> URL? { urls[token] }
 
-    /// Folder name = expiry timestamp, so the purge needs no index.
-    func create(name: String, expiresAt: Double?) throws -> String {
+    /// Folder name = expiry timestamp, so the purge needs no index. `opened`: a copy given to
+    /// another app, also deleted when the app quits (and at the next launch, after a crash).
+    func create(name: String, expiresAt: Double?, opened: Bool = false) throws -> String {
         let expiry = Int(expiresAt ?? (Date().timeIntervalSince1970 + Self.defaultLifetime) * 1000)
-        let dir = root.appendingPathComponent("\(expiry)-\(UUID().uuidString)", isDirectory: true)
+        let dir = root.appendingPathComponent("\(expiry)-\(opened ? Self.openedMark : "")\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         let file = dir.appendingPathComponent(safe.isEmpty ? "fichier" : safe)
@@ -117,8 +118,19 @@ final class FileStore {
     }
 
     func startPurging() {
+        purgeOpened()
         purge()
         timer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in self?.purge() }
+    }
+
+    private static let openedMark = "ouvert-"
+
+    /// The copies given to other apps: the app quits.
+    func purgeOpened() {
+        let dirs = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+        for dir in dirs where dir.lastPathComponent.contains("-\(Self.openedMark)") {
+            try? FileManager.default.removeItem(at: dir)
+        }
     }
 
     private func purge() {

@@ -69,6 +69,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
         ) { [weak self] _ in self?.emit("wake", [:]) }
     }
 
+    /// The app quits: the files given to other apps go.
+    func quitting() {
+        files.purgeOpened()
+    }
+
     func load() {
         webView.load(URLRequest(url: URL(string: "entrenous://app/index.html")!))
     }
@@ -194,7 +199,8 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             if let folder = a["folder"] as? String {
                 return try files.createIn(folder: folder, path: a["path"] as? String ?? "")
             }
-            return try files.create(name: a["name"] as? String ?? "fichier", expiresAt: a["expiresAt"] as? Double)
+            return try files.create(name: a["name"] as? String ?? "fichier", expiresAt: a["expiresAt"] as? Double,
+                                    opened: a["open"] as? Bool ?? false)
 
         // a folder to send: picked here, its files read through tokens
         case "folderPick":
@@ -233,6 +239,11 @@ final class WebBridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDe
             return data.base64URLEncoded()
         case "fileSaveAs":
             files.saveAs(a["token"] as! String, name: a["name"] as? String ?? "fichier")
+            return true
+        // a received file, opened by the app macOS gives it (its copy stays in the temporary folder)
+        case "fileOpen":
+            guard let url = files.url(a["token"] as? String ?? "") else { throw BridgeError("unknown file") }
+            NSWorkspace.shared.open(url)
             return true
 
         // Open at login: the system keeps the setting (Réglages Système → Ouverture)

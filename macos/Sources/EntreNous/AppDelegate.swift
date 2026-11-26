@@ -172,6 +172,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, UNU
         bridge.load()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        bridge.quitting()
+    }
+
     @objc private func quit() {
         NSApp.terminate(nil)
     }
