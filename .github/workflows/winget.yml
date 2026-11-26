@@ -24,8 +24,11 @@ jobs:
           GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo '::notice::no WINGET_TOKEN secret'; exit 0; fi
+          package=repos/microsoft/winget-pkgs/contents/manifests/d/DorianBayart/EntreNous
+          # the first version goes in by hand (komac only updates a package winget has)
+          if ! gh api "$package" --silent 2>/dev/null; then echo '::notice::not in winget yet'; exit 0; fi
           tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
-          if gh api "repos/microsoft/winget-pkgs/contents/manifests/d/DorianBayart/EntreNous/${tag#v}" --silent 2>/dev/null; then
+          if gh api "$package/${tag#v}" --silent 2>/dev/null; then
             echo "winget already has $tag"; exit 0
           fi
           waiting=$(gh pr list --repo microsoft/winget-pkgs --state open --author "$GITHUB_REPOSITORY_OWNER" \
