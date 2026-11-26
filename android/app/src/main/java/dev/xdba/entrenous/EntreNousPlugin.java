@@ -60,8 +60,11 @@ import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -149,7 +152,41 @@ public class EntreNousPlugin extends Plugin {
         JSObject o = new JSObject();
         o.put("model", Build.MODEL);
         o.put("pip", pipSupported());
+        String store = store();
+        if (store != null) o.put("store", store);
         call.resolve(o);
+    }
+
+    /** The stores that update the app themselves: installed by one, the app links to no APK. */
+    private static final Set<String> PLAY = new HashSet<>(Arrays.asList(
+        "com.android.vending", // Google Play
+        "com.aurora.store" // Aurora Store (Google Play's version)
+    ));
+    private static final Set<String> FDROID = new HashSet<>(Arrays.asList(
+        "org.fdroid.fdroid", "org.fdroid.basic", // F-Droid
+        "com.looker.droidify", // Droid-ify
+        "com.machiav3lli.fdroid" // Neo Store
+    ));
+    private static final Set<String> OBTAINIUM = new HashSet<>(Arrays.asList(
+        "dev.imranr.obtainium", "dev.imranr.obtainium.fdroid" // follows the releases
+    ));
+
+    /** The store that installed the app ("play", "fdroid", "obtainium"), null for a downloaded APK. */
+    @SuppressWarnings("deprecation")
+    private String store() {
+        Context c = getContext();
+        try {
+            String installer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                ? c.getPackageManager().getInstallSourceInfo(c.getPackageName()).getInstallingPackageName()
+                : c.getPackageManager().getInstallerPackageName(c.getPackageName());
+            if (installer == null) return null;
+            if (PLAY.contains(installer)) return "play";
+            if (FDROID.contains(installer)) return "fdroid";
+            if (OBTAINIUM.contains(installer)) return "obtainium";
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Back button on the main screen: the app goes to the background (like Home). */

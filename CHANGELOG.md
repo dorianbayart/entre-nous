@@ -1,6 +1,9 @@
 # Nouveautés
 [English](CHANGELOG.en.md)
 
+## 0.1.57 — 2026-11-26
+- Faire un don, depuis les Réglages.
+
 ## 0.1.56 — 2026-11-26
 - Bouton Ouvrir sur tous les fichiers.
 

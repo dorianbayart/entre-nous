@@ -115,6 +115,12 @@ Détails, proxy et réglages : [docs/deploiement.md](docs/deploiement.md).
 - Un envoi interrompu reprend tant que l'appli reste ouverte, pas après son redémarrage.
 - Un appareil éteint au moment où un autre est retiré du groupe doit être associé de nouveau.
 
+## Soutenir le projet
+
+Entre Nous est gratuit, sans publicité ni traceur. Le relais public tourne sur un serveur que
+paient les dons : [Liberapay](https://liberapay.com/0xdba/donate) ou
+[GitHub Sponsors](https://github.com/sponsors/dorianbayart).
+
 ## Licence
 
 [GNU AGPL v3](LICENSE) ou ultérieure. Tu peux utiliser, modifier et redistribuer Entre Nous ;

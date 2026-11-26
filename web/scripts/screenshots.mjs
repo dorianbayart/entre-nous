@@ -185,10 +185,15 @@ async function rename(page, name) {
   await page.locator('section.settings').getByLabel(S.back, { exact: true }).click();
 }
 
+/** The invitation page (other pages have their own QR code and link). */
+function inviteView(page) {
+  return page.locator('section.page', { has: page.getByRole('heading', { name: S.invite, exact: true }) });
+}
+
 async function invite(host, open) {
   await host.getByLabel(S.settings).click();
   await button(host, S.invite).click();
-  const link = await until('link', () => host.locator('input.link').inputValue());
+  const link = await until('link', () => inviteView(host).locator('input.link').inputValue());
   await open(link);
   await host.locator('section.main').waitFor();
 }
@@ -564,7 +569,7 @@ async function renderPair(html, file) {
 
 /** The invitation link: its start shown with a public address, its secret blurred. */
 async function blurLink(page) {
-  await page.locator('input.link').evaluate((el, host) => {
+  await inviteView(page).locator('input.link').evaluate((el, host) => {
     const cs = getComputedStyle(el);
     const d = document.createElement('div');
     for (const k of ['font', 'color', 'background', 'border', 'borderRadius', 'padding', 'width', 'boxSizing', 'margin']) d.style[k] = cs[k];
@@ -590,8 +595,8 @@ const welcomePhone = await shot(phone);
 // association: the Mac shows its QR code and its link
 await mac.getByLabel(S.settings).click();
 await button(mac, S.invite).click();
-await mac.locator('img.qr').waitFor();
-const link = await mac.locator('input.link').inputValue();
+await inviteView(mac).locator('img.qr').waitFor();
+const link = await inviteView(mac).locator('input.link').inputValue();
 await blurLink(mac);
 await sleep(300);
 const inviteMac = await shot(mac);
@@ -610,11 +615,11 @@ await sleep(500);
 const copy = (text) => mac.evaluate((t) => window.__entrenous.event('localCopy', { kind: 'text', text: t }), text);
 await copy(S.wifi);
 await phone.locator('.history .item', { hasText: S.wifi }).waitFor();
-await mac.locator('input[type=file]').setInputFiles({ name: S.quote, mimeType: 'application/pdf', buffer: Buffer.alloc(1_830_000, 7) });
+await mac.locator('input[type=file][multiple]').setInputFiles({ name: S.quote, mimeType: 'application/pdf', buffer: Buffer.alloc(1_830_000, 7) });
 await phone.locator('.history .item', { hasText: S.quote }).waitFor();
 await pc.locator('.history .item', { hasText: S.quote }).waitFor();
 await phone.locator('.transfer').first().waitFor({ state: 'detached' }).catch(() => {});
-await pc.locator('input[type=file]').setInputFiles({ name: S.md.name, mimeType: 'text/markdown', buffer: Buffer.from(S.md.text) });
+await pc.locator('input[type=file][multiple]').setInputFiles({ name: S.md.name, mimeType: 'text/markdown', buffer: Buffer.from(S.md.text) });
 for (const d of [mac, phone]) await d.locator('.history .item', { hasText: S.md.name }).waitFor();
 await sleep(600);
 
@@ -675,7 +680,7 @@ tween(12, (k) => ({ ...d1, ...t0, trio: k, ...caption(T.trio, T.got, k), bubbles
 hold({ ...t0, ...caption(T.trio) }, 0.8);
 const jpeg = await photo(phone, 2100, 2800); // a phone photo: upright
 await phone.evaluate(() => window.__hold());
-await phone.locator('input[type=file]').setInputFiles({ name: 'IMG_4127.jpg', mimeType: 'image/jpeg', buffer: jpeg });
+await phone.locator('input[type=file][multiple]').setInputFiles({ name: 'IMG_4127.jpg', mimeType: 'image/jpeg', buffer: jpeg });
 await mac.locator('.transfer', { hasText: 'IMG_4127' }).waitFor();
 await pc.locator('.transfer', { hasText: 'IMG_4127' }).waitFor();
 await sleep(400);
@@ -802,7 +807,7 @@ execFileSync('ffmpeg', [
 const video = readFileSync(join(vdir, 'video.mp4'));
 rmSync(vdir, { recursive: true });
 await phone.evaluate(() => window.__hold());
-await phone.locator('input[type=file]').setInputFiles({ name: S.video, mimeType: 'video/mp4', buffer: video });
+await phone.locator('input[type=file][multiple]').setInputFiles({ name: S.video, mimeType: 'video/mp4', buffer: video });
 await mac.locator('.transfer', { hasText: S.video }).waitFor();
 await pc.locator('.transfer', { hasText: S.video }).waitFor();
 await oneChunk(phone, [mac, pc]);

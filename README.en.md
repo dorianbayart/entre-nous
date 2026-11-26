@@ -114,6 +114,12 @@ Details, proxy and settings: [docs/en/deployment.md](docs/en/deployment.md).
 - An interrupted upload resumes as long as the app stays open, but not after a restart.
 - A device that was off when another one was removed from the group has to be paired again.
 
+## Support the project
+
+Entre Nous is free, with no ads and no trackers. The public relay runs on a server paid for by
+donations: [Liberapay](https://liberapay.com/0xdba/donate) or
+[GitHub Sponsors](https://github.com/sponsors/dorianbayart).
+
 ## License
 
 [GNU AGPL v3](LICENSE) or later. You can use, modify and redistribute Entre Nous; if you run a

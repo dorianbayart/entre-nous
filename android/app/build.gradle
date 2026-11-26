@@ -1,5 +1,16 @@
 apply plugin: 'com.android.application'
 
+/** The number of commits (the version), or null outside a git clone. */
+def commitCount() {
+    try {
+        def out = project.providers.exec { commandLine 'git', 'rev-list', '--count', 'HEAD'; ignoreExitValue = true }
+            .standardOutput.asText.get().trim()
+        return out ==~ /\d+/ ? out : null
+    } catch (ignored) {
+        return null
+    }
+}
+
 // Release signing: key kept outside the repo (android/build.sh mounts it on /signing).
 def signingProps = new Properties()
 def signingFile = file(System.getenv('ENTRENOUS_SIGNING') ?: '/signing/android-signing.properties')
@@ -12,9 +23,10 @@ android {
         applicationId "dev.xdba.entrenous"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // 0.1.<number of commits>: set by android/build.sh and the CI; must grow for an update
-        versionCode Integer.parseInt(System.getenv('APP_BUILD') ?: '1')
-        versionName System.getenv('APP_VERSION') ?: '0.0.0'
+        // 0.1.<number of commits>: set by android/build.sh and the CI, else counted here (F-Droid
+        // builds from the sources, like web/build.mjs); must grow for an update
+        versionCode Integer.parseInt(System.getenv('APP_BUILD') ?: commitCount() ?: '1')
+        versionName System.getenv('APP_VERSION') ?: (commitCount() ? "0.1.${commitCount()}" : '0.0.0')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

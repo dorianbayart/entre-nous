@@ -114,6 +114,7 @@ Variables d'environnement du conteneur (dans `docker-compose.yml`) :
 | `PORT` | `8080` | port d'écoute dans le conteneur |
 | `IDLE_AFTER` | `10m` | inactivité après laquelle `scripts/auto-update.sh` peut redémarrer le relais |
 | `RELEASES` | `dorianbayart/entre-nous` | dépôt GitHub dont la dernière release est annoncée aux applis ; `off` : aucune |
+| `LIBERAPAY` | `0xdba` | compte Liberapay dont la page d'accueil montre les dons, par rapport à l'objectif ; `off` : aucun |
 
 - **Mémoire** : Redis prend 80 % de `mem_limit` et refuse les nouveaux envois au-delà (les applis
   affichent « Serveur saturé ») plutôt que de faire tuer le conteneur. L'espace restant est affiché

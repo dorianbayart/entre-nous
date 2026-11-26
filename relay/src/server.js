@@ -19,6 +19,8 @@ const MAX_TTL = parseDuration(env.MAX_TTL || '7d');
 const PUBLIC_DIR = env.PUBLIC_DIR || fileURLToPath(new URL('../public', import.meta.url));
 // GitHub repository whose latest release holds the apps ("off": none)
 const RELEASES = env.RELEASES ?? 'dorianbayart/entre-nous';
+// Liberapay account whose donations the landing page shows ("off": none)
+const LIBERAPAY = env.LIBERAPAY ?? '0xdba';
 
 const CHUNK_MAX = 1024 * 1024 + 128 * 1024; // 1 MiB of plaintext + padding and tag
 const META_MAX = 512 * 1024;
@@ -114,6 +116,38 @@ if (RELEASES !== 'off') {
   setInterval(checkRelease, 3600_000).unref();
 }
 
+// ---------------------------------------------------------------- donations
+
+// The donations received on Liberapay and their goal (the cost of the public relay), checked
+// every hour, for the gauge of the landing page: per month, in its currency. Liberapay gives
+// weekly amounts. Only the relay asks Liberapay: the visitors never do.
+let funding = null; // { receiving, goal, currency, patrons }
+
+async function checkFunding() {
+  try {
+    const res = await fetch(`https://liberapay.com/${encodeURIComponent(LIBERAPAY)}/public.json`, {
+      headers: { Accept: 'application/json', 'User-Agent': 'entrenous-relay' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const p = await res.json();
+    const monthly = (a) => (a && Number.isFinite(Number(a.amount)) ? Math.round((Number(a.amount) * 52) / 12) : null);
+    funding = {
+      receiving: monthly(p.receiving) ?? 0,
+      goal: monthly(p.goal),
+      currency: p.receiving?.currency ?? p.goal?.currency ?? 'EUR',
+      patrons: Number(p.npatrons) || 0,
+    };
+  } catch (err) {
+    log('donations check failed:', err.message);
+  }
+}
+
+if (LIBERAPAY !== 'off') {
+  checkFunding();
+  setInterval(checkFunding, 3600_000).unref();
+}
+
 // ---------------------------------------------------------------- static files
 
 const MIME = {
@@ -199,6 +233,11 @@ async function serveStatic(req, res) {
     }
     const idle = Date.now() - lastActivity >= IDLE_AFTER && pairings.size === 0 && (PERSIST || !(await store.hasItems()));
     res.writeHead(idle ? 200 : 503, { 'Content-Type': 'text/plain' }).end(idle ? 'idle' : 'busy');
+    return;
+  }
+  if (url.pathname === '/funding.json') {
+    res.writeHead(funding ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+    res.end(funding ? JSON.stringify(funding) : '{}');
     return;
   }
   if (url.pathname === '/release.json') {

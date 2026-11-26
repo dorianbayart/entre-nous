@@ -1,6 +1,9 @@
 # What's new
 [Français](CHANGELOG.md)
 
+## 0.1.57 — 2026-11-26
+- Donate, from Settings.
+
 ## 0.1.56 — 2026-11-26
 - An Open button on every file.
 

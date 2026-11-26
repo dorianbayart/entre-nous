@@ -544,10 +544,16 @@ Alpine.data('app', () => ({
 
   // ---------------------------------------------------------------- new version
 
-  /** A newer version of this app, not dismissed yet (the web app updates itself). */
+  /** A newer version of this app, not dismissed yet (the web app updates itself, the stores
+   *  update the apps they installed). */
   get update() {
     const v = this.latest;
-    return platform.native && v && newer(v, __VERSION__) && v !== this.prefs.updateSeen ? v : null;
+    return platform.native && !platform.store && v && newer(v, __VERSION__) && v !== this.prefs.updateSeen ? v : null;
+  },
+
+  /** Settings: the donation link, except in the Google Play app (Play's own payments only). */
+  get donate() {
+    return platform.store !== 'play';
   },
 
   get updateUrl() {

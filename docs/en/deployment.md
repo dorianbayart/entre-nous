@@ -114,6 +114,7 @@ The container's environment variables (in `docker-compose.yml`):
 | `PORT` | `8080` | listening port inside the container |
 | `IDLE_AFTER` | `10m` | idle time after which `scripts/auto-update.sh` may restart the relay |
 | `RELEASES` | `dorianbayart/entre-nous` | GitHub repository whose latest release is announced to the apps; `off`: none |
+| `LIBERAPAY` | `0xdba` | Liberapay account whose donations the landing page shows, against its goal; `off`: none |
 
 - **Memory**: Redis takes 80% of `mem_limit` and refuses new uploads beyond that (the apps show
   "Server full") rather than getting the container killed. The remaining space is shown in the

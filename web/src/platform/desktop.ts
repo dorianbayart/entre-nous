@@ -13,7 +13,14 @@ declare global {
   interface Window {
     webkit?: { messageHandlers: { native: { postMessage(msg: unknown): Promise<any> } } };
     __entrenous?: {
-      config: { relay: string; name: string; platform?: 'linux' | 'windows'; lang?: string };
+      config: {
+        relay: string;
+        name: string;
+        platform?: 'linux' | 'windows';
+        lang?: string;
+        /** Windows: installed from the Microsoft Store (MSIX package). */
+        store?: boolean;
+      };
       event(name: string, payload: any): void;
       /** Linux and Windows (Tauri): the native call. */
       call?(msg: unknown): Promise<any>;
@@ -131,6 +138,7 @@ export function desktopPlatform(): PlatformApi {
     defaultName: config.name || 'Mac',
     systemLang: config.lang,
     defaultRelay: config.relay,
+    store: config.store ? 'microsoft' : undefined,
     autoWrite: true,
 
     autostart: {

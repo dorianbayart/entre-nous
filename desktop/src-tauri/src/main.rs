@@ -8,6 +8,8 @@
 mod clip;
 mod files;
 mod l10n;
+#[cfg(windows)]
+mod msix;
 mod store;
 
 use base64::engine::{general_purpose::GeneralPurposeConfig, DecodePaddingMode, GeneralPurpose};
@@ -231,7 +233,12 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
                 .is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false));
             if !front {
                 let title = a.get("title").and_then(Value::as_str).unwrap_or("Entre Nous");
-                let _ = app.notification().builder().title(title).body(s("body")).show();
+                if store_app() {
+                    #[cfg(windows)]
+                    let _ = msix::notify(title, &s("body"));
+                } else {
+                    let _ = app.notification().builder().title(title).body(s("body")).show();
+                }
             }
             Ok(json!(true))
         }
@@ -345,7 +352,11 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
             Ok(json!(true))
         }
 
-        // open at login, with --hidden: straight to the tray
+        // open at login, with --hidden: straight to the tray (Microsoft Store: the package's task)
+        #[cfg(windows)]
+        "autostartGet" if store_app() => Ok(json!(msix::autostart_get())),
+        #[cfg(windows)]
+        "autostartSet" if store_app() => Ok(json!(msix::autostart_set(a.get("on").and_then(Value::as_bool).unwrap_or(false))?)),
         "autostartGet" => Ok(json!(app.autolaunch().is_enabled().unwrap_or(false))),
         "autostartSet" => {
             let al = app.autolaunch();
@@ -361,6 +372,17 @@ fn handle(app: &AppHandle, a: &Value) -> Result<Value, String> {
 }
 
 // ------------------------------------------------------------------ app
+
+/// Installed from the Microsoft Store (MSIX package): the Store updates it.
+fn store_app() -> bool {
+    #[cfg(windows)]
+    {
+        static PACKAGED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *PACKAGED.get_or_init(msix::packaged)
+    }
+    #[cfg(not(windows))]
+    false
+}
 
 fn tray(app: &tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", l10n::t("open"), true, None::<&str>)?;
@@ -425,13 +447,18 @@ fn main() {
                 "relay": relay_url(&handle),
                 "name": name,
                 "platform": if cfg!(windows) { "windows" } else { "linux" },
+                "store": store_app(),
             });
             let script = format!(
                 "window.__entrenous = {{ config: {config}, event() {{}}, \
                  call: (m) => window.__TAURI_INTERNALS__.invoke('native', {{ msg: m }}) }};"
             );
             // --hidden (start with the session): straight to the tray
-            let hidden = std::env::args().any(|a| a == "--hidden");
+            #[cfg(windows)]
+            let at_login = store_app() && msix::started_at_login();
+            #[cfg(not(windows))]
+            let at_login = false;
+            let hidden = at_login || std::env::args().any(|a| a == "--hidden");
             let opener = handle.clone();
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("Entre Nous")

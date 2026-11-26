@@ -57,6 +57,12 @@ export interface PlatformApi {
   setLang?(lang: string): void;
   /** Can the app write the clipboard by itself, without a tap (Mac, Android)? */
   autoWrite: boolean;
+  /**
+   * Apps: the store that installed them and updates them: no link to download a new version
+   * (the stores forbid it, and Play's signature differs). Google Play: no donation link either
+   * (its own payments only). None: downloaded from the releases, or the web app.
+   */
+  store?: 'play' | 'fdroid' | 'obtainium' | 'microsoft';
 
   /**
    * Writes the clipboard. `content` is a promise so that browsers which require a user

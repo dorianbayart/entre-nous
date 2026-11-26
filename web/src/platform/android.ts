@@ -50,8 +50,9 @@ export function androidPlatform(): PlatformApi {
     imageCopyMax: IMAGE_MAX,
 
     async init() {
-      const { model, pip } = await Native.info().catch(() => ({ model: '', pip: false }));
+      const { model, pip, store } = await Native.info().catch(() => ({ model: '', pip: false, store: undefined }));
       if (model) p.defaultName = model;
+      if (store) p.store = store;
       if (!pip) delete p.pip; // before Android 8, or turned off by the maker
     },
 

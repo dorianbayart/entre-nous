@@ -468,6 +468,10 @@
     </template>
 
     <p class="muted small" x-text="t('settings.version', { v: version })"></p>
+    <div class="donate" x-show="donate">
+      <p class="muted small" x-text="t('donate.text')"></p>
+      <a class="button small secondary" href="https://liberapay.com/0xdba/donate" x-text="t('donate.button')"></a>
+    </div>
 
     <button class="ghost danger wide" @click="resetAll"
             x-text="t(isConfirming('reset') ? 'settings.resetConfirm' : 'settings.reset')"></button>

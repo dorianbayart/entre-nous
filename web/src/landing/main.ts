@@ -24,6 +24,25 @@ qr.make();
 const img = document.getElementById('qr') as HTMLImageElement | null;
 if (img) img.src = qr.createDataURL(5, 2);
 
+// Donations: the share of the public relay's cost they cover each month (Liberapay, asked by the
+// relay); shown only once a goal is set.
+type Funding = { receiving: number; goal: number | null; currency: string };
+fetch('/funding.json')
+  .then((res) => (res.ok ? (res.json() as Promise<Funding>) : null))
+  .catch(() => null)
+  .then((f) => {
+    const box = document.getElementById('funding');
+    if (!box || !f || !f.goal) return;
+    const pct = Math.min(100, Math.round((f.receiving / f.goal) * 100));
+    const money = (n: number) =>
+      new Intl.NumberFormat(en ? 'en' : 'fr', { style: 'currency', currency: f.currency, maximumFractionDigits: 0 }).format(n);
+    (box.querySelector('.meter span') as HTMLElement).style.width = pct + '%';
+    box.querySelector('.note')!.textContent = en
+      ? `Donations cover ${pct}% of the server: ${money(f.receiving)} of ${money(f.goal)} a month.`
+      : `Les dons couvrent ${pct} % du serveur : ${money(f.receiving)} sur ${money(f.goal)} par mois.`;
+    box.hidden = false;
+  });
+
 // Downloads, from the latest release on GitHub: their size (known to the relay, which checks the
 // release), or "coming soon" when the release does not have the file yet.
 type Release = { version: string; files: Record<string, number> };

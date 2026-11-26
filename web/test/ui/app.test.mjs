@@ -493,6 +493,26 @@ test('the command line and the browser: one group, both ways', { timeout: 60_000
   assert.deepEqual(problems, []);
 });
 
+test('donations: a link in the settings and on the landing page', { timeout: 60_000 }, async () => {
+  const d = await device('Dana');
+  await d.page.goto(APP);
+  await d.page.locator('section.main').waitFor();
+  await d.page.getByLabel('Réglages').click();
+  const link = d.page.locator('section.settings').getByRole('link', { name: 'Faire un don', exact: true });
+  await link.waitFor();
+  assert.equal(await link.getAttribute('href'), 'https://liberapay.com/0xdba/donate');
+  await d.context.close();
+
+  // the landing page: Liberapay and GitHub Sponsors (its gauge needs a goal set on Liberapay)
+  const root = APP.replace(/app\/$/, '');
+  for (const [path, name] of [['fr/', 'Faire un don sur Liberapay'], ['en/', 'Donate on Liberapay']]) {
+    const html = await (await fetch(root + path)).text();
+    assert.ok(html.includes(name) && html.includes('https://github.com/sponsors/dorianbayart'), path);
+  }
+  assert.ok([200, 404].includes((await fetch(root + 'funding.json')).status));
+  assert.deepEqual(problems, []);
+});
+
 test('languages: English by the browser, French by the settings, the landing page by Accept-Language', { timeout: 60_000 }, async () => {
   const d = await device('Erin', { locale: 'en-GB' });
   await d.page.goto(APP);
